@@ -1,0 +1,5 @@
+{
+  "name": "OSGB Tetkik Takip",
+  "description": "OSGB çalışanları için işe giriş ve periyodik muayene tetkiklerinin takibi, sevk yönetimi ve sonuç analiz uygulaması.",
+  "requestFramePermissions": []
+}

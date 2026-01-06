@@ -1,0 +1,58 @@
+{
+  "name": "osgb-tetkik-takip",
+  "private": true,
+  "version": "1.0.0",
+  "main": "main.js",
+  "description": "OSGB Tetkik ve Sevk Takip Uygulaması",
+  "author": "OSGB Pro",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "electron:dev": "concurrently \"vite\" \"wait-on tcp:5173 && electron .\"",
+    "dist": "tsc && vite build && electron-builder"
+  },
+  "dependencies": {
+    "@google/genai": "^1.34.0",
+    "electron-store": "^8.1.0",
+    "lucide-react": "^0.562.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "uuid": "^13.0.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.15",
+    "@types/react-dom": "^18.2.7",
+    "@vitejs/plugin-react": "^4.0.3",
+    "concurrently": "^8.2.0",
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1",
+    "typescript": "^5.0.2",
+    "vite": "^4.4.5",
+    "wait-on": "^7.2.0"
+  },
+  "build": {
+    "appId": "com.osgb.tetkiktakip",
+    "productName": "OSGB Tetkik Takip",
+    "copyright": "Copyright © 2024 OSGB Pro",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "dist/**/*",
+      "main.js",
+      "preload.js",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "public/vite.svg"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    }
+  }
+}
