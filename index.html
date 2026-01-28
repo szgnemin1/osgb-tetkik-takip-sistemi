@@ -28,22 +28,6 @@
       ::-webkit-scrollbar-thumb:hover {
         background: #475569; /* slate-600 */
       }
-
-      @media print {
-        @page {
-          margin: 0;
-          size: auto;
-        }
-        body {
-          background-color: white;
-          color: black;
-          print-color-adjust: exact;
-          -webkit-print-color-adjust: exact;
-        }
-        /* Hide everything that is not the print-visible part of the modal */
-        /* Note: We handle this by using 'print:hidden' classes on the sidebar/header 
-           and 'print:fixed print:inset-0' on the modal wrapper in React */
-      }
     </style>
   <script type="importmap">
 {

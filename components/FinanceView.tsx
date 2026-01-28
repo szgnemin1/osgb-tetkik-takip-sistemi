@@ -1,14 +1,15 @@
 import React, { useState, useMemo } from 'react';
-import { Wallet, TrendingUp, TrendingDown, Plus, Minus, FileText } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, Plus, Minus, FileText, Trash2 } from 'lucide-react';
 import { SafeTransaction } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 
 interface FinanceViewProps {
   transactions: SafeTransaction[];
   onAddTransaction: (transaction: SafeTransaction) => void;
+  onResetSafe?: () => void;
 }
 
-export const FinanceView: React.FC<FinanceViewProps> = ({ transactions, onAddTransaction }) => {
+export const FinanceView: React.FC<FinanceViewProps> = ({ transactions, onAddTransaction, onResetSafe }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [txType, setTxType] = useState<'INCOME' | 'EXPENSE'>('INCOME');
   const [amount, setAmount] = useState('');
@@ -78,21 +79,33 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ transactions, onAddTra
       </div>
 
       {/* Actions */}
-      <div className="flex justify-end space-x-3">
-        <button 
-          onClick={() => { setTxType('EXPENSE'); setIsModalOpen(true); }}
-          className="flex items-center space-x-2 bg-red-600/10 hover:bg-red-600/20 text-red-400 px-4 py-2 rounded-lg border border-red-600/20 transition-all"
-        >
-          <Minus className="w-4 h-4" />
-          <span>Para Çıkışı Ekle</span>
-        </button>
-        <button 
-          onClick={() => { setTxType('INCOME'); setIsModalOpen(true); }}
-          className="flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg shadow-lg shadow-emerald-900/20 transition-all"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Tahsilat Ekle</span>
-        </button>
+      <div className="flex justify-between items-center">
+        {onResetSafe && (
+            <button 
+                onClick={() => onResetSafe()}
+                className="flex items-center space-x-2 text-xs text-red-500 hover:text-red-400 hover:bg-red-500/10 px-3 py-2 rounded transition-colors"
+                title="Tüm kasa hareketlerini siler ve bakiyeyi sıfırlar."
+            >
+                <Trash2 className="w-4 h-4" />
+                <span>Kasayı Sıfırla</span>
+            </button>
+        )}
+        <div className="flex space-x-3 ml-auto">
+            <button 
+            onClick={() => { setTxType('EXPENSE'); setIsModalOpen(true); }}
+            className="flex items-center space-x-2 bg-red-600/10 hover:bg-red-600/20 text-red-400 px-4 py-2 rounded-lg border border-red-600/20 transition-all"
+            >
+            <Minus className="w-4 h-4" />
+            <span>Para Çıkışı Ekle</span>
+            </button>
+            <button 
+            onClick={() => { setTxType('INCOME'); setIsModalOpen(true); }}
+            className="flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg shadow-lg shadow-emerald-900/20 transition-all"
+            >
+            <Plus className="w-4 h-4" />
+            <span>Tahsilat Ekle</span>
+            </button>
+        </div>
       </div>
 
       {/* Transaction History */}

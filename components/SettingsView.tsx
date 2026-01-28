@@ -1,11 +1,13 @@
 import React, { useState, useRef } from 'react';
 import { Company, ExamDefinition, HazardClass, MedicalInstitution, AppSettings } from '../types';
-import { Trash2, Plus, Building2, TestTube, Save, Check, Wallet, Receipt, Upload, FileDown, AlertCircle, MapPin, Sliders, CheckSquare, Square, Image as ImageIcon } from 'lucide-react';
+import { Trash2, Plus, Building2, TestTube, Save, Check, Wallet, Receipt, Upload, FileDown, AlertCircle, MapPin, Sliders, CheckSquare, Square, Image as ImageIcon, Edit2, XCircle, Database, Download, RefreshCw, AlertTriangle, CreditCard, Banknote } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { exportFullData, restoreFullData } from '../services/storage';
 
 interface SettingsViewProps {
   companies: Company[];
   onAddCompany: (c: Company) => void;
+  onUpdateCompany: (c: Company) => void;
   onDeleteCompany: (id: string) => void;
   onBulkDeleteCompanies: (ids: string[]) => void;
   exams: ExamDefinition[];
@@ -22,6 +24,7 @@ interface SettingsViewProps {
 export const SettingsView: React.FC<SettingsViewProps> = ({
   companies,
   onAddCompany,
+  onUpdateCompany,
   onDeleteCompany,
   onBulkDeleteCompanies,
   exams,
@@ -34,18 +37,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   settings,
   onUpdateSettings
 }) => {
-  const [activeTab, setActiveTab] = useState<'general' | 'companies' | 'exams' | 'institutions'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'companies' | 'exams' | 'institutions' | 'backup'>('general');
 
   // General Settings State
   const [ekgAgeLimit, setEkgAgeLimit] = useState(settings.ekgLimitAge);
   const [logo, setLogo] = useState<string | undefined>(settings.companyLogo);
 
   // Company Form State
+  const [editingCompanyId, setEditingCompanyId] = useState<string | null>(null);
   const [cName, setCName] = useState('');
   const [cHazard, setCHazard] = useState<HazardClass>(HazardClass.LESS);
   const [cDoctor, setCDoctor] = useState('');
   const [cSpecialist, setCSpecialist] = useState('');
-  const [cPaymentMethod, setCPaymentMethod] = useState<'CASH' | 'INVOICE'>('INVOICE');
+  const [cPaymentMethod, setCPaymentMethod] = useState<'CASH' | 'POS' | 'INVOICE'>('INVOICE');
   const [cSelectedExams, setCSelectedExams] = useState<string[]>([]);
   const [cPreferredInst, setCPreferredInst] = useState<string>(''); // For forced institution
   
@@ -55,6 +59,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   // File Import Ref
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const backupInputRef = useRef<HTMLInputElement>(null);
 
   // Exam Form State
   const [eName, setEName] = useState('');
@@ -102,26 +107,63 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       if(logoInputRef.current) logoInputRef.current.value = '';
   };
 
-  const handleAddCompany = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!cName) return;
-    const newCompany: Company = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: cName,
-      hazardClass: cHazard,
-      assignedDoctor: cDoctor || 'Belirlenmedi',
-      assignedSpecialist: cSpecialist || 'Belirlenmedi',
-      defaultExams: cSelectedExams,
-      defaultPaymentMethod: cPaymentMethod,
-      forcedInstitutionId: cPreferredInst || undefined
-    };
-    onAddCompany(newCompany);
+  // Populate form for editing
+  const handleEditCompany = (company: Company) => {
+    setEditingCompanyId(company.id);
+    setCName(company.name);
+    setCHazard(company.hazardClass);
+    setCDoctor(company.assignedDoctor);
+    setCSpecialist(company.assignedSpecialist);
+    setCPaymentMethod(company.defaultPaymentMethod);
+    setCSelectedExams(company.defaultExams);
+    setCPreferredInst(company.forcedInstitutionId || '');
+    // Scroll to form (simple implementation)
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingCompanyId(null);
     setCName('');
     setCDoctor('');
     setCSpecialist('');
     setCPaymentMethod('INVOICE');
     setCSelectedExams([]);
     setCPreferredInst('');
+  };
+
+  const handleCompanySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!cName) return;
+
+    if (editingCompanyId) {
+      // UPDATE Existing
+      const updatedCompany: Company = {
+        id: editingCompanyId,
+        name: cName,
+        hazardClass: cHazard,
+        assignedDoctor: cDoctor || 'Belirlenmedi',
+        assignedSpecialist: cSpecialist || 'Belirlenmedi',
+        defaultExams: cSelectedExams,
+        defaultPaymentMethod: cPaymentMethod,
+        forcedInstitutionId: cPreferredInst || undefined
+      };
+      onUpdateCompany(updatedCompany);
+      handleCancelEdit(); // Reset form
+    } else {
+      // ADD New
+      const newCompany: Company = {
+        id: Math.random().toString(36).substr(2, 9),
+        name: cName,
+        hazardClass: cHazard,
+        assignedDoctor: cDoctor || 'Belirlenmedi',
+        assignedSpecialist: cSpecialist || 'Belirlenmedi',
+        defaultExams: cSelectedExams,
+        defaultPaymentMethod: cPaymentMethod,
+        forcedInstitutionId: cPreferredInst || undefined
+      };
+      onAddCompany(newCompany);
+      handleCancelEdit(); // Reset form using same helper
+    }
   };
 
   const handleAddInstitution = (e: React.FormEvent) => {
@@ -164,7 +206,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const downloadTemplate = () => {
     // Sheet 1: Firmalar (Template to fill)
-    const headers = ["Firma Adı", "Tehlike Sınıfı (Az/Tehlikeli/Çok)", "Hekim Adı", "Uzman Adı", "Ödeme (Nakit/Fatura)", "Tetkik Kodları (Virgül ile)"];
+    const headers = ["Firma Adı", "Tehlike Sınıfı (Az/Tehlikeli/Çok)", "Hekim Adı", "Uzman Adı", "Ödeme (Nakit/Pos/Fatura)", "Tetkik Kodları (Virgül ile)"];
     const exampleRow = ["Örnek Metal A.Ş.", "Tehlikeli", "Dr. Ahmet Yılmaz", "Uzm. Ayşe Demir", "Fatura", "101, 103, 105"];
     const wsFirmalar = XLSX.utils.aoa_to_sheet([headers, exampleRow]);
     
@@ -233,9 +275,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           else if (hazardRaw.includes('tehlikeli')) hazard = HazardClass.DANGEROUS;
 
           // Payment
-          let payment: 'CASH' | 'INVOICE' = 'INVOICE';
+          let payment: 'CASH' | 'POS' | 'INVOICE' = 'INVOICE';
           if (paymentRaw.includes('nakit') || paymentRaw.includes('elden') || paymentRaw.includes('kasa')) {
             payment = 'CASH';
+          } else if (paymentRaw.includes('pos') || paymentRaw.includes('kredi') || paymentRaw.includes('kart')) {
+            payment = 'POS';
           }
 
           // Process Exam Codes (e.g., "101, 105") -> Match to Exam Names
@@ -271,6 +315,49 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   // --- End Bulk Import Logic ---
+
+  // --- Backup & Restore Logic ---
+  const handleBackup = () => {
+    const jsonString = exportFullData();
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    const dateStr = new Date().toISOString().split('T')[0];
+    a.download = `osgb_yedek_${dateStr}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleRestore = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!window.confirm("DİKKAT: Yedek dosyasını yüklediğinizde MEVCUT TÜM VERİLER SİLİNECEK ve yerine yedektekiler gelecektir. Devam etmek istiyor musunuz?")) {
+        if(backupInputRef.current) backupInputRef.current.value = '';
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        const content = event.target?.result;
+        if (typeof content === 'string') {
+            const success = restoreFullData(content);
+            if (success) {
+                alert("Yedek başarıyla yüklendi. Sayfa yenileniyor...");
+                window.location.reload();
+            } else {
+                alert("Yedek yüklenirken bir hata oluştu. Dosya bozuk olabilir.");
+            }
+        }
+    };
+    reader.readAsText(file);
+    if(backupInputRef.current) backupInputRef.current.value = '';
+  };
+  // --- End Backup Logic ---
 
   const handleAddExam = (e: React.FormEvent) => {
     e.preventDefault();
@@ -334,6 +421,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           className={`px-6 py-4 text-center font-medium text-sm transition-colors whitespace-nowrap ${activeTab === 'exams' ? 'bg-slate-900/50 text-blue-400 border-b-2 border-blue-500' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
         >
           Tetkikler
+        </button>
+        <button
+          onClick={() => setActiveTab('backup')}
+          className={`px-6 py-4 text-center font-medium text-sm transition-colors whitespace-nowrap ${activeTab === 'backup' ? 'bg-slate-900/50 text-emerald-400 border-b-2 border-emerald-500' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
+        >
+          Veri Yedekleme
         </button>
       </div>
 
@@ -415,47 +508,108 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
         )}
 
+        {activeTab === 'backup' && (
+            <div className="space-y-6">
+                <div className="bg-slate-900/30 p-6 rounded-lg border border-slate-700">
+                    <div className="flex items-center mb-6">
+                        <div className="p-3 bg-emerald-500/10 rounded-lg mr-4">
+                            <Database className="w-8 h-8 text-emerald-500" />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-white">Sistem Yedekleme ve Geri Yükleme</h3>
+                            <p className="text-sm text-slate-400">Firmaları, sevk kayıtlarını ve kasa hareketlerini başka bilgisayara taşımak için bu alanı kullanın.</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Yedek Alma */}
+                        <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 flex flex-col items-center text-center hover:border-blue-500 transition-colors">
+                            <Download className="w-12 h-12 text-blue-500 mb-4" />
+                            <h4 className="text-lg font-bold text-white mb-2">Yedek Al (Export)</h4>
+                            <p className="text-sm text-slate-400 mb-6">Tüm verileri (Firmalar, Sevkler, Kasa, Ayarlar) tek bir dosya (.json) olarak bilgisayarınıza indirin.</p>
+                            <button 
+                                onClick={() => handleBackup()}
+                                className="mt-auto flex items-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-lg font-bold shadow-lg shadow-blue-900/20 transition-all active:scale-95"
+                            >
+                                <FileDown className="w-5 h-5" />
+                                <span>Yedeği Bilgisayara İndir</span>
+                            </button>
+                        </div>
+
+                        {/* Yedek Yükleme */}
+                        <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 flex flex-col items-center text-center hover:border-orange-500 transition-colors">
+                            <RefreshCw className="w-12 h-12 text-orange-500 mb-4" />
+                            <h4 className="text-lg font-bold text-white mb-2">Yedek Yükle (Import)</h4>
+                            <p className="text-sm text-slate-400 mb-2">Daha önce alınan .json uzantılı yedek dosyasını seçerek verileri geri yükleyin.</p>
+                            
+                            <div className="bg-orange-500/10 border border-orange-500/20 p-3 rounded-lg mb-6 flex items-start text-left">
+                                <AlertTriangle className="w-5 h-5 text-orange-500 mr-2 shrink-0 mt-0.5" />
+                                <span className="text-xs text-orange-200">
+                                    <strong>DİKKAT:</strong> Yedek yükleme işlemi, şu anki tüm verileri siler ve üzerine yazar. Bu işlem geri alınamaz.
+                                </span>
+                            </div>
+
+                            <label className="mt-auto cursor-pointer flex items-center space-x-2 bg-slate-700 hover:bg-slate-600 text-white px-6 py-3 rounded-lg font-bold border border-slate-600 transition-all active:scale-95">
+                                <Upload className="w-5 h-5" />
+                                <span>Yedek Dosyasını Seç ve Yükle</span>
+                                <input 
+                                    type="file" 
+                                    accept=".json"
+                                    ref={backupInputRef}
+                                    onChange={handleRestore}
+                                    className="hidden" 
+                                />
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
+
         {activeTab === 'companies' && (
           <div className="space-y-8">
             
             {/* Bulk Import Section */}
-            <div className="bg-slate-900/50 p-4 rounded-lg border border-dashed border-slate-600 flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="flex items-center space-x-3">
-                 <div className="p-2 bg-emerald-500/10 rounded">
-                   <Upload className="w-6 h-6 text-emerald-500" />
-                 </div>
-                 <div>
-                    <h5 className="text-sm font-bold text-white">Toplu Firma Yükleme (Excel)</h5>
-                    <p className="text-xs text-slate-400">Şablonu indirin, <strong>2. Sayfadaki tetkik kodlarına bakarak</strong> doldurun ve yükleyin.</p>
-                 </div>
-              </div>
-              <div className="flex space-x-3">
-                 <button 
-                   onClick={downloadTemplate}
-                   type="button"
-                   className="flex items-center space-x-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded text-xs text-slate-300 transition-colors"
-                 >
-                    <FileDown className="w-4 h-4" />
-                    <span>Şablon (Kodlu) İndir</span>
-                 </button>
-                 <label className="flex items-center space-x-2 px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs font-medium cursor-pointer transition-colors shadow-lg shadow-blue-900/20">
-                    <Upload className="w-4 h-4" />
-                    <span>Excel Yükle</span>
-                    <input 
-                      type="file" 
-                      accept=".xlsx, .xls" 
-                      className="hidden" 
-                      ref={fileInputRef}
-                      onChange={handleFileUpload}
-                    />
-                 </label>
-              </div>
-            </div>
+            {!editingCompanyId && (
+                <div className="bg-slate-900/50 p-4 rounded-lg border border-dashed border-slate-600 flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-emerald-500/10 rounded">
+                    <Upload className="w-6 h-6 text-emerald-500" />
+                    </div>
+                    <div>
+                        <h5 className="text-sm font-bold text-white">Toplu Firma Yükleme (Excel)</h5>
+                        <p className="text-xs text-slate-400">Şablonu indirin, <strong>2. Sayfadaki tetkik kodlarına bakarak</strong> doldurun ve yükleyin.</p>
+                    </div>
+                </div>
+                <div className="flex space-x-3">
+                    <button 
+                    onClick={downloadTemplate}
+                    type="button"
+                    className="flex items-center space-x-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded text-xs text-slate-300 transition-colors"
+                    >
+                        <FileDown className="w-4 h-4" />
+                        <span>Şablon (Kodlu) İndir</span>
+                    </button>
+                    <label className="flex items-center space-x-2 px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs font-medium cursor-pointer transition-colors shadow-lg shadow-blue-900/20">
+                        <Upload className="w-4 h-4" />
+                        <span>Excel Yükle</span>
+                        <input 
+                        type="file" 
+                        accept=".xlsx, .xls" 
+                        className="hidden" 
+                        ref={fileInputRef}
+                        onChange={handleFileUpload}
+                        />
+                    </label>
+                </div>
+                </div>
+            )}
 
-            {/* Add Company Form */}
-            <form onSubmit={handleAddCompany} className="bg-slate-900/30 p-4 rounded-lg border border-slate-700 space-y-4">
-              <h4 className="text-sm font-bold text-white flex items-center">
-                <Plus className="w-4 h-4 mr-2" /> Tek Firma Ekle
+            {/* Add/Edit Company Form */}
+            <form onSubmit={handleCompanySubmit} className={`bg-slate-900/30 p-4 rounded-lg border ${editingCompanyId ? 'border-orange-500/50 shadow-lg shadow-orange-900/20' : 'border-slate-700'} space-y-4 transition-all duration-300`}>
+              <h4 className={`text-sm font-bold flex items-center ${editingCompanyId ? 'text-orange-400' : 'text-white'}`}>
+                {editingCompanyId ? <Edit2 className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />} 
+                {editingCompanyId ? 'Firma Bilgilerini Düzenle' : 'Tek Firma Ekle'}
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <input required placeholder="Firma Adı" value={cName} onChange={e => setCName(e.target.value)} className="bg-slate-800 border-slate-600 rounded px-3 py-2 text-white text-sm focus:ring-blue-500 outline-none" />
@@ -493,8 +647,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     onClick={() => setCPaymentMethod('CASH')}
                     className={`flex-1 py-2 rounded text-sm font-medium border flex items-center justify-center space-x-2 transition-all ${cPaymentMethod === 'CASH' ? 'bg-emerald-600/20 border-emerald-500 text-emerald-200' : 'bg-slate-800 border-slate-600 text-slate-400'}`}
                    >
-                     <Wallet className="w-4 h-4" />
+                     <Banknote className="w-4 h-4" />
                      <span>Nakit</span>
+                   </button>
+                   <button 
+                    type="button"
+                    onClick={() => setCPaymentMethod('POS')}
+                    className={`flex-1 py-2 rounded text-sm font-medium border flex items-center justify-center space-x-2 transition-all ${cPaymentMethod === 'POS' ? 'bg-purple-600/20 border-purple-500 text-purple-200' : 'bg-slate-800 border-slate-600 text-slate-400'}`}
+                   >
+                     <CreditCard className="w-4 h-4" />
+                     <span>Pos</span>
                    </button>
                 </div>
               </div>
@@ -516,8 +678,24 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 </div>
               </div>
 
-              <div className="flex justify-end">
-                <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-sm">Ekle</button>
+              {/* Save / Cancel Buttons */}
+              <div className="flex justify-end space-x-3">
+                {editingCompanyId && (
+                    <button 
+                        type="button" 
+                        onClick={handleCancelEdit}
+                        className="bg-slate-700 hover:bg-slate-600 text-slate-300 px-4 py-2 rounded text-sm flex items-center"
+                    >
+                        <XCircle className="w-4 h-4 mr-1" /> Vazgeç
+                    </button>
+                )}
+                <button 
+                    type="submit" 
+                    className={`${editingCompanyId ? 'bg-orange-600 hover:bg-orange-500' : 'bg-blue-600 hover:bg-blue-500'} text-white px-6 py-2 rounded text-sm font-bold shadow-lg transition-colors flex items-center`}
+                >
+                    {editingCompanyId ? <Save className="w-4 h-4 mr-1" /> : <Plus className="w-4 h-4 mr-1" />}
+                    {editingCompanyId ? 'Güncelle' : 'Ekle'}
+                </button>
               </div>
             </form>
 
@@ -571,6 +749,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         {company.name}
                         {company.defaultPaymentMethod === 'CASH' ? (
                           <span className="ml-2 px-1.5 py-0.5 text-[10px] bg-emerald-900/30 text-emerald-400 border border-emerald-500/20 rounded uppercase">Nakit</span>
+                        ) : company.defaultPaymentMethod === 'POS' ? (
+                          <span className="ml-2 px-1.5 py-0.5 text-[10px] bg-purple-900/30 text-purple-400 border border-purple-500/20 rounded uppercase">Pos</span>
                         ) : (
                           <span className="ml-2 px-1.5 py-0.5 text-[10px] bg-blue-900/30 text-blue-400 border border-blue-500/20 rounded uppercase">Fatura</span>
                         )}
@@ -589,9 +769,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-3 w-full md:w-auto justify-end">
-                    <span className="text-xs bg-slate-800 px-2 py-1 rounded border border-slate-600 text-slate-300">{company.hazardClass}</span>
-                    <button onClick={() => onDeleteCompany(company.id)} className="text-slate-500 hover:text-red-400 p-1">
+                  <div className="flex items-center space-x-2 w-full md:w-auto justify-end">
+                    <span className="text-xs bg-slate-800 px-2 py-1 rounded border border-slate-600 text-slate-300 mr-2">{company.hazardClass}</span>
+                    <button 
+                        onClick={() => handleEditCompany(company)} 
+                        className="text-slate-500 hover:text-blue-400 p-1.5 hover:bg-blue-500/10 rounded transition-colors"
+                        title="Düzenle"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button 
+                        onClick={() => onDeleteCompany(company.id)} 
+                        className="text-slate-500 hover:text-red-400 p-1.5 hover:bg-red-500/10 rounded transition-colors"
+                        title="Sil"
+                    >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>

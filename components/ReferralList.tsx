@@ -1,23 +1,18 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { 
-  MoreHorizontal, 
-  CheckCircle, 
-  Clock, 
-  AlertCircle, 
-  FileText, 
   Trash2,
-  Sparkles,
   MapPin,
-  Building2
+  Building2,
+  FileText,
+  CalendarDays,
+  MessageSquare
 } from 'lucide-react';
 import { Referral, Status, MedicalInstitution } from '../types';
-import { analyzeResults } from '../services/geminiService';
 
 interface ReferralListProps {
   referrals: Referral[];
   institutions?: MedicalInstitution[];
-  onUpdateStatus: (id: string, status: Status) => void;
-  onAnalyze: (id: string, result: string) => void;
+  onUpdateStatus?: (id: string, status: Status) => void;
   onDelete: (id: string) => void;
   compact?: boolean;
 }
@@ -25,149 +20,166 @@ interface ReferralListProps {
 export const ReferralList: React.FC<ReferralListProps> = ({ 
   referrals, 
   institutions = [],
-  onUpdateStatus, 
-  onAnalyze,
   onDelete,
   compact = false 
 }) => {
-  const [analyzingId, setAnalyzingId] = useState<string | null>(null);
-
-  const handleAIAnalysis = async (referral: Referral) => {
-    setAnalyzingId(referral.id);
-    try {
-      const result = await analyzeResults(referral);
-      onAnalyze(referral.id, result);
-    } catch (e) {
-      alert("Analiz sırasında bir hata oluştu.");
-    } finally {
-      setAnalyzingId(null);
-    }
-  };
 
   const getInstitutionName = (id?: string) => {
     if (!id) return null;
     return institutions.find(i => i.id === id)?.name || "Bilinmeyen Kurum";
   };
 
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .slice(0, 2)
+      .join('')
+      .toUpperCase();
+  };
+
+  const getAvatarColor = (name: string) => {
+    const colors = [
+      'bg-blue-500', 'bg-emerald-500', 'bg-violet-500', 'bg-amber-500', 'bg-rose-500', 'bg-cyan-500'
+    ];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+  };
+
+  const getPaymentBadge = (method: string) => {
+      if (method === 'CASH') {
+          return <span className="text-[9px] uppercase font-bold tracking-wider px-1 py-0.5 rounded text-emerald-400 bg-emerald-500/10">Elden (Nakit)</span>;
+      }
+      if (method === 'POS') {
+          return <span className="text-[9px] uppercase font-bold tracking-wider px-1 py-0.5 rounded text-purple-400 bg-purple-500/10">Elden (Pos)</span>;
+      }
+      return <span className="text-[9px] uppercase font-bold tracking-wider px-1 py-0.5 rounded text-blue-400 bg-blue-500/10">Fatura</span>;
+  };
+
   if (referrals.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 text-slate-500 bg-slate-800 rounded-xl border border-dashed border-slate-700">
-        <FileText className="w-12 h-12 mb-2 opacity-50" />
-        <p>Henüz kayıt bulunmamaktadır.</p>
+      <div className="flex flex-col items-center justify-center h-64 text-slate-500 bg-slate-800/50 rounded-xl border border-dashed border-slate-700">
+        <div className="p-4 bg-slate-800 rounded-full mb-3">
+            <FileText className="w-8 h-8 opacity-50" />
+        </div>
+        <p className="font-medium">Kayıt bulunamadı.</p>
+        <p className="text-xs mt-1">Arama kriterlerini değiştirin veya yeni sevk oluşturun.</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-slate-800 rounded-xl border border-slate-700 shadow-sm overflow-hidden">
-      <div className="overflow-x-auto">
+    <div className="bg-slate-800 rounded-xl border border-slate-700 shadow-sm overflow-hidden flex flex-col h-full">
+      <div className="overflow-x-auto custom-scrollbar flex-1">
         <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-slate-900/50 border-b border-slate-700">
-              <th className="px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Personel</th>
-              <th className="px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Firma</th>
-              {!compact && <th className="px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Kurum</th>}
-              <th className="px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Tarih</th>
-              <th className="px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Tetkikler</th>
-              <th className="px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right">Tutar</th>
-              {!compact && <th className="px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right">İşlemler</th>}
+          <thead className="sticky top-0 z-10 bg-slate-900 border-b border-slate-700 shadow-sm">
+            <tr>
+              <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider w-1/4">Personel</th>
+              <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">Firma & Kurum</th>
+              <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">Tarih</th>
+              {!compact && <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">Tetkikler</th>}
+              {!compact && <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">Not</th>}
+              <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">Tutar</th>
+              <th className="px-4 py-3 w-10"></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-700">
+          <tbody className="divide-y divide-slate-700/50 bg-slate-800">
             {referrals.map((referral) => {
                const instName = getInstitutionName(referral.targetInstitutionId);
                return (
               <tr key={referral.id} className="hover:bg-slate-700/30 transition-colors group">
-                <td className="px-4 py-3">
-                  <div className="flex flex-col">
-                    <span className="font-medium text-white text-sm whitespace-nowrap">{referral.employee.fullName}</span>
-                    <span className="text-xs text-slate-500 font-mono">{referral.employee.tcNo}</span>
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center space-x-2">
-                     <Building2 className="w-3 h-3 text-slate-500" />
-                     <span className="text-sm text-slate-300 whitespace-nowrap">{referral.employee.company}</span>
-                  </div>
-                </td>
-                {!compact && (
-                  <td className="px-4 py-3">
-                    {instName ? (
-                      <div className="flex items-center space-x-2 text-purple-300 bg-purple-500/10 px-2 py-1 rounded border border-purple-500/20 w-fit whitespace-nowrap">
-                         <MapPin className="w-3 h-3" />
-                         <span className="text-xs font-medium">{instName}</span>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-slate-600 italic">Kurum Seçilmedi</span>
-                    )}
-                  </td>
-                )}
-                <td className="px-4 py-3">
-                  <span className="text-sm text-slate-400 whitespace-nowrap">
-                    {new Date(referral.referralDate).toLocaleDateString('tr-TR')}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex flex-wrap gap-1 min-w-[150px]">
-                    {referral.exams.slice(0, compact ? 2 : 3).map((exam, i) => (
-                      <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-700 text-slate-300 border border-slate-600 whitespace-nowrap">
-                        {exam}
-                      </span>
-                    ))}
-                    {referral.exams.length > (compact ? 2 : 3) && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-700 text-slate-400">
-                        +{referral.exams.length - (compact ? 2 : 3)}
-                      </span>
-                    )}
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <div className="flex flex-col items-end">
-                    <span className="text-emerald-400 font-medium text-sm">₺{referral.totalPrice?.toLocaleString('tr-TR') || 0}</span>
-                    <span className={`text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded ${referral.paymentMethod === 'CASH' ? 'text-emerald-300 bg-emerald-500/10' : 'text-blue-300 bg-blue-500/10'}`}>
-                      {referral.paymentMethod === 'CASH' ? 'Nakit' : 'Cari'}
-                    </span>
-                  </div>
-                </td>
-                {!compact && (
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end space-x-2">
-                       {/* AI Analysis Button */}
-                       {!referral.aiAnalysis && (
-                         <button 
-                            onClick={() => handleAIAnalysis(referral)}
-                            disabled={analyzingId === referral.id}
-                            className="text-indigo-400 hover:bg-indigo-500/10 p-2 rounded-lg transition-colors flex items-center space-x-1"
-                            title="AI ile Sonuçları Yorumla"
-                         >
-                            {analyzingId === referral.id ? (
-                                <div className="animate-spin h-4 w-4 border-2 border-indigo-500 border-t-transparent rounded-full" />
-                            ) : (
-                                <Sparkles className="w-4 h-4" />
-                            )}
-                         </button>
-                       )}
-                       
-                       {referral.aiAnalysis && (
-                          <div className="relative group/tooltip">
-                            <span className="text-indigo-400 cursor-help bg-indigo-500/10 px-2 py-1 rounded text-xs border border-indigo-500/30">
-                              AI Raporu
-                            </span>
-                            <div className="absolute right-0 bottom-full mb-2 w-64 bg-slate-900 border border-slate-700 text-slate-300 text-xs p-3 rounded shadow-xl opacity-0 group-hover/tooltip:opacity-100 pointer-events-none transition-opacity z-50">
-                              {referral.aiAnalysis}
-                            </div>
-                          </div>
-                       )}
-                      
-                      <button 
-                        onClick={() => onDelete(referral.id)}
-                        className="text-slate-500 hover:text-red-400 hover:bg-red-500/10 p-2 rounded-lg transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                {/* Personel */}
+                <td className="px-4 py-2.5">
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-lg ${getAvatarColor(referral.employee.fullName)}`}>
+                        {getInitials(referral.employee.fullName)}
                     </div>
-                  </td>
+                    <div className="flex flex-col">
+                      <span className="font-bold text-slate-200 text-sm">{referral.employee.fullName}</span>
+                      <span className="text-[11px] text-slate-500 font-mono tracking-wide">{referral.employee.tcNo}</span>
+                    </div>
+                  </div>
+                </td>
+
+                {/* Firma & Kurum */}
+                <td className="px-4 py-2.5">
+                  <div className="flex flex-col space-y-1">
+                      <div className="flex items-center space-x-1.5">
+                         <Building2 className="w-3.5 h-3.5 text-slate-500" />
+                         <span className="text-sm text-slate-300 font-medium truncate max-w-[150px]" title={referral.employee.company}>{referral.employee.company}</span>
+                      </div>
+                      {!compact && (
+                        <div className="flex items-center space-x-1.5">
+                            <MapPin className="w-3.5 h-3.5 text-slate-600" />
+                            <span className={`text-xs truncate max-w-[150px] ${instName ? 'text-slate-400' : 'text-slate-600 italic'}`}>
+                                {instName || 'Kurum Yok'}
+                            </span>
+                        </div>
+                      )}
+                  </div>
+                </td>
+
+                {/* Tarih */}
+                <td className="px-4 py-2.5">
+                    <div className="flex items-center space-x-2 text-slate-400">
+                        <CalendarDays className="w-4 h-4 text-slate-600" />
+                        <span className="text-xs font-medium">{new Date(referral.referralDate).toLocaleDateString('tr-TR')}</span>
+                    </div>
+                </td>
+
+                {/* Tetkikler (Full View Only) */}
+                {!compact && (
+                    <td className="px-4 py-2.5">
+                        <div className="flex flex-wrap gap-1 max-w-[200px]">
+                            {referral.exams.slice(0, 3).map((exam, i) => (
+                            <span key={i} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-900 text-slate-400 border border-slate-700">
+                                {exam}
+                            </span>
+                            ))}
+                            {referral.exams.length > 3 && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-800 text-slate-500">
+                                +{referral.exams.length - 3}
+                            </span>
+                            )}
+                        </div>
+                    </td>
                 )}
+
+                {/* Not (Full View Only) */}
+                {!compact && (
+                    <td className="px-4 py-2.5">
+                        {referral.notes ? (
+                            <div className="flex items-start space-x-1.5 group/note cursor-help" title={referral.notes}>
+                                <MessageSquare className="w-3.5 h-3.5 text-slate-500 mt-0.5 shrink-0" />
+                                <span className="text-xs text-slate-400 truncate max-w-[150px]">{referral.notes}</span>
+                            </div>
+                        ) : (
+                            <span className="text-slate-600 text-xs">-</span>
+                        )}
+                    </td>
+                )}
+
+                {/* Tutar */}
+                <td className="px-4 py-2.5 text-right">
+                  <div className="flex flex-col items-end">
+                    <span className="text-white font-bold text-sm">₺{referral.totalPrice?.toLocaleString('tr-TR') || 0}</span>
+                    {getPaymentBadge(referral.paymentMethod)}
+                  </div>
+                </td>
+
+                {/* Actions */}
+                <td className="px-4 py-2.5 text-right">
+                    <button 
+                        onClick={() => onDelete(referral.id)}
+                        className="text-slate-600 hover:text-red-400 hover:bg-red-500/10 p-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                        title="Kaydı Sil"
+                    >
+                        <Trash2 className="w-4 h-4" />
+                    </button>
+                </td>
               </tr>
             )})}
           </tbody>

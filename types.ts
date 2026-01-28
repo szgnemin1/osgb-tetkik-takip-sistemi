@@ -47,7 +47,7 @@ export interface Company {
   assignedDoctor: string;     // İşyeri Hekimi
   assignedSpecialist: string; // İSG Uzmanı
   defaultExams: string[];     // Changed from ExamType[] to string[] to support dynamic exams
-  defaultPaymentMethod: 'CASH' | 'INVOICE'; // Firmanın varsayılan ödeme yöntemi
+  defaultPaymentMethod: 'CASH' | 'POS' | 'INVOICE'; // Firmanın varsayılan ödeme yöntemi (POS eklendi)
   forcedInstitutionId?: string; // Eğer varsa, bu firma sadece bu kuruma sevk edilebilir
 }
 
@@ -67,13 +67,12 @@ export interface Referral {
   status: Status;
   referralDate: string; // ISO Date string
   notes?: string;
-  aiAnalysis?: string; // Gemini analysis result
   resultSummary?: string;
   doctorName?: string; // Kayıt anındaki doktor
   specialistName?: string; // Kayıt anındaki uzman
   totalPrice?: number; // Müşteriden alınacak tutar
   totalCost?: number; // OSGB'nin ödeyeceği maliyet
-  paymentMethod: 'CASH' | 'INVOICE'; // Nakit (Kasa) veya Cari (Fatura)
+  paymentMethod: 'CASH' | 'POS' | 'INVOICE'; // Nakit, Pos veya Cari
   targetInstitutionId?: string; // Hangi kuruma sevk edildiği
 }
 

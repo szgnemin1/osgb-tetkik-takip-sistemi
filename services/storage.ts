@@ -19,7 +19,7 @@ export const loadReferrals = (): Referral[] => {
 export const saveReferrals = (data: Referral[]) => localStorage.setItem(STORAGE_KEY_REFERRALS, JSON.stringify(data));
 
 // Companies
-export const loadCompanies = (defaults: Company[]): Company[] => {
+export const loadCompanies = (defaults: Company[] = []): Company[] => {
   try {
     const data = localStorage.getItem(STORAGE_KEY_COMPANIES);
     return data ? JSON.parse(data) : defaults;
@@ -30,7 +30,7 @@ export const loadCompanies = (defaults: Company[]): Company[] => {
 export const saveCompanies = (data: Company[]) => localStorage.setItem(STORAGE_KEY_COMPANIES, JSON.stringify(data));
 
 // Exams
-export const loadExams = (defaults: ExamDefinition[]): ExamDefinition[] => {
+export const loadExams = (defaults: ExamDefinition[] = []): ExamDefinition[] => {
   try {
     const data = localStorage.getItem(STORAGE_KEY_EXAMS);
     return data ? JSON.parse(data) : defaults;
@@ -41,7 +41,7 @@ export const loadExams = (defaults: ExamDefinition[]): ExamDefinition[] => {
 export const saveExams = (data: ExamDefinition[]) => localStorage.setItem(STORAGE_KEY_EXAMS, JSON.stringify(data));
 
 // Institutions
-export const loadInstitutions = (defaults: MedicalInstitution[]): MedicalInstitution[] => {
+export const loadInstitutions = (defaults: MedicalInstitution[] = []): MedicalInstitution[] => {
   try {
     const data = localStorage.getItem(STORAGE_KEY_INSTITUTIONS);
     return data ? JSON.parse(data) : defaults;
@@ -73,3 +73,54 @@ export const loadAppSettings = (): AppSettings => {
 };
 
 export const saveAppSettings = (settings: AppSettings) => localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(settings));
+
+// --- BACKUP & RESTORE UTILITIES ---
+
+export interface BackupData {
+  version: string;
+  timestamp: string;
+  companies: Company[];
+  referrals: Referral[];
+  exams: ExamDefinition[];
+  institutions: MedicalInstitution[];
+  transactions: SafeTransaction[];
+  settings: AppSettings;
+}
+
+export const exportFullData = (): string => {
+  const backup: BackupData = {
+    version: '1.0',
+    timestamp: new Date().toISOString(),
+    companies: loadCompanies(),
+    referrals: loadReferrals(),
+    exams: loadExams(),
+    institutions: loadInstitutions(),
+    transactions: loadTransactions(),
+    settings: loadAppSettings()
+  };
+  return JSON.stringify(backup, null, 2);
+};
+
+export const restoreFullData = (jsonData: string): boolean => {
+  try {
+    const data: BackupData = JSON.parse(jsonData);
+    
+    // Basic validation
+    if (!data.companies || !data.referrals) {
+      throw new Error("Geçersiz yedek dosyası formatı.");
+    }
+
+    // Save all data
+    if(data.companies) saveCompanies(data.companies);
+    if(data.referrals) saveReferrals(data.referrals);
+    if(data.exams) saveExams(data.exams);
+    if(data.institutions) saveInstitutions(data.institutions);
+    if(data.transactions) saveTransactions(data.transactions);
+    if(data.settings) saveAppSettings(data.settings);
+
+    return true;
+  } catch (error) {
+    console.error("Yedek yükleme hatası:", error);
+    return false;
+  }
+};

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react';
 import { 
   LayoutDashboard, 
   Users, 
@@ -11,13 +11,11 @@ import {
   Wallet,
   FileText,
   Menu,
-  X
+  X,
+  Loader2
 } from 'lucide-react';
 import { ReferralList } from './components/ReferralList';
-import { NewReferralView } from './components/NewReferralModal'; // Component updated to be a View
 import { StatsCards } from './components/StatsCards';
-import { FinanceView } from './components/FinanceView';
-import { SettingsView } from './components/SettingsView';
 import { EndOfDayReportModal } from './components/EndOfDayReportModal';
 import { Referral, Status, Company, ExamDefinition, SafeTransaction, MedicalInstitution, AppSettings } from './types';
 import { 
@@ -29,6 +27,20 @@ import {
   loadAppSettings, saveAppSettings
 } from './services/storage';
 import { PREDEFINED_COMPANIES, DEFAULT_EXAMS, DEFAULT_INSTITUTIONS } from './services/initialData';
+
+// --- LAZY LOADING ---
+// Bu bileşenler sadece ihtiyaç duyulduğunda yüklenecek, açılışı yavaşlatmayacak.
+const NewReferralView = lazy(() => import('./components/NewReferralModal').then(module => ({ default: module.NewReferralView })));
+const FinanceView = lazy(() => import('./components/FinanceView').then(module => ({ default: module.FinanceView })));
+const SettingsView = lazy(() => import('./components/SettingsView').then(module => ({ default: module.SettingsView })));
+
+// Loading Component
+const PageLoader = () => (
+  <div className="flex flex-col items-center justify-center h-full text-slate-500">
+    <Loader2 className="w-8 h-8 animate-spin mb-2 text-blue-500" />
+    <span className="text-xs font-medium">Yükleniyor...</span>
+  </div>
+);
 
 const App: React.FC = () => {
   // Added 'create_referral' to navigation state
@@ -72,13 +84,14 @@ const App: React.FC = () => {
     // 1. Add Referral (Always)
     setReferrals(prev => [referral, ...prev]);
     
-    // 2. Add to Safe ONLY if Payment Method is CASH
-    if (referral.paymentMethod === 'CASH' && referral.totalPrice && referral.totalPrice > 0) {
+    // 2. Add to Safe ONLY if Payment Method is CASH or POS
+    if ((referral.paymentMethod === 'CASH' || referral.paymentMethod === 'POS') && referral.totalPrice && referral.totalPrice > 0) {
+      const typeLabel = referral.paymentMethod === 'CASH' ? 'Nakit' : 'Pos';
       const newTransaction: SafeTransaction = {
         id: Math.random().toString(36).substr(2, 9),
         type: 'INCOME',
         amount: referral.totalPrice,
-        description: `Sevk Geliri (Nakit): ${referral.employee.fullName} (${referral.employee.company})`,
+        description: `Sevk Geliri (${typeLabel}): ${referral.employee.fullName} (${referral.employee.company})`,
         date: new Date().toISOString()
       };
       setTransactions(prev => [...prev, newTransaction]);
@@ -94,12 +107,6 @@ const App: React.FC = () => {
     ));
   };
 
-  const handleAnalyze = (id: string, analysis: string) => {
-    setReferrals(prev => prev.map(r => 
-      r.id === id ? { ...r, aiAnalysis: analysis } : r
-    ));
-  };
-
   const handleDelete = (id: string) => {
     if(window.confirm('Bu kaydı silmek istediğinize emin misiniz?')) {
       setReferrals(prev => prev.filter(r => r.id !== id));
@@ -108,6 +115,9 @@ const App: React.FC = () => {
 
   // Settings Handlers
   const handleAddCompany = (c: Company) => setCompanies(prev => [...prev, c]);
+  const handleUpdateCompany = (updated: Company) => {
+    setCompanies(prev => prev.map(c => c.id === updated.id ? updated : c));
+  };
   const handleDeleteCompany = (id: string) => setCompanies(prev => prev.filter(c => c.id !== id));
   // New Bulk Delete Handler
   const handleBulkDeleteCompanies = (ids: string[]) => {
@@ -125,6 +135,11 @@ const App: React.FC = () => {
 
   // Finance Handlers
   const handleAddTransaction = (t: SafeTransaction) => setTransactions(prev => [...prev, t]);
+  const handleResetSafe = () => {
+    if(window.confirm('DİKKAT! Tüm kasa geçmişini silmek üzeresiniz. Bakiye sıfırlanacaktır. Bu işlem geri alınamaz. Onaylıyor musunuz?')) {
+      setTransactions([]);
+    }
+  };
 
   const filteredReferrals = useMemo(() => {
     return referrals.filter(r => 
@@ -223,7 +238,7 @@ const App: React.FC = () => {
       {/* Main Content */}
       <main className="flex-1 flex flex-col h-full overflow-hidden relative bg-slate-950">
         {/* Header */}
-        <header className="h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 md:px-8 shadow-sm z-10 print:hidden">
+        <header className="h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 md:px-8 shadow-sm z-10 print:hidden shrink-0">
           <div className="flex items-center">
               <button 
                 onClick={() => setIsMobileMenuOpen(true)}
@@ -246,7 +261,7 @@ const App: React.FC = () => {
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
                   <input 
                     type="text"
-                    placeholder="Personel veya Firma ara..."
+                    placeholder="Personel, Firma, TC No..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 text-white rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64 transition-all placeholder-slate-500"
@@ -265,87 +280,89 @@ const App: React.FC = () => {
           </div>
         </header>
 
-        {/* Content Area */}
-        <div className="flex-1 overflow-auto p-4 md:p-8 custom-scrollbar print:p-0 print:overflow-visible">
-          {activeTab === 'dashboard' && (
-            <div className="space-y-6">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3 md:gap-0">
-                <h3 className="text-lg font-bold text-white hidden md:block">Günlük Özet</h3>
-                <button 
-                  onClick={() => setIsReportModalOpen(true)}
-                  className="w-full md:w-auto flex items-center justify-center space-x-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-lg"
-                >
-                  <FileText className="w-4 h-4" />
-                  <span>Gün Sonu Raporu Al (Z Raporu)</span>
-                </button>
-              </div>
+        {/* Content Area - DYNAMIC PADDING ADJUSTMENT HERE */}
+        <div className={`flex-1 ${activeTab === 'create_referral' ? 'overflow-hidden p-0' : 'overflow-auto p-4 md:p-8 custom-scrollbar'} print:p-0 print:overflow-visible`}>
+          <Suspense fallback={<PageLoader />}>
+            {activeTab === 'dashboard' && (
+              <div className="space-y-6">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3 md:gap-0">
+                  <h3 className="text-lg font-bold text-white hidden md:block">Günlük Özet</h3>
+                  <button 
+                    onClick={() => setIsReportModalOpen(true)}
+                    className="w-full md:w-auto flex items-center justify-center space-x-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-lg"
+                  >
+                    <FileText className="w-4 h-4" />
+                    <span>Gün Sonu Raporu Al (Z Raporu)</span>
+                  </button>
+                </div>
 
-              <StatsCards stats={stats} />
-              
-              <div className="mt-8">
-                <h3 className="text-lg font-bold text-white mb-4 flex items-center">
-                  <Activity className="w-5 h-5 mr-2 text-blue-500" />
-                  Son Hareketler
-                </h3>
+                <StatsCards stats={stats} />
+                
+                <div className="mt-8">
+                  <h3 className="text-lg font-bold text-white mb-4 flex items-center">
+                    <Activity className="w-5 h-5 mr-2 text-blue-500" />
+                    Son Hareketler
+                  </h3>
+                  <ReferralList 
+                    referrals={filteredReferrals.slice(0, 5)} 
+                    institutions={institutions}
+                    onUpdateStatus={handleUpdateStatus} 
+                    onDelete={handleDelete}
+                    compact
+                  />
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'referrals' && (
+              <div className="h-full flex flex-col">
                 <ReferralList 
-                  referrals={filteredReferrals.slice(0, 5)} 
-                  institutions={institutions}
-                  onUpdateStatus={handleUpdateStatus} 
-                  onAnalyze={handleAnalyze}
-                  onDelete={handleDelete}
-                  compact
-                />
+                    referrals={filteredReferrals} 
+                    institutions={institutions}
+                    onUpdateStatus={handleUpdateStatus} 
+                    onDelete={handleDelete}
+                  />
               </div>
-            </div>
-          )}
+            )}
 
-          {activeTab === 'referrals' && (
-            <div className="h-full flex flex-col">
-               <ReferralList 
-                  referrals={filteredReferrals} 
-                  institutions={institutions}
-                  onUpdateStatus={handleUpdateStatus} 
-                  onAnalyze={handleAnalyze}
-                  onDelete={handleDelete}
-                />
-            </div>
-          )}
-
-          {activeTab === 'create_referral' && (
-            <NewReferralView
-              onClose={() => setActiveTab('referrals')}
-              onSubmit={handleCreateReferral}
-              companies={companies}
-              exams={exams}
-              institutions={institutions}
-              settings={appSettings}
-            />
-          )}
-
-          {activeTab === 'finance' && (
-            <FinanceView 
-              transactions={transactions}
-              onAddTransaction={handleAddTransaction}
-            />
-          )}
-
-          {activeTab === 'settings' && (
-             <SettingsView 
+            {activeTab === 'create_referral' && (
+              <NewReferralView
+                onClose={() => setActiveTab('referrals')}
+                onSubmit={handleCreateReferral}
                 companies={companies}
-                onAddCompany={handleAddCompany}
-                onDeleteCompany={handleDeleteCompany}
-                onBulkDeleteCompanies={handleBulkDeleteCompanies}
                 exams={exams}
-                onAddExam={handleAddExam}
-                onUpdateExam={handleUpdateExam}
-                onDeleteExam={handleDeleteExam}
                 institutions={institutions}
-                onAddInstitution={handleAddInstitution}
-                onDeleteInstitution={handleDeleteInstitution}
                 settings={appSettings}
-                onUpdateSettings={handleUpdateSettings}
-             />
-          )}
+              />
+            )}
+
+            {activeTab === 'finance' && (
+              <FinanceView 
+                transactions={transactions}
+                onAddTransaction={handleAddTransaction}
+                onResetSafe={handleResetSafe}
+              />
+            )}
+
+            {activeTab === 'settings' && (
+              <SettingsView 
+                  companies={companies}
+                  onAddCompany={handleAddCompany}
+                  onUpdateCompany={handleUpdateCompany}
+                  onDeleteCompany={handleDeleteCompany}
+                  onBulkDeleteCompanies={handleBulkDeleteCompanies}
+                  exams={exams}
+                  onAddExam={handleAddExam}
+                  onUpdateExam={handleUpdateExam}
+                  onDeleteExam={handleDeleteExam}
+                  institutions={institutions}
+                  onAddInstitution={handleAddInstitution}
+                  onDeleteInstitution={handleDeleteInstitution}
+                  settings={appSettings}
+                  onUpdateSettings={handleUpdateSettings}
+              />
+            )}
+          </Suspense>
         </div>
       </main>
 
@@ -356,6 +373,7 @@ const App: React.FC = () => {
           referrals={referrals}
           transactions={transactions}
           settings={appSettings}
+          institutions={institutions}
         />
       )}
     </div>
