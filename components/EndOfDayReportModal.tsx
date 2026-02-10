@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { X, FileSpreadsheet, Wallet, Building2, TrendingUp, TrendingDown, CreditCard, Banknote, Receipt, Users, MapPin, Calculator } from 'lucide-react';
+import { X, FileSpreadsheet, Wallet, Building2, TrendingUp, TrendingDown, CreditCard, Banknote, Receipt, Users, MapPin, Calculator, Calendar } from 'lucide-react';
 import { Referral, SafeTransaction, AppSettings, MedicalInstitution } from '../types';
 import * as XLSX from 'xlsx';
 
@@ -35,14 +35,27 @@ interface ReportData {
   };
 }
 
-type ReportPeriod = 'daily' | 'weekly' | 'monthly';
+type ReportPeriod = 'daily' | 'weekly' | 'monthly' | 'custom';
 
 export const EndOfDayReportModal: React.FC<EndOfDayReportModalProps> = ({ onClose, referrals, transactions, settings, institutions }) => {
   const [period, setPeriod] = useState<ReportPeriod>('daily');
-  const now = new Date();
+  
+  // Custom Date Range State
+  const [customStart, setCustomStart] = useState(new Date().toISOString().split('T')[0]);
+  const [customEnd, setCustomEnd] = useState(new Date().toISOString().split('T')[0]);
 
   // Calculate Date Range based on Period
   const dateRange = useMemo(() => {
+    if (period === 'custom') {
+        const start = new Date(customStart);
+        start.setHours(0, 0, 0, 0);
+        
+        const end = new Date(customEnd);
+        end.setHours(23, 59, 59, 999);
+        
+        return { start, end };
+    }
+
     const end = new Date(); // Now
     const start = new Date(); 
     start.setHours(0, 0, 0, 0);
@@ -55,8 +68,10 @@ export const EndOfDayReportModal: React.FC<EndOfDayReportModalProps> = ({ onClos
     } else if (period === 'monthly') {
       start.setDate(1);
     }
+    // 'daily' is default (start of today to now)
+
     return { start, end };
-  }, [period]);
+  }, [period, customStart, customEnd]);
 
   const reportData = useMemo<ReportData>(() => {
     // Filter referrals
@@ -160,6 +175,7 @@ export const EndOfDayReportModal: React.FC<EndOfDayReportModalProps> = ({ onClos
     switch(period) {
       case 'weekly': return 'HAFTALIK FAALİYET RAPORU';
       case 'monthly': return 'AYLIK FAALİYET RAPORU';
+      case 'custom': return 'ÖZEL TARİHLİ RAPOR';
       default: return 'GÜN SONU RAPORU';
     }
   };
@@ -218,36 +234,64 @@ export const EndOfDayReportModal: React.FC<EndOfDayReportModalProps> = ({ onClos
     <div className="fixed inset-0 bg-slate-950/90 z-50 overflow-hidden flex flex-col">
       
       {/* --- HEADER --- */}
-      <div className="bg-slate-900 border-b border-slate-800 px-6 py-4 flex justify-between items-center shrink-0 shadow-lg">
-        <div className="flex items-center space-x-4">
-           <div className="bg-indigo-600 p-2 rounded-lg shadow-lg shadow-indigo-900/40">
-              <Calculator className="w-6 h-6 text-white" />
-           </div>
-           <div>
-               <h2 className="text-xl font-bold text-white tracking-tight">Finansal Rapor & Analiz</h2>
-               <p className="text-xs text-slate-400">Detaylı Ciro, Maliyet ve Kurum Ödemeleri</p>
+      <div className="bg-slate-900 border-b border-slate-800 px-6 py-4 flex flex-col lg:flex-row justify-between items-center shrink-0 shadow-lg gap-4 lg:gap-0">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center space-y-3 lg:space-y-0 lg:space-x-4 w-full lg:w-auto">
+           <div className="flex items-center space-x-3">
+               <div className="bg-indigo-600 p-2 rounded-lg shadow-lg shadow-indigo-900/40">
+                  <Calculator className="w-6 h-6 text-white" />
+               </div>
+               <div>
+                   <h2 className="text-xl font-bold text-white tracking-tight">Finansal Rapor & Analiz</h2>
+                   <p className="text-xs text-slate-400">Detaylı Ciro, Maliyet ve Kurum Ödemeleri</p>
+               </div>
            </div>
            
-           <div className="h-8 w-px bg-slate-700 mx-4"></div>
+           <div className="hidden lg:block h-8 w-px bg-slate-700 mx-4"></div>
 
            {/* Periyot Seçimi */}
-           <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
-              <button onClick={() => setPeriod('daily')} className={`px-4 py-1.5 rounded text-xs font-bold transition-all ${period === 'daily' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}>Günlük</button>
-              <button onClick={() => setPeriod('weekly')} className={`px-4 py-1.5 rounded text-xs font-bold transition-all ${period === 'weekly' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}>Haftalık</button>
-              <button onClick={() => setPeriod('monthly')} className={`px-4 py-1.5 rounded text-xs font-bold transition-all ${period === 'monthly' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}>Aylık</button>
+           <div className="flex items-center space-x-2">
+               <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
+                  <button onClick={() => setPeriod('daily')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all ${period === 'daily' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}>Günlük</button>
+                  <button onClick={() => setPeriod('weekly')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all ${period === 'weekly' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}>Haftalık</button>
+                  <button onClick={() => setPeriod('monthly')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all ${period === 'monthly' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}>Aylık</button>
+                  <button onClick={() => setPeriod('custom')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all flex items-center ${period === 'custom' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}>
+                      <Calendar className="w-3 h-3 mr-1" /> Tarih Seç
+                  </button>
+               </div>
+
+               {period === 'custom' && (
+                   <div className="flex items-center space-x-2 bg-slate-800 p-1 rounded-lg border border-slate-700 animate-in fade-in slide-in-from-left-2 duration-200">
+                       <input 
+                           type="date" 
+                           value={customStart} 
+                           onChange={e => setCustomStart(e.target.value)}
+                           className="bg-slate-900 border border-slate-600 rounded px-2 py-1 text-xs text-white outline-none focus:border-indigo-500"
+                       />
+                       <span className="text-slate-500 text-xs font-bold">-</span>
+                       <input 
+                           type="date" 
+                           value={customEnd} 
+                           onChange={e => setCustomEnd(e.target.value)}
+                           className="bg-slate-900 border border-slate-600 rounded px-2 py-1 text-xs text-white outline-none focus:border-indigo-500"
+                       />
+                   </div>
+               )}
            </div>
-           <span className="text-sm font-medium text-slate-300 ml-2">
-               {dateRange.start.toLocaleDateString()} - {dateRange.end.toLocaleDateString()}
-           </span>
+
+           {period !== 'custom' && (
+                <span className="text-sm font-medium text-slate-300 ml-2 hidden lg:inline-block">
+                    {dateRange.start.toLocaleDateString()} - {dateRange.end.toLocaleDateString()}
+                </span>
+           )}
         </div>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-3 w-full lg:w-auto justify-end">
            <button 
              onClick={handleDownloadExcel}
-             className="flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-lg text-sm font-bold shadow-lg shadow-emerald-900/20 transition-all active:scale-95 border border-emerald-500/50"
+             className="flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-lg text-sm font-bold shadow-lg shadow-emerald-900/20 transition-all active:scale-95 border border-emerald-500/50 whitespace-nowrap"
            >
              <FileSpreadsheet className="w-5 h-5" />
-             <span>Excel Raporu İndir</span>
+             <span>Excel İndir</span>
            </button>
            <button 
              onClick={onClose}

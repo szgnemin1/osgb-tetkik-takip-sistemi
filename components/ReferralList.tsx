@@ -5,7 +5,8 @@ import {
   Building2,
   FileText,
   CalendarDays,
-  MessageSquare
+  MessageSquare,
+  Edit2
 } from 'lucide-react';
 import { Referral, Status, MedicalInstitution } from '../types';
 
@@ -14,6 +15,7 @@ interface ReferralListProps {
   institutions?: MedicalInstitution[];
   onUpdateStatus?: (id: string, status: Status) => void;
   onDelete: (id: string) => void;
+  onEdit?: (referral: Referral) => void; // Düzenleme prop'u eklendi
   compact?: boolean;
 }
 
@@ -21,6 +23,7 @@ export const ReferralList: React.FC<ReferralListProps> = ({
   referrals, 
   institutions = [],
   onDelete,
+  onEdit,
   compact = false 
 }) => {
 
@@ -83,7 +86,7 @@ export const ReferralList: React.FC<ReferralListProps> = ({
               {!compact && <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">Tetkikler</th>}
               {!compact && <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">Not</th>}
               <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">Tutar</th>
-              <th className="px-4 py-3 w-10"></th>
+              <th className="px-4 py-3 w-20"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-700/50 bg-slate-800">
@@ -172,13 +175,24 @@ export const ReferralList: React.FC<ReferralListProps> = ({
 
                 {/* Actions */}
                 <td className="px-4 py-2.5 text-right">
-                    <button 
-                        onClick={() => onDelete(referral.id)}
-                        className="text-slate-600 hover:text-red-400 hover:bg-red-500/10 p-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                        title="Kaydı Sil"
-                    >
-                        <Trash2 className="w-4 h-4" />
-                    </button>
+                   <div className="flex items-center justify-end space-x-1">
+                      {onEdit && (
+                         <button 
+                            onClick={() => onEdit(referral)}
+                            className="text-slate-600 hover:text-blue-400 hover:bg-blue-500/10 p-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                            title="Düzenle"
+                        >
+                            <Edit2 className="w-4 h-4" />
+                        </button>
+                      )}
+                      <button 
+                          onClick={() => onDelete(referral.id)}
+                          className="text-slate-600 hover:text-red-400 hover:bg-red-500/10 p-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                          title="Kaydı Sil"
+                      >
+                          <Trash2 className="w-4 h-4" />
+                      </button>
+                   </div>
                 </td>
               </tr>
             )})}

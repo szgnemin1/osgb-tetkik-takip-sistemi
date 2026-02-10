@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { ArrowLeft, Building2, User, Stethoscope, ShieldCheck, Wallet, Receipt, Save, Search, Check, ChevronDown, X, MapPin, AlertCircle, CreditCard, Banknote } from 'lucide-react';
+import { ArrowLeft, Building2, User, Stethoscope, ShieldCheck, Receipt, Save, Search, Check, ChevronDown, X, MapPin, AlertCircle, CreditCard, Banknote } from 'lucide-react';
 import { Referral, Status, Company, HazardClass, ExamDefinition, MedicalInstitution, AppSettings } from '../types';
 
 interface NewReferralViewProps {
@@ -9,9 +9,10 @@ interface NewReferralViewProps {
   exams: ExamDefinition[];
   institutions: MedicalInstitution[];
   settings: AppSettings;
+  initialData?: Referral | null; // Düzenleme için eklendi
 }
 
-export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSubmit, companies, exams, institutions, settings }) => {
+export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSubmit, companies, exams, institutions, settings, initialData }) => {
   // --- STATE MANAGEMENT ---
   
   // Personel State
@@ -35,6 +36,32 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
   const [estimatedCost, setEstimatedCost] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'POS' | 'INVOICE'>('INVOICE');
 
+  // --- EDIT MODE INITIALIZATION ---
+  useEffect(() => {
+    if (initialData) {
+        // Personel Bilgileri
+        setFullName(initialData.employee.fullName);
+        setTcNo(initialData.employee.tcNo);
+        setBirthDate(initialData.employee.birthDate || '');
+        
+        // Firma Bilgileri (İsimden objeyi bul)
+        const foundCompany = companies.find(c => c.name === initialData.employee.company);
+        if (foundCompany) {
+            setSelectedCompanyData(foundCompany);
+            setCompanySearchTerm(foundCompany.name);
+        } else {
+            // Firma silinmişse bile adını göster
+            setCompanySearchTerm(initialData.employee.company);
+        }
+
+        // Diğer Bilgiler
+        setSelectedExamIds(initialData.exams);
+        setSelectedInstitutionId(initialData.targetInstitutionId || '');
+        setNotes(initialData.notes || '');
+        setPaymentMethod(initialData.paymentMethod);
+    }
+  }, [initialData, companies]);
+
   // --- LOGIC & EFFECTS ---
 
   // Validation
@@ -42,16 +69,24 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
     fullName.length >= 3 && 
     tcNo.length === 11 && 
     birthDate !== '' && 
-    selectedCompanyData !== null && 
+    (selectedCompanyData !== null || (initialData && companySearchTerm !== '')) && // Düzenleme modunda firma silinmiş olsa bile geç
     selectedExamIds.length > 0 &&
     selectedInstitutionId !== ''; 
 
   // Age Calculation
   const patientAge = useMemo(() => {
      if(!birthDate) return 0;
+     
      const today = new Date();
      const birth = new Date(birthDate);
-     let age = today.getFullYear() - birth.getFullYear();
+     const year = birth.getFullYear();
+
+     // Yıl kontrolü: 1900'den küçükse veya bugünden büyükse hesaplama yapma (henüz yazıyordur)
+     if (isNaN(year) || year < 1900 || year > today.getFullYear()) {
+        return 0;
+     }
+
+     let age = today.getFullYear() - year;
      const m = today.getMonth() - birth.getMonth();
      if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
         age--;
@@ -59,16 +94,13 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
      return age;
   }, [birthDate]);
 
-  // EKG Recommendation Logic (Yaş sınırına göre öneri/otomatik seçim)
+  // EKG Recommendation Logic (Sadece yeni kayıtta çalışsın, düzenlemede mevcut seçimi bozmasın)
   const isEkgRecommended = patientAge >= settings.ekgLimitAge;
 
-  // Yaş değiştiğinde EKG'yi otomatik ekle (ama zorlama, kullanıcı kaldırabilsin)
   useEffect(() => {
-     if (isEkgRecommended) {
+     // Sadece düzenleme modu DEĞİLSE otomatik ekle
+     if (!initialData && isEkgRecommended) {
         const ekgExamName = 'EKG';
-        // Sadece yaş kriteri sağlandığında ve henüz listede yoksa ekle.
-        // Kullanıcı manuel çıkarırsa tekrar eklememesi için dependency array'e selectedExamIds KOYMUYORUZ.
-        // Sadece isEkgRecommended (yaş) değiştiğinde çalışır.
         setSelectedExamIds(prev => {
             if (!prev.includes(ekgExamName)) {
                 return [...prev, ekgExamName];
@@ -76,7 +108,7 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
             return prev;
         });
      }
-  }, [isEkgRecommended]); // Dependency: Sadece yaş durumu değiştiğinde tetiklenir.
+  }, [isEkgRecommended, initialData]);
 
   // Search Filters
   const filteredCompanies = companies.filter(c => 
@@ -88,8 +120,8 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsCompanyDropdownOpen(false);
+        // Eğer seçim yapılmadıysa ve input boş değilse, eski seçimi geri getir veya temizle
         if (selectedCompanyData) setCompanySearchTerm(selectedCompanyData.name);
-        else setCompanySearchTerm('');
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -117,29 +149,31 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
       setCompanySearchTerm(company.name);
       setIsCompanyDropdownOpen(false);
       
-      // Load Defaults
-      setSelectedExamIds(company.defaultExams);
-      
-      // Set Payment Method based on Company Settings (Default but changeable)
-      setPaymentMethod(company.defaultPaymentMethod || 'INVOICE');
-      
-      // Handle Institution Logic - Set default but allow change
-      if (company.forcedInstitutionId) {
-          setSelectedInstitutionId(company.forcedInstitutionId);
+      // Load Defaults only if NOT editing (don't overwrite existing selection)
+      if (!initialData) {
+          setSelectedExamIds(company.defaultExams);
+          setPaymentMethod(company.defaultPaymentMethod || 'INVOICE');
+          if (company.forcedInstitutionId) {
+              setSelectedInstitutionId(company.forcedInstitutionId);
+          } else {
+              setSelectedInstitutionId('');
+          }
       } else {
-          setSelectedInstitutionId('');
+          // Düzenleme modunda firma değişirse sadece ödeme tipini güncelle, tetkikleri koru
+          setPaymentMethod(company.defaultPaymentMethod || 'INVOICE');
       }
   };
 
   const handleClearCompany = () => {
       setSelectedCompanyData(null);
       setCompanySearchTerm('');
-      setSelectedExamIds([]);
-      setSelectedInstitutionId('');
+      if (!initialData) {
+          setSelectedExamIds([]);
+          setSelectedInstitutionId('');
+      }
   };
 
   const toggleExam = (examName: string) => {
-    // Kilit mantığı kaldırıldı: Kullanıcı her şeyi seçip kaldırabilir.
     setSelectedExamIds(prev => 
       prev.includes(examName) ? prev.filter(e => e !== examName) : [...prev, examName]
     );
@@ -149,21 +183,25 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
     e.preventDefault();
     if (!isFormValid) return;
 
+    // ID'yi koru (düzenleme) veya yeni oluştur
+    const referralId = initialData ? initialData.id : Math.random().toString(36).substr(2, 9);
+    const employeeId = initialData ? initialData.employee.id : Math.random().toString(36).substr(2, 9);
+
     const newReferral: Referral = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: referralId,
       employee: {
-        id: Math.random().toString(36).substr(2, 9),
+        id: employeeId,
         fullName,
         tcNo,
         birthDate,
-        company: selectedCompanyData!.name
+        company: selectedCompanyData ? selectedCompanyData.name : companySearchTerm // Firma silinmişse text olarak al
       },
       exams: selectedExamIds,
-      status: Status.PENDING,
-      referralDate: new Date().toISOString(),
+      status: initialData ? initialData.status : Status.PENDING, // Statüyü koru
+      referralDate: initialData ? initialData.referralDate : new Date().toISOString(), // Tarihi koru
       notes,
-      doctorName: selectedCompanyData!.assignedDoctor,
-      specialistName: selectedCompanyData!.assignedSpecialist,
+      doctorName: selectedCompanyData?.assignedDoctor || initialData?.doctorName,
+      specialistName: selectedCompanyData?.assignedSpecialist || initialData?.specialistName,
       totalPrice: estimatedPrice,
       totalCost: estimatedCost,
       paymentMethod: paymentMethod,
@@ -185,12 +223,6 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
     );
   };
 
-  const getPaymentMethodLabel = (pm: string) => {
-      if (pm === 'CASH') return 'Nakit';
-      if (pm === 'POS') return 'Pos';
-      return 'Fatura';
-  };
-
   return (
     <div className="h-full flex flex-col bg-slate-950 relative overflow-hidden">
       
@@ -201,14 +233,18 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
               <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-              <h1 className="text-lg font-bold text-white tracking-tight">Yeni Sevk Girişi</h1>
-              <p className="text-xs text-slate-400">Tek ekranda hızlı sevk oluşturma modülü</p>
+              <h1 className="text-lg font-bold text-white tracking-tight">
+                  {initialData ? 'Sevk Kaydını Düzenle' : 'Yeni Sevk Girişi'}
+              </h1>
+              <p className="text-xs text-slate-400">
+                  {initialData ? 'Mevcut personel ve tetkik bilgilerini güncelleyin' : 'Tek ekranda hızlı sevk oluşturma modülü'}
+              </p>
           </div>
         </div>
         
         {/* Quick Tips */}
         <div className="hidden md:flex items-center space-x-4 text-xs text-slate-500">
-           <div className="flex items-center"><span className="w-2 h-2 rounded-full bg-blue-500 mr-2"></span>Firma Varsayılanları</div>
+           {!initialData && <div className="flex items-center"><span className="w-2 h-2 rounded-full bg-blue-500 mr-2"></span>Firma Varsayılanları</div>}
            <div className="flex items-center"><span className="w-2 h-2 rounded-full bg-indigo-500 mr-2"></span>Yaş Gereği Önerilen</div>
         </div>
       </div>
@@ -221,7 +257,7 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
             <div className="lg:col-span-4 flex flex-col space-y-4 overflow-y-auto custom-scrollbar pr-1 min-h-0">
                 
                 {/* 1. Firma Seçimi Kartı */}
-                <div className={`bg-slate-900 border rounded-xl p-4 shadow-sm shrink-0 transition-colors ${!selectedCompanyData && isFormValid === false ? 'border-orange-500/50' : 'border-slate-800'}`}>
+                <div className={`bg-slate-900 border rounded-xl p-4 shadow-sm shrink-0 transition-colors ${!selectedCompanyData && companySearchTerm === '' ? 'border-orange-500/50' : 'border-slate-800'}`}>
                     <div className="flex items-center mb-3">
                         <div className="p-1.5 bg-blue-500/10 rounded-lg mr-2">
                             <Building2 className="w-4 h-4 text-blue-500" />
@@ -232,7 +268,7 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
                     <div className="relative" ref={dropdownRef}>
                         <div className="relative">
                             <input
-                                autoFocus
+                                autoFocus={!initialData}
                                 type="text"
                                 value={companySearchTerm}
                                 onChange={(e) => {
@@ -242,9 +278,9 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
                                 }}
                                 onClick={() => setIsCompanyDropdownOpen(true)}
                                 placeholder="Firma adı yazın..."
-                                className={`w-full pl-3 pr-8 py-2.5 bg-slate-950 border text-white text-sm rounded-lg focus:ring-2 focus:ring-blue-600 outline-none transition-all font-medium ${selectedCompanyData ? 'border-blue-500/50' : 'border-slate-700'}`}
+                                className={`w-full pl-3 pr-8 py-2.5 bg-slate-950 border text-white text-sm rounded-lg focus:ring-2 focus:ring-blue-600 outline-none transition-all font-medium ${selectedCompanyData || initialData ? 'border-blue-500/50' : 'border-slate-700'}`}
                             />
-                            {selectedCompanyData ? (
+                            {(selectedCompanyData || companySearchTerm) ? (
                                 <button onClick={handleClearCompany} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-400"><X className="w-3.5 h-3.5" /></button>
                             ) : (
                                 <Search className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-600 pointer-events-none" />
@@ -261,34 +297,16 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
                                                 <span className="text-sm text-slate-200 font-bold group-hover:text-white truncate max-w-[180px]">{c.name}</span>
                                                 {getHazardBadge(c.hazardClass)}
                                             </div>
-                                            <div className="text-xs text-slate-500 mt-0.5 flex items-center space-x-2">
-                                                 <span>{c.assignedDoctor.split(' ')[0]}...</span>
-                                                 <span className="w-0.5 h-0.5 rounded-full bg-slate-600"></span>
-                                                 <span>{getPaymentMethodLabel(c.defaultPaymentMethod)}</span>
-                                            </div>
                                         </div>
                                     ))
                                 ) : <div className="p-3 text-xs text-slate-500 text-center">Sonuç bulunamadı.</div>}
                             </div>
                         )}
                     </div>
-                    
-                    {selectedCompanyData && (
-                        <div className="mt-3 p-2 bg-slate-950/50 rounded-lg border border-slate-800/50">
-                             <div className="flex items-center space-x-2 text-[11px] text-slate-400 mb-1">
-                                <Stethoscope className="w-3 h-3" />
-                                <span className="truncate">{selectedCompanyData.assignedDoctor}</span>
-                             </div>
-                             <div className="flex items-center space-x-2 text-[11px] text-slate-400">
-                                <ShieldCheck className="w-3 h-3" />
-                                <span className="truncate">{selectedCompanyData.assignedSpecialist}</span>
-                             </div>
-                        </div>
-                    )}
                 </div>
 
                 {/* 2. Personel Bilgisi Kartı */}
-                <div className={`bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm transition-all duration-300 shrink-0 ${!selectedCompanyData ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
+                <div className={`bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm transition-all duration-300 shrink-0 ${!selectedCompanyData && !initialData ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
                     <div className="flex items-center mb-3">
                         <div className="p-1.5 bg-emerald-500/10 rounded-lg mr-2">
                             <User className="w-4 h-4 text-emerald-500" />
@@ -324,7 +342,7 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
             </div>
 
             {/* COLUMN 2: NE? (Tetkikler) - %45 */}
-            <div className={`lg:col-span-5 flex flex-col transition-all duration-300 min-h-0 ${!selectedCompanyData ? 'opacity-40 pointer-events-none' : ''}`}>
+            <div className={`lg:col-span-5 flex flex-col transition-all duration-300 min-h-0 ${!selectedCompanyData && !initialData ? 'opacity-40 pointer-events-none' : ''}`}>
                 <div className="bg-slate-900 border border-slate-800 rounded-xl p-1 h-full flex flex-col shadow-sm overflow-hidden">
                     <div className="p-3 border-b border-slate-800 flex justify-between items-center shrink-0">
                         <h3 className="font-bold text-slate-200 flex items-center text-sm">
@@ -340,7 +358,7 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
                         <div className="grid grid-cols-2 gap-2">
                             {exams.map(exam => {
                                 const isSelected = selectedExamIds.includes(exam.name);
-                                const isEkgAndMandatory = isEkgRecommended && exam.name === 'EKG';
+                                const isEkgAndMandatory = !initialData && isEkgRecommended && exam.name === 'EKG';
                                 
                                 return (
                                     <button
@@ -388,7 +406,7 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
             </div>
 
             {/* COLUMN 3: NEREYE & ONAY - %25 */}
-            <div className={`lg:col-span-3 flex flex-col h-full transition-all duration-300 min-h-0 ${!selectedCompanyData ? 'opacity-40 pointer-events-none' : ''}`}>
+            <div className={`lg:col-span-3 flex flex-col h-full transition-all duration-300 min-h-0 ${!selectedCompanyData && !initialData ? 'opacity-40 pointer-events-none' : ''}`}>
                 
                 {/* Scrollable Upper Section */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 space-y-4 mb-4">
@@ -412,20 +430,6 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
                             </select>
                             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 pointer-events-none" />
                         </div>
-
-                        {selectedCompanyData?.forcedInstitutionId && selectedCompanyData.forcedInstitutionId === selectedInstitutionId && (
-                            <div className="mt-1.5 text-[9px] text-purple-400 font-medium flex items-center">
-                                <span className="w-1.5 h-1.5 rounded-full bg-purple-500 mr-1.5"></span>
-                                Firma anlaşmalı kurum seçildi (Değiştirilebilir).
-                            </div>
-                        )}
-                        
-                        {!selectedInstitutionId && (
-                            <div className="mt-1.5 text-[9px] text-red-400 font-medium flex items-center animate-pulse">
-                                <AlertCircle className="w-3 h-3 mr-1" />
-                                Lütfen kurum seçiniz.
-                            </div>
-                        )}
                     </div>
 
                     {/* 2. Not */}
@@ -444,10 +448,7 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
                 {/* Sticky Bottom Section (Price & Save) */}
                 <div className="mt-auto shrink-0">
                     <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 shadow-lg relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-4 opacity-5">
-                            <Receipt className="w-20 h-20 text-white" />
-                        </div>
-
+                        
                         {/* Ödeme Yöntemi */}
                         <div className="mb-3 relative z-10">
                             <span className="text-[10px] text-slate-400 font-medium uppercase mb-1 block">Ödeme Tipi</span>
@@ -501,7 +502,7 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
                         >
                             <Save className="w-4 h-4" />
                             <span className="text-sm">
-                                {!isFormValid && selectedInstitutionId === '' ? 'KURUM SEÇİNİZ' : 'KAYDI OLUŞTUR'}
+                                {!isFormValid && selectedInstitutionId === '' ? 'KURUM SEÇİNİZ' : (initialData ? 'GÜNCELLE' : 'KAYDI OLUŞTUR')}
                             </span>
                         </button>
                     </div>

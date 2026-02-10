@@ -57,6 +57,9 @@ const App: React.FC = () => {
   const [transactions, setTransactions] = useState<SafeTransaction[]>([]);
   const [appSettings, setAppSettings] = useState<AppSettings>({ ekgLimitAge: 40 });
   
+  // Edit Mode State
+  const [editingReferral, setEditingReferral] = useState<Referral | null>(null);
+
   // isModalOpen removed as it is now a page
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -80,25 +83,41 @@ const App: React.FC = () => {
   useEffect(() => saveAppSettings(appSettings), [appSettings]);
 
   // Handlers
-  const handleCreateReferral = (referral: Referral) => {
-    // 1. Add Referral (Always)
-    setReferrals(prev => [referral, ...prev]);
-    
-    // 2. Add to Safe ONLY if Payment Method is CASH or POS
-    if ((referral.paymentMethod === 'CASH' || referral.paymentMethod === 'POS') && referral.totalPrice && referral.totalPrice > 0) {
-      const typeLabel = referral.paymentMethod === 'CASH' ? 'Nakit' : 'Pos';
-      const newTransaction: SafeTransaction = {
-        id: Math.random().toString(36).substr(2, 9),
-        type: 'INCOME',
-        amount: referral.totalPrice,
-        description: `Sevk Geliri (${typeLabel}): ${referral.employee.fullName} (${referral.employee.company})`,
-        date: new Date().toISOString()
-      };
-      setTransactions(prev => [...prev, newTransaction]);
+  const handleSaveReferral = (referral: Referral) => {
+    if (editingReferral) {
+        // --- GÜNCELLEME İŞLEMİ ---
+        setReferrals(prev => prev.map(r => r.id === referral.id ? referral : r));
+        setEditingReferral(null);
+    } else {
+        // --- YENİ KAYIT EKLEME İŞLEMİ ---
+        setReferrals(prev => [referral, ...prev]);
+        
+        // Kasa Kaydı Oluştur (Sadece Yeni Kayıtlarda)
+        if ((referral.paymentMethod === 'CASH' || referral.paymentMethod === 'POS') && referral.totalPrice && referral.totalPrice > 0) {
+            const typeLabel = referral.paymentMethod === 'CASH' ? 'Nakit' : 'Pos';
+            const newTransaction: SafeTransaction = {
+                id: Math.random().toString(36).substr(2, 9),
+                type: 'INCOME',
+                amount: referral.totalPrice,
+                description: `Sevk Geliri (${typeLabel}): ${referral.employee.fullName} (${referral.employee.company})`,
+                date: new Date().toISOString()
+            };
+            setTransactions(prev => [...prev, newTransaction]);
+        }
     }
     
-    // Redirect back to referrals list after creation
+    // Yönlendirme
     setActiveTab('referrals');
+  };
+
+  const handleEditReferral = (referral: Referral) => {
+      setEditingReferral(referral);
+      setActiveTab('create_referral');
+  };
+
+  const handleCloseReferralForm = () => {
+      setEditingReferral(null);
+      setActiveTab('referrals');
   };
 
   const handleUpdateStatus = (id: string, newStatus: Status) => {
@@ -164,6 +183,9 @@ const App: React.FC = () => {
 
   // Handle nav click (close mobile menu)
   const handleNavClick = (tab: typeof activeTab) => {
+      if (tab === 'create_referral') {
+          setEditingReferral(null); // Clear editing state if clicking "New" manually
+      }
       setActiveTab(tab);
       setIsMobileMenuOpen(false);
   };
@@ -249,7 +271,7 @@ const App: React.FC = () => {
               <h2 className="text-lg md:text-xl font-semibold text-white truncate">
                 {activeTab === 'dashboard' ? 'Kontrol Paneli' : 
                  activeTab === 'referrals' ? 'Tetkik & Sevk Listesi' : 
-                 activeTab === 'create_referral' ? 'Yeni Sevk Girişi' :
+                 activeTab === 'create_referral' ? (editingReferral ? 'Sevk Kaydını Düzenle' : 'Yeni Sevk Girişi') :
                  activeTab === 'finance' ? 'Kasa Yönetimi' : 'Ayarlar'}
               </h2>
           </div>
@@ -268,7 +290,10 @@ const App: React.FC = () => {
                   />
                 </div>
                 <button 
-                  onClick={() => setActiveTab('create_referral')}
+                  onClick={() => {
+                      setEditingReferral(null); // Yeni kayıt için state'i temizle
+                      setActiveTab('create_referral');
+                  }}
                   className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 md:px-4 md:py-2 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-blue-900/20 active:transform active:scale-95 whitespace-nowrap"
                 >
                   <Plus className="w-4 h-4" />
@@ -280,7 +305,7 @@ const App: React.FC = () => {
           </div>
         </header>
 
-        {/* Content Area - DYNAMIC PADDING ADJUSTMENT HERE */}
+        {/* Content Area */}
         <div className={`flex-1 ${activeTab === 'create_referral' ? 'overflow-hidden p-0' : 'overflow-auto p-4 md:p-8 custom-scrollbar'} print:p-0 print:overflow-visible`}>
           <Suspense fallback={<PageLoader />}>
             {activeTab === 'dashboard' && (
@@ -308,6 +333,7 @@ const App: React.FC = () => {
                     institutions={institutions}
                     onUpdateStatus={handleUpdateStatus} 
                     onDelete={handleDelete}
+                    onEdit={handleEditReferral}
                     compact
                   />
                 </div>
@@ -321,18 +347,20 @@ const App: React.FC = () => {
                     institutions={institutions}
                     onUpdateStatus={handleUpdateStatus} 
                     onDelete={handleDelete}
+                    onEdit={handleEditReferral}
                   />
               </div>
             )}
 
             {activeTab === 'create_referral' && (
               <NewReferralView
-                onClose={() => setActiveTab('referrals')}
-                onSubmit={handleCreateReferral}
+                onClose={handleCloseReferralForm}
+                onSubmit={handleSaveReferral}
                 companies={companies}
                 exams={exams}
                 institutions={institutions}
                 settings={appSettings}
+                initialData={editingReferral} // Düzenlenecek veriyi gönder
               />
             )}
 
