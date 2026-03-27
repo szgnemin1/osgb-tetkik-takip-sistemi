@@ -303,6 +303,26 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
                             </div>
                         )}
                     </div>
+
+                    {/* Atalı Uzman ve Hekim Bilgisi */}
+                    {(selectedCompanyData || initialData) && (
+                        <div className="mt-3 pt-3 border-t border-slate-800 space-y-2">
+                            <div className="flex items-center text-xs">
+                                <Stethoscope className="w-3.5 h-3.5 text-blue-400 mr-2 shrink-0" />
+                                <span className="text-slate-400 w-20">İşyeri Hekimi:</span>
+                                <span className="text-slate-200 font-medium truncate">
+                                    {selectedCompanyData?.assignedDoctor || initialData?.doctorName || '-'}
+                                </span>
+                            </div>
+                            <div className="flex items-center text-xs">
+                                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 mr-2 shrink-0" />
+                                <span className="text-slate-400 w-20">İSG Uzmanı:</span>
+                                <span className="text-slate-200 font-medium truncate">
+                                    {selectedCompanyData?.assignedSpecialist || initialData?.specialistName || '-'}
+                                </span>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* 2. Personel Bilgisi Kartı */}

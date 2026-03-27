@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Wallet, TrendingUp, TrendingDown, Plus, Minus, FileText, Trash2 } from 'lucide-react';
 import { SafeTransaction } from '../types';
-import { v4 as uuidv4 } from 'uuid';
 
 interface FinanceViewProps {
   transactions: SafeTransaction[];

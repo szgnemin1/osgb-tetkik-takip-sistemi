@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Company, ExamDefinition, HazardClass, MedicalInstitution, AppSettings } from '../types';
-import { Trash2, Plus, Building2, TestTube, Save, Check, Wallet, Receipt, Upload, FileDown, AlertCircle, MapPin, Sliders, CheckSquare, Square, Image as ImageIcon, Edit2, XCircle, Database, Download, RefreshCw, AlertTriangle, CreditCard, Banknote } from 'lucide-react';
+import { Trash2, Plus, Building2, Save, Check, Receipt, Upload, FileDown, MapPin, Sliders, CheckSquare, Square, Image as ImageIcon, Edit2, XCircle, Database, Download, RefreshCw, AlertTriangle, CreditCard, Banknote } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { exportFullData, restoreFullData } from '../services/storage';
 

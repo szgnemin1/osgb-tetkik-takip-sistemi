@@ -6,7 +6,6 @@ import {
   Plus, 
   Search,
   Activity,
-  LogOut,
   Stethoscope,
   Wallet,
   FileText,

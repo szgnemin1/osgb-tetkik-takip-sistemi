@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { X, FileSpreadsheet, Wallet, Building2, TrendingUp, TrendingDown, CreditCard, Banknote, Receipt, Users, MapPin, Calculator, Calendar } from 'lucide-react';
+import { X, FileSpreadsheet, Wallet, Building2, TrendingUp, CreditCard, Banknote, Receipt, Users, MapPin, Calculator, Calendar } from 'lucide-react';
 import { Referral, SafeTransaction, AppSettings, MedicalInstitution } from '../types';
 import * as XLSX from 'xlsx';
 
@@ -37,7 +37,7 @@ interface ReportData {
 
 type ReportPeriod = 'daily' | 'weekly' | 'monthly' | 'custom';
 
-export const EndOfDayReportModal: React.FC<EndOfDayReportModalProps> = ({ onClose, referrals, transactions, settings, institutions }) => {
+export const EndOfDayReportModal: React.FC<EndOfDayReportModalProps> = ({ onClose, referrals, transactions, institutions }) => {
   const [period, setPeriod] = useState<ReportPeriod>('daily');
   
   // Custom Date Range State
