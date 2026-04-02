@@ -28,6 +28,16 @@
       ::-webkit-scrollbar-thumb:hover {
         background: #475569; /* slate-600 */
       }
+      @media print {
+        body {
+          background-color: white !important;
+          color: black !important;
+        }
+        @page {
+          size: A5 portrait;
+          margin: 10mm;
+        }
+      }
     </style>
   <script type="importmap">
 {

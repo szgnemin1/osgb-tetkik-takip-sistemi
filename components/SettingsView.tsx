@@ -42,6 +42,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   // General Settings State
   const [ekgAgeLimit, setEkgAgeLimit] = useState(settings.ekgLimitAge);
   const [logo, setLogo] = useState<string | undefined>(settings.companyLogo);
+  const [printBgLogo, setPrintBgLogo] = useState<string | undefined>(settings.printBackgroundLogo);
+  const [autoPrint, setAutoPrint] = useState(settings.autoPrintReferral);
+  const [printPageSize, setPrintPageSize] = useState<'A4' | 'A5' | 'A6'>(settings.printPageSize || 'A4');
 
   // Company Form State
   const [editingCompanyId, setEditingCompanyId] = useState<string | null>(null);
@@ -59,6 +62,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   // File Import Ref
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const printBgLogoInputRef = useRef<HTMLInputElement>(null);
   const backupInputRef = useRef<HTMLInputElement>(null);
 
   // Exam Form State
@@ -70,6 +74,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   // Institution Form State
   const [iName, setIName] = useState('');
   const [iPhone, setIPhone] = useState('');
+  const [iAddress, setIAddress] = useState('');
+  const [iLocationUrl, setILocationUrl] = useState('');
 
   const toggleCompanyExam = (examName: string) => {
     setCSelectedExams(prev => 
@@ -82,7 +88,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     onUpdateSettings({ 
         ...settings, 
         ekgLimitAge: ekgAgeLimit,
-        companyLogo: logo 
+        companyLogo: logo,
+        printBackgroundLogo: printBgLogo,
+        autoPrintReferral: autoPrint,
+        printPageSize: printPageSize
     });
     alert("Ayarlar güncellendi.");
   };
@@ -105,6 +114,26 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const handleRemoveLogo = () => {
       setLogo(undefined);
       if(logoInputRef.current) logoInputRef.current.value = '';
+  };
+
+  const handlePrintBgLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2000000) { // 2MB limit
+          alert("Arka plan logo dosyası 2MB'dan küçük olmalıdır.");
+          return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPrintBgLogo(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemovePrintBgLogo = () => {
+    setPrintBgLogo(undefined);
+    if(printBgLogoInputRef.current) printBgLogoInputRef.current.value = '';
   };
 
   // Populate form for editing
@@ -172,11 +201,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     const newInst: MedicalInstitution = {
       id: Math.random().toString(36).substr(2, 9),
       name: iName,
-      phone: iPhone
+      phone: iPhone,
+      address: iAddress,
+      locationUrl: iLocationUrl
     };
     onAddInstitution(newInst);
     setIName('');
     setIPhone('');
+    setIAddress('');
+    setILocationUrl('');
   };
   
   // Bulk Delete Logic
@@ -497,6 +530,74 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       </div>
                    </div>
 
+                   {/* Print Background Logo Upload */}
+                   <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 p-4 bg-slate-800 rounded border border-slate-600">
+                      <div className="flex-1">
+                         <label className="block text-sm font-medium text-white">Çıktı Arka Plan Logosu (Filigran)</label>
+                         <p className="text-xs text-slate-400 mt-1">Bu logo sevk kağıdı çıktısında arka planda silik (filigran) olarak görünecektir.</p>
+                      </div>
+                      <div className="flex flex-col items-center">
+                          <div className="w-32 h-32 border-2 border-dashed border-slate-600 rounded-lg flex items-center justify-center bg-slate-900 overflow-hidden relative group">
+                             {printBgLogo ? (
+                                <img src={printBgLogo} alt="Print Background Logo Preview" className="w-full h-full object-contain p-2 opacity-50" />
+                             ) : (
+                                <ImageIcon className="w-8 h-8 text-slate-600" />
+                             )}
+                             <input 
+                               type="file" 
+                               accept="image/*" 
+                               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                               onChange={handlePrintBgLogoUpload}
+                               ref={printBgLogoInputRef}
+                             />
+                             {!printBgLogo && <div className="absolute bottom-2 text-[10px] text-slate-500">Yükle</div>}
+                          </div>
+                          
+                          {printBgLogo && (
+                             <button 
+                               type="button" 
+                               onClick={handleRemovePrintBgLogo}
+                               className="mt-2 text-xs text-red-400 hover:text-red-300 flex items-center"
+                             >
+                                <Trash2 className="w-3 h-3 mr-1" />
+                                Kaldır
+                             </button>
+                          )}
+                      </div>
+                   </div>
+
+                   {/* Auto Print Toggle */}
+                   <div className="flex items-center justify-between p-4 bg-slate-800 rounded border border-slate-600">
+                      <div>
+                         <label className="block text-sm font-medium text-white">Otomatik Yazdırma</label>
+                         <p className="text-xs text-slate-400 mt-1">Yeni sevk kaydı oluşturulduğunda otomatik olarak yazdırma ekranını açar.</p>
+                      </div>
+                      <button 
+                          type="button"
+                          onClick={() => setAutoPrint(!autoPrint)}
+                          className={`w-12 h-6 rounded-full relative transition-colors ${autoPrint ? 'bg-emerald-500' : 'bg-slate-600'}`}
+                      >
+                          <span className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform ${autoPrint ? 'translate-x-6' : 'translate-x-0'}`} />
+                      </button>
+                   </div>
+
+                   {/* Print Page Size */}
+                   <div className="flex items-center justify-between p-4 bg-slate-800 rounded border border-slate-600">
+                      <div>
+                         <label className="block text-sm font-medium text-white">Çıktı Sayfa Boyutu</label>
+                         <p className="text-xs text-slate-400 mt-1">Sevk kağıdı yazdırılırken kullanılacak kağıt boyutu.</p>
+                      </div>
+                      <select
+                          value={printPageSize}
+                          onChange={(e) => setPrintPageSize(e.target.value as 'A4' | 'A5' | 'A6')}
+                          className="bg-slate-900 border border-slate-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none"
+                      >
+                          <option value="A4">A4 (Standart)</option>
+                          <option value="A5">A5 (Yarım Sayfa)</option>
+                          <option value="A6">A6 (Çeyrek Sayfa)</option>
+                      </select>
+                   </div>
+
                    <div className="flex justify-end pt-2">
                       <button type="submit" className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-lg text-sm font-bold transition-colors shadow-lg shadow-blue-900/20">
                          <Save className="w-4 h-4" />
@@ -801,6 +902,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                    <input required placeholder="Kurum Adı (Örn: Merkez Hastanesi)" value={iName} onChange={e => setIName(e.target.value)} className="bg-slate-800 border-slate-600 rounded px-3 py-2 text-white text-sm focus:ring-blue-500 outline-none" />
                    <input placeholder="Telefon / İletişim" value={iPhone} onChange={e => setIPhone(e.target.value)} className="bg-slate-800 border-slate-600 rounded px-3 py-2 text-white text-sm focus:ring-blue-500 outline-none" />
+                   <input placeholder="Detaylı Adres Tarifi" value={iAddress} onChange={e => setIAddress(e.target.value)} className="bg-slate-800 border-slate-600 rounded px-3 py-2 text-white text-sm focus:ring-blue-500 outline-none" />
+                   <input placeholder="Konum Linki (Google Maps vb.)" value={iLocationUrl} onChange={e => setILocationUrl(e.target.value)} className="bg-slate-800 border-slate-600 rounded px-3 py-2 text-white text-sm focus:ring-blue-500 outline-none" />
                 </div>
                 <div className="flex justify-end">
                   <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-sm">Ekle</button>
@@ -817,6 +920,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                        <div>
                          <h5 className="font-medium text-white text-sm">{inst.name}</h5>
                          <p className="text-xs text-slate-400">{inst.phone}</p>
+                         {inst.address && <p className="text-xs text-slate-500 mt-1 line-clamp-1">{inst.address}</p>}
                        </div>
                     </div>
                     <button onClick={() => onDeleteInstitution(inst.id)} className="text-slate-500 hover:text-red-400 p-1">

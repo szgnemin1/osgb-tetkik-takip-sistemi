@@ -66,9 +66,9 @@ export const saveTransactions = (data: SafeTransaction[]) => localStorage.setIte
 export const loadAppSettings = (): AppSettings => {
   try {
     const data = localStorage.getItem(STORAGE_KEY_SETTINGS);
-    return data ? JSON.parse(data) : { ekgLimitAge: 40 }; // Default 40
+    return data ? { autoPrintReferral: true, printPageSize: 'A4', ...JSON.parse(data) } : { ekgLimitAge: 40, autoPrintReferral: true, printPageSize: 'A4' }; // Default 40, autoPrint true, A4
   } catch (error) {
-    return { ekgLimitAge: 40 };
+    return { ekgLimitAge: 40, autoPrintReferral: true, printPageSize: 'A4' };
   }
 };
 

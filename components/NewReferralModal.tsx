@@ -4,7 +4,7 @@ import { Referral, Status, Company, HazardClass, ExamDefinition, MedicalInstitut
 
 interface NewReferralViewProps {
   onClose: () => void;
-  onSubmit: (referral: Referral) => void;
+  onSubmit: (referral: Referral, shouldPrint: boolean) => void;
   companies: Company[];
   exams: ExamDefinition[];
   institutions: MedicalInstitution[];
@@ -143,6 +143,17 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
     setEstimatedCost(totalCost);
   }, [selectedExamIds, exams]);
 
+  // Sort Exams (Defaults first)
+  const sortedExams = useMemo(() => {
+      return [...exams].sort((a, b) => {
+          const aIsDefault = selectedCompanyData?.defaultExams.includes(a.name) || false;
+          const bIsDefault = selectedCompanyData?.defaultExams.includes(b.name) || false;
+          if (aIsDefault && !bIsDefault) return -1;
+          if (!aIsDefault && bIsDefault) return 1;
+          return a.name.localeCompare(b.name);
+      });
+  }, [exams, selectedCompanyData]);
+
   // Handlers
   const handleSelectCompany = (company: Company) => {
       setSelectedCompanyData(company);
@@ -174,12 +185,16 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
   };
 
   const toggleExam = (examName: string) => {
+    // Firma standart tetkiklerinin kaldırılmasını engelle
+    const isDefault = selectedCompanyData?.defaultExams.includes(examName);
+    if (isDefault) return;
+
     setSelectedExamIds(prev => 
       prev.includes(examName) ? prev.filter(e => e !== examName) : [...prev, examName]
     );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent, shouldPrint: boolean = false) => {
     e.preventDefault();
     if (!isFormValid) return;
 
@@ -207,7 +222,7 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
       paymentMethod: paymentMethod,
       targetInstitutionId: selectedInstitutionId || undefined
     };
-    onSubmit(newReferral);
+    onSubmit(newReferral, shouldPrint);
   };
 
   const getHazardBadge = (hazard: HazardClass) => {
@@ -376,8 +391,9 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
                     
                     <div className="p-3 flex-1 overflow-y-auto custom-scrollbar">
                         <div className="grid grid-cols-2 gap-2">
-                            {exams.map(exam => {
+                            {sortedExams.map(exam => {
                                 const isSelected = selectedExamIds.includes(exam.name);
+                                const isDefault = selectedCompanyData?.defaultExams.includes(exam.name);
                                 const isEkgAndMandatory = !initialData && isEkgRecommended && exam.name === 'EKG';
                                 
                                 return (
@@ -389,7 +405,7 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
                                             isSelected 
                                             ? 'bg-blue-600 border-blue-500 shadow-lg shadow-blue-900/40 transform scale-[1.01]' 
                                             : 'bg-slate-950 border-slate-800 hover:border-slate-600 hover:bg-slate-900'
-                                        }`}
+                                        } ${isDefault ? 'cursor-not-allowed opacity-90' : ''}`}
                                     >
                                         <div className="flex justify-between items-start w-full">
                                             <span className={`text-xs font-bold leading-tight pr-3 ${isSelected ? 'text-white' : 'text-slate-300 group-hover:text-white'}`}>
@@ -411,10 +427,15 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
                                             </span>
                                         </div>
 
-                                        {isEkgAndMandatory && (
+                                        {isEkgAndMandatory && !isDefault && (
                                             <div className="absolute -top-1.5 -right-1.5 bg-indigo-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow border-2 border-slate-900 flex items-center z-10">
                                                 <AlertCircle className="w-2 h-2 mr-1" />
                                                 Önerildi
+                                            </div>
+                                        )}
+                                        {isDefault && (
+                                            <div className="absolute -top-1.5 -right-1.5 bg-blue-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow border-2 border-slate-900 flex items-center z-10">
+                                                Zorunlu
                                             </div>
                                         )}
                                     </button>
@@ -510,21 +531,23 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
                         </div>
 
                         {/* Buton */}
-                        <button 
-                            onClick={handleSubmit}
-                            disabled={!isFormValid}
-                            className={`w-full py-3 rounded-lg font-bold text-white shadow-lg flex items-center justify-center space-x-2 transition-all active:scale-95 relative z-10 ${
-                                !isFormValid ? 'bg-slate-700 text-slate-500 cursor-not-allowed' :
-                                paymentMethod === 'CASH' ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/30' : 
-                                paymentMethod === 'POS' ? 'bg-purple-600 hover:bg-purple-500 shadow-purple-900/30' :
-                                'bg-blue-600 hover:bg-blue-500 shadow-blue-900/30'
-                            }`}
-                        >
-                            <Save className="w-4 h-4" />
-                            <span className="text-sm">
-                                {!isFormValid && selectedInstitutionId === '' ? 'KURUM SEÇİNİZ' : (initialData ? 'GÜNCELLE' : 'KAYDI OLUŞTUR')}
-                            </span>
-                        </button>
+                        <div className="flex flex-col gap-3 relative z-10">
+                            <button 
+                                onClick={(e) => handleSubmit(e, !initialData ? settings.autoPrintReferral : false)}
+                                disabled={!isFormValid}
+                                className={`w-full py-3.5 rounded-lg font-bold text-white shadow-lg flex items-center justify-center space-x-2 transition-all active:scale-95 ${
+                                    !isFormValid ? 'bg-slate-700 text-slate-500 cursor-not-allowed' :
+                                    paymentMethod === 'CASH' ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/30' : 
+                                    paymentMethod === 'POS' ? 'bg-purple-600 hover:bg-purple-500 shadow-purple-900/30' :
+                                    'bg-blue-600 hover:bg-blue-500 shadow-blue-900/30'
+                                }`}
+                            >
+                                <Save className="w-5 h-5" />
+                                <span className="text-sm">
+                                    {!isFormValid && selectedInstitutionId === '' ? 'KURUM SEÇİNİZ' : (initialData ? 'GÜNCELLE' : 'KAYDI OLUŞTUR')}
+                                </span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 

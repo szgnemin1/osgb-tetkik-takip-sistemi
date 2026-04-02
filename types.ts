@@ -32,6 +32,7 @@ export interface MedicalInstitution {
   name: string;
   address?: string;
   phone?: string;
+  locationUrl?: string; // QR code için konum linki
 }
 
 export enum HazardClass {
@@ -89,9 +90,13 @@ export interface SafeTransaction {
   description: string;
   date: string;
   category?: string;
+  paymentMethod?: 'CASH' | 'POS' | 'INVOICE';
 }
 
 export interface AppSettings {
   ekgLimitAge: number; // Age threshold for mandatory EKG (default 40)
   companyLogo?: string; // Base64 string for the logo
+  autoPrintReferral: boolean; // Otomatik yazdırma ayarı
+  printBackgroundLogo?: string; // Base64 string for the print background watermark
+  printPageSize?: 'A4' | 'A5' | 'A6'; // Sayfa boyutu
 }

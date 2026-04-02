@@ -6,7 +6,8 @@ import {
   FileText,
   CalendarDays,
   MessageSquare,
-  Edit2
+  Edit2,
+  Printer
 } from 'lucide-react';
 import { Referral, Status, MedicalInstitution } from '../types';
 
@@ -16,6 +17,7 @@ interface ReferralListProps {
   onUpdateStatus?: (id: string, status: Status) => void;
   onDelete: (id: string) => void;
   onEdit?: (referral: Referral) => void; // Düzenleme prop'u eklendi
+  onPrint?: (referral: Referral) => void; // Yazdırma prop'u eklendi
   compact?: boolean;
 }
 
@@ -24,6 +26,7 @@ export const ReferralList: React.FC<ReferralListProps> = ({
   institutions = [],
   onDelete,
   onEdit,
+  onPrint,
   compact = false 
 }) => {
 
@@ -176,6 +179,15 @@ export const ReferralList: React.FC<ReferralListProps> = ({
                 {/* Actions */}
                 <td className="px-4 py-2.5 text-right">
                    <div className="flex items-center justify-end space-x-1">
+                      {onPrint && (
+                         <button 
+                            onClick={() => onPrint(referral)}
+                            className="text-slate-600 hover:text-emerald-400 hover:bg-emerald-500/10 p-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                            title="Yazdır"
+                        >
+                            <Printer className="w-4 h-4" />
+                        </button>
+                      )}
                       {onEdit && (
                          <button 
                             onClick={() => onEdit(referral)}

@@ -13,6 +13,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ transactions, onAddTra
   const [txType, setTxType] = useState<'INCOME' | 'EXPENSE'>('INCOME');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'POS' | 'INVOICE'>('CASH');
 
   const balance = useMemo(() => {
     return transactions.reduce((acc, curr) => {
@@ -21,6 +22,8 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ transactions, onAddTra
   }, [transactions]);
 
   const totalIncome = transactions.filter(t => t.type === 'INCOME').reduce((acc, curr) => acc + curr.amount, 0);
+  const totalCashIncome = transactions.filter(t => t.type === 'INCOME' && (t.paymentMethod === 'CASH' || !t.paymentMethod)).reduce((acc, curr) => acc + curr.amount, 0);
+  const totalPosIncome = transactions.filter(t => t.type === 'INCOME' && t.paymentMethod === 'POS').reduce((acc, curr) => acc + curr.amount, 0);
   const totalExpense = transactions.filter(t => t.type === 'EXPENSE').reduce((acc, curr) => acc + curr.amount, 0);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -30,12 +33,14 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ transactions, onAddTra
       type: txType,
       amount: parseFloat(amount),
       description,
-      date: new Date().toISOString()
+      date: new Date().toISOString(),
+      paymentMethod: txType === 'INCOME' ? paymentMethod : undefined
     };
     onAddTransaction(newTx);
     setIsModalOpen(false);
     setAmount('');
     setDescription('');
+    setPaymentMethod('CASH');
   };
 
   return (
@@ -57,9 +62,13 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ transactions, onAddTra
             <div className="p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
               <TrendingUp className="w-8 h-8 text-emerald-500" />
             </div>
-            <div>
+            <div className="flex-1">
               <p className="text-slate-400 text-sm font-medium">Toplam Tahsilat</p>
               <h3 className="text-2xl font-bold text-emerald-400">₺{totalIncome.toLocaleString('tr-TR')}</h3>
+              <div className="flex justify-between mt-2 text-xs">
+                <span className="text-emerald-500/80">Nakit: ₺{totalCashIncome.toLocaleString('tr-TR')}</span>
+                <span className="text-purple-400/80">POS: ₺{totalPosIncome.toLocaleString('tr-TR')}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -119,6 +128,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ transactions, onAddTra
                 <th className="px-6 py-3">Tarih</th>
                 <th className="px-6 py-3">Açıklama</th>
                 <th className="px-6 py-3">Tür</th>
+                <th className="px-6 py-3">Ödeme</th>
                 <th className="px-6 py-3 text-right">Tutar</th>
               </tr>
             </thead>
@@ -134,6 +144,9 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ transactions, onAddTra
                       {tx.type === 'INCOME' ? 'Giriş' : 'Çıkış'}
                     </span>
                   </td>
+                  <td className="px-6 py-4 text-sm text-slate-400">
+                    {tx.type === 'INCOME' ? (tx.paymentMethod === 'CASH' ? 'Nakit' : tx.paymentMethod === 'POS' ? 'POS' : tx.paymentMethod === 'INVOICE' ? 'Fatura' : 'Nakit') : '-'}
+                  </td>
                   <td className={`px-6 py-4 text-sm text-right font-bold ${tx.type === 'INCOME' ? 'text-emerald-400' : 'text-red-400'}`}>
                     {tx.type === 'INCOME' ? '+' : '-'} ₺{tx.amount.toLocaleString('tr-TR')}
                   </td>
@@ -141,7 +154,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ transactions, onAddTra
               ))}
               {transactions.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center text-slate-500">
+                  <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
                     <FileText className="w-12 h-12 mx-auto mb-2 opacity-50" />
                     Kasa hareketi bulunamadı.
                   </td>
@@ -187,6 +200,20 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ transactions, onAddTra
                   placeholder="İşlem açıklaması..."
                 />
               </div>
+              {txType === 'INCOME' && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Ödeme Yöntemi</label>
+                  <select
+                    value={paymentMethod}
+                    onChange={e => setPaymentMethod(e.target.value as any)}
+                    className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                  >
+                    <option value="CASH">Nakit</option>
+                    <option value="POS">POS / Kredi Kartı</option>
+                    <option value="INVOICE">Fatura / Havale</option>
+                  </select>
+                </div>
+              )}
               <div className="flex justify-end space-x-3 mt-6">
                 <button 
                   type="button"

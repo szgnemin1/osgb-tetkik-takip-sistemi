@@ -16,6 +16,7 @@
     "@google/genai": "^1.46.0",
     "electron-store": "^8.1.0",
     "lucide-react": "^0.562.0",
+    "qrcode.react": "^4.2.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "uuid": "^13.0.0",

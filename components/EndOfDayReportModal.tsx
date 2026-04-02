@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { X, FileSpreadsheet, Wallet, Building2, TrendingUp, CreditCard, Banknote, Receipt, Users, MapPin, Calculator, Calendar } from 'lucide-react';
-import { Referral, SafeTransaction, AppSettings, MedicalInstitution } from '../types';
+import { Referral, SafeTransaction, AppSettings, MedicalInstitution, Company } from '../types';
 import * as XLSX from 'xlsx';
 
 interface EndOfDayReportModalProps {
@@ -9,6 +9,7 @@ interface EndOfDayReportModalProps {
   transactions: SafeTransaction[];
   settings?: AppSettings;
   institutions: MedicalInstitution[];
+  companies: Company[];
 }
 
 interface InstitutionStat {
@@ -37,8 +38,9 @@ interface ReportData {
 
 type ReportPeriod = 'daily' | 'weekly' | 'monthly' | 'custom';
 
-export const EndOfDayReportModal: React.FC<EndOfDayReportModalProps> = ({ onClose, referrals, transactions, institutions }) => {
+export const EndOfDayReportModal: React.FC<EndOfDayReportModalProps> = ({ onClose, referrals, transactions, institutions, companies }) => {
   const [period, setPeriod] = useState<ReportPeriod>('daily');
+  const [selectedCompany, setSelectedCompany] = useState<string>('ALL');
   
   // Custom Date Range State
   const [customStart, setCustomStart] = useState(new Date().toISOString().split('T')[0]);
@@ -77,10 +79,12 @@ export const EndOfDayReportModal: React.FC<EndOfDayReportModalProps> = ({ onClos
     // Filter referrals
     const filteredReferrals = referrals.filter(r => {
       const d = new Date(r.referralDate);
-      return d >= dateRange.start && d <= dateRange.end;
+      const inDateRange = d >= dateRange.start && d <= dateRange.end;
+      const inCompany = selectedCompany === 'ALL' || r.employee.company === selectedCompany;
+      return inDateRange && inCompany;
     });
 
-    // Filter transactions
+    // Filter transactions (only apply date filter, company filter doesn't apply to general safe transactions unless we want it to, but let's keep it general or maybe filter by description? Usually safe is general. We'll leave it general for now, or filter if needed. Actually, if they filter by company, they probably want to see only that company's stats.)
     const filteredTransactions = transactions.filter(t => {
       const d = new Date(t.date);
       return d >= dateRange.start && d <= dateRange.end;
@@ -169,7 +173,7 @@ export const EndOfDayReportModal: React.FC<EndOfDayReportModalProps> = ({ onClos
       companyStats,
       paymentStats
     };
-  }, [referrals, transactions, dateRange, institutions]);
+  }, [referrals, transactions, dateRange, institutions, selectedCompany]);
 
   const getTitle = () => {
     switch(period) {
@@ -283,6 +287,22 @@ export const EndOfDayReportModal: React.FC<EndOfDayReportModalProps> = ({ onClos
                     {dateRange.start.toLocaleDateString()} - {dateRange.end.toLocaleDateString()}
                 </span>
            )}
+
+           <div className="hidden lg:block h-8 w-px bg-slate-700 mx-4"></div>
+
+           {/* Firma Seçimi */}
+           <div className="flex items-center">
+             <select
+               value={selectedCompany}
+               onChange={(e) => setSelectedCompany(e.target.value)}
+               className="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 outline-none"
+             >
+               <option value="ALL">Tüm Firmalar</option>
+               {companies.map(c => (
+                 <option key={c.id} value={c.name}>{c.name}</option>
+               ))}
+             </select>
+           </div>
         </div>
 
         <div className="flex items-center space-x-3 w-full lg:w-auto justify-end">

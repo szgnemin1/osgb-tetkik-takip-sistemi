@@ -16,6 +16,7 @@ import {
 import { ReferralList } from './components/ReferralList';
 import { StatsCards } from './components/StatsCards';
 import { EndOfDayReportModal } from './components/EndOfDayReportModal';
+import { ReferralPrintTemplate } from './components/ReferralPrintTemplate';
 import { Referral, Status, Company, ExamDefinition, SafeTransaction, MedicalInstitution, AppSettings } from './types';
 import { 
   loadReferrals, saveReferrals, 
@@ -54,10 +55,13 @@ const App: React.FC = () => {
   const [exams, setExams] = useState<ExamDefinition[]>([]);
   const [institutions, setInstitutions] = useState<MedicalInstitution[]>([]);
   const [transactions, setTransactions] = useState<SafeTransaction[]>([]);
-  const [appSettings, setAppSettings] = useState<AppSettings>({ ekgLimitAge: 40 });
+  const [appSettings, setAppSettings] = useState<AppSettings>({ ekgLimitAge: 40, autoPrintReferral: true });
   
   // Edit Mode State
   const [editingReferral, setEditingReferral] = useState<Referral | null>(null);
+  
+  // Print State
+  const [printingReferral, setPrintingReferral] = useState<Referral | null>(null);
 
   // isModalOpen removed as it is now a page
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
@@ -82,7 +86,7 @@ const App: React.FC = () => {
   useEffect(() => saveAppSettings(appSettings), [appSettings]);
 
   // Handlers
-  const handleSaveReferral = (referral: Referral) => {
+  const handleSaveReferral = (referral: Referral, shouldPrint: boolean = false) => {
     if (editingReferral) {
         // --- GÜNCELLEME İŞLEMİ ---
         setReferrals(prev => prev.map(r => r.id === referral.id ? referral : r));
@@ -99,10 +103,15 @@ const App: React.FC = () => {
                 type: 'INCOME',
                 amount: referral.totalPrice,
                 description: `Sevk Geliri (${typeLabel}): ${referral.employee.fullName} (${referral.employee.company})`,
-                date: new Date().toISOString()
+                date: new Date().toISOString(),
+                paymentMethod: referral.paymentMethod
             };
             setTransactions(prev => [...prev, newTransaction]);
         }
+    }
+    
+    if (shouldPrint) {
+      setPrintingReferral(referral);
     }
     
     // Yönlendirme
@@ -130,6 +139,21 @@ const App: React.FC = () => {
       setReferrals(prev => prev.filter(r => r.id !== id));
     }
   };
+
+  const handlePrintReferral = (referral: Referral) => {
+    setPrintingReferral(referral);
+  };
+
+  useEffect(() => {
+    if (printingReferral) {
+      // Allow React to render the print template first
+      const timer = setTimeout(() => {
+        window.print();
+        setPrintingReferral(null);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [printingReferral]);
 
   // Settings Handlers
   const handleAddCompany = (c: Company) => setCompanies(prev => [...prev, c]);
@@ -190,7 +214,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-slate-950 text-slate-200 overflow-hidden">
+    <div className="flex h-screen bg-slate-950 text-slate-200 overflow-hidden print:h-auto print:overflow-visible print:block print:bg-white">
       
       {/* Mobile Sidebar Overlay */}
       {isMobileMenuOpen && (
@@ -257,7 +281,7 @@ const App: React.FC = () => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden relative bg-slate-950">
+      <main className={`flex-1 flex flex-col h-full overflow-hidden relative bg-slate-950 ${printingReferral ? 'print:hidden' : ''}`}>
         {/* Header */}
         <header className="h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 md:px-8 shadow-sm z-10 print:hidden shrink-0">
           <div className="flex items-center">
@@ -333,6 +357,7 @@ const App: React.FC = () => {
                     onUpdateStatus={handleUpdateStatus} 
                     onDelete={handleDelete}
                     onEdit={handleEditReferral}
+                    onPrint={handlePrintReferral}
                     compact
                   />
                 </div>
@@ -347,6 +372,7 @@ const App: React.FC = () => {
                     onUpdateStatus={handleUpdateStatus} 
                     onDelete={handleDelete}
                     onEdit={handleEditReferral}
+                    onPrint={handlePrintReferral}
                   />
               </div>
             )}
@@ -401,6 +427,16 @@ const App: React.FC = () => {
           transactions={transactions}
           settings={appSettings}
           institutions={institutions}
+          companies={companies}
+        />
+      )}
+
+      {/* Print Template */}
+      {printingReferral && (
+        <ReferralPrintTemplate
+          referral={printingReferral}
+          institution={institutions.find(i => i.id === printingReferral.targetInstitutionId)}
+          settings={appSettings}
         />
       )}
     </div>
