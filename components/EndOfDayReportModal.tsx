@@ -152,12 +152,20 @@ export const EndOfDayReportModal: React.FC<EndOfDayReportModalProps> = ({ onClos
 
     const estimatedProfit = totalReferralPrice - totalReferralCost;
 
-    // Balance Calculation
-    const currentTotalBalance = transactions.reduce((acc, curr) => {
-      return curr.type === 'INCOME' ? acc + curr.amount : acc - curr.amount;
+    // Balance Calculation (Kasa Bakiyesi - Sadece Nakit Girişler)
+    const currentTotalCashBalance = transactions.reduce((acc, curr) => {
+      if (curr.type === 'INCOME') {
+        return (curr.paymentMethod === 'CASH' || !curr.paymentMethod) ? acc + curr.amount : acc;
+      }
+      return acc - curr.amount; // Giderleri çıkar
     }, 0);
-    const periodNetChange = totalIncome - totalExpense;
-    const openingBalance = currentTotalBalance - periodNetChange;
+
+    const periodCashIncome = filteredTransactions
+      .filter(t => t.type === 'INCOME' && (t.paymentMethod === 'CASH' || !t.paymentMethod))
+      .reduce((acc, curr) => acc + curr.amount, 0);
+    
+    const periodNetCashChange = periodCashIncome - totalExpense; // Giderlerin nakit kasadan çıktığını varsayıyoruz
+    const openingBalance = currentTotalCashBalance - periodNetCashChange;
 
     return {
       referrals: filteredReferrals,
@@ -165,7 +173,7 @@ export const EndOfDayReportModal: React.FC<EndOfDayReportModalProps> = ({ onClos
       totalIncome,
       totalExpense,
       openingBalance,
-      closingBalance: currentTotalBalance,
+      closingBalance: currentTotalCashBalance,
       totalReferralCost,
       totalReferralPrice,
       estimatedProfit,

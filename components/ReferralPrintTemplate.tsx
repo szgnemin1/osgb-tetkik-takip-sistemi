@@ -9,20 +9,8 @@ interface Props {
 }
 
 export const ReferralPrintTemplate: React.FC<Props> = ({ referral, institution, settings }) => {
-  const pageSize = settings.printPageSize || 'A4';
-
   return (
     <div className="hidden print:block bg-white text-black w-full relative min-h-screen">
-      <style type="text/css">
-        {`
-          @media print {
-            @page {
-              size: ${pageSize};
-              margin: 10mm;
-            }
-          }
-        `}
-      </style>
       
       {/* Background Watermark */}
       {settings.printBackgroundLogo && (

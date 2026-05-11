@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Company, ExamDefinition, HazardClass, MedicalInstitution, AppSettings } from '../types';
-import { Trash2, Plus, Building2, Save, Check, Receipt, Upload, FileDown, MapPin, Sliders, CheckSquare, Square, Image as ImageIcon, Edit2, XCircle, Database, Download, RefreshCw, AlertTriangle, CreditCard, Banknote } from 'lucide-react';
+import { Trash2, Plus, Building2, Save, Check, Receipt, Upload, FileDown, MapPin, Sliders, CheckSquare, Square, Image as ImageIcon, Edit2, XCircle, Database, Download, RefreshCw, AlertTriangle, CreditCard, Banknote, Search } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { exportFullData, restoreFullData } from '../services/storage';
 
@@ -16,6 +16,7 @@ interface SettingsViewProps {
   onDeleteExam: (id: string) => void;
   institutions: MedicalInstitution[];
   onAddInstitution: (i: MedicalInstitution) => void;
+  onUpdateInstitution: (i: MedicalInstitution) => void;
   onDeleteInstitution: (id: string) => void;
   settings: AppSettings;
   onUpdateSettings: (s: AppSettings) => void;
@@ -33,6 +34,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onDeleteExam,
   institutions,
   onAddInstitution,
+  onUpdateInstitution,
   onDeleteInstitution,
   settings,
   onUpdateSettings
@@ -49,6 +51,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   // Company Form State
   const [editingCompanyId, setEditingCompanyId] = useState<string | null>(null);
   const [cName, setCName] = useState('');
+  const [companySearchQuery, setCompanySearchQuery] = useState('');
   const [cHazard, setCHazard] = useState<HazardClass>(HazardClass.LESS);
   const [cDoctor, setCDoctor] = useState('');
   const [cSpecialist, setCSpecialist] = useState('');
@@ -72,6 +75,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [eCost, setECost] = useState(''); // New Cost State
 
   // Institution Form State
+  const [editingInstitutionId, setEditingInstitutionId] = useState<string | null>(null);
   const [iName, setIName] = useState('');
   const [iPhone, setIPhone] = useState('');
   const [iAddress, setIAddress] = useState('');
@@ -195,21 +199,45 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
   };
 
-  const handleAddInstitution = (e: React.FormEvent) => {
-    e.preventDefault();
-    if(!iName) return;
-    const newInst: MedicalInstitution = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: iName,
-      phone: iPhone,
-      address: iAddress,
-      locationUrl: iLocationUrl
-    };
-    onAddInstitution(newInst);
+  const handleCancelInstitutionEdit = () => {
+    setEditingInstitutionId(null);
     setIName('');
     setIPhone('');
     setIAddress('');
     setILocationUrl('');
+  };
+
+  const handleEditInstitution = (inst: MedicalInstitution) => {
+    setEditingInstitutionId(inst.id);
+    setIName(inst.name);
+    setIPhone(inst.phone || '');
+    setIAddress(inst.address || '');
+    setILocationUrl(inst.locationUrl || '');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleInstitutionSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if(!iName) return;
+
+    if (editingInstitutionId) {
+      onUpdateInstitution({
+        id: editingInstitutionId,
+        name: iName,
+        phone: iPhone,
+        address: iAddress,
+        locationUrl: iLocationUrl
+      });
+    } else {
+      onAddInstitution({
+        id: Math.random().toString(36).substr(2, 9),
+        name: iName,
+        phone: iPhone,
+        address: iAddress,
+        locationUrl: iLocationUrl
+      });
+    }
+    handleCancelInstitutionEdit();
   };
   
   // Bulk Delete Logic
@@ -234,6 +262,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       setSelectedCompanyIds([]);
     }
   };
+
+  const filteredCompanies = companies.filter(c => 
+    c.name.toLowerCase().includes(companySearchQuery.toLowerCase()) ||
+    c.assignedDoctor.toLowerCase().includes(companySearchQuery.toLowerCase()) ||
+    c.assignedSpecialist.toLowerCase().includes(companySearchQuery.toLowerCase())
+  );
 
   // --- Bulk Import / Template Logic (Excel .xlsx) ---
 
@@ -267,6 +301,38 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     XLSX.writeFile(wb, "firma_yukleme_sablonu.xlsx");
   };
 
+  const downloadCurrentCompaniesExcel = () => {
+    const headers = ["Firma Adı", "Tehlike Sınıfı (Az/Tehlikeli/Çok)", "Hekim Adı", "Uzman Adı", "Ödeme (Nakit/Pos/Fatura)", "Tetkik Kodları (Virgül ile)"];
+    
+    const rows = companies.map(c => [
+      c.name,
+      c.hazardClass, // HazardClass string values map directly to names
+      c.assignedDoctor,
+      c.assignedSpecialist,
+      c.defaultPaymentMethod === 'CASH' ? 'Nakit' : c.defaultPaymentMethod === 'POS' ? 'Pos' : 'Fatura',
+      c.defaultExams.map(exName => {
+        const exam = exams.find(e => e.name === exName);
+        return exam ? exam.code : '';
+      }).filter(code => code !== '').join(', ')
+    ]);
+
+    const wsFirmalar = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    wsFirmalar['!cols'] = [
+      { wch: 30 }, { wch: 25 }, { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 30 }
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, wsFirmalar, "Mevcut_Firmalar");
+    
+    // Also include reference sheet
+    const refHeaders = ["Tetkik Kodu", "Tetkik Adı"];
+    const refRows = exams.map(e => [e.code, e.name]);
+    const wsRef = XLSX.utils.aoa_to_sheet([refHeaders, ...refRows]);
+    XLSX.utils.book_append_sheet(wb, wsRef, "Tetkik_Kodlari");
+
+    XLSX.writeFile(wb, "osgb_firma_listesi_duzenlenebilir.xlsx");
+  };
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -287,7 +353,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         // Convert to JSON array
         const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
 
-        let successCount = 0;
+        let addedCount = 0;
+        let updatedCount = 0;
 
         // Skip header row
         for (let i = 1; i < data.length; i++) {
@@ -315,27 +382,42 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             payment = 'POS';
           }
 
-          // Process Exam Codes (e.g., "101, 105") -> Match to Exam Names
+          // Process Exam Codes
           const requestedCodes = examCodesStr.split(',').map(s => s.trim()).filter(s => s !== '');
           const matchedExams = exams
             .filter(e => requestedCodes.includes(e.code) || requestedCodes.includes(e.code.toString()))
             .map(e => e.name);
 
-          const newComp: Company = {
-            id: Math.random().toString(36).substr(2, 9),
-            name: name,
-            hazardClass: hazard,
-            assignedDoctor: doctor,
-            assignedSpecialist: specialist,
-            defaultPaymentMethod: payment,
-            defaultExams: matchedExams 
-          };
-
-          onAddCompany(newComp);
-          successCount++;
+          // Check if exists for UPDATE
+          const existing = companies.find(c => c.name.toLowerCase() === name.toLowerCase());
+          
+          if (existing) {
+            const updatedComp: Company = {
+              ...existing,
+              hazardClass: hazard,
+              assignedDoctor: doctor,
+              assignedSpecialist: specialist,
+              defaultPaymentMethod: payment,
+              defaultExams: matchedExams 
+            };
+            onUpdateCompany(updatedComp);
+            updatedCount++;
+          } else {
+            const newComp: Company = {
+              id: Math.random().toString(36).substr(2, 9),
+              name: name,
+              hazardClass: hazard,
+              assignedDoctor: doctor,
+              assignedSpecialist: specialist,
+              defaultPaymentMethod: payment,
+              defaultExams: matchedExams 
+            };
+            onAddCompany(newComp);
+            addedCount++;
+          }
         }
 
-        alert(`${successCount} adet firma ve ilişkili tetkikleri başarıyla yüklendi.`);
+        alert(`${addedCount} adet yeni firma eklendi, ${updatedCount} adet firma güncellendi.`);
       } catch (error) {
         console.error("Excel okuma hatası:", error);
         alert("Dosya okunurken bir hata oluştu.");
@@ -350,8 +432,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   // --- End Bulk Import Logic ---
 
   // --- Backup & Restore Logic ---
-  const handleBackup = () => {
-    const jsonString = exportFullData();
+  const handleBackup = async () => {
+    const jsonString = await exportFullData();
+    if (!jsonString) {
+        alert("Yedek alınamadı.");
+        return;
+    }
     const blob = new Blob([jsonString], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     
@@ -375,15 +461,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
         const content = event.target?.result;
         if (typeof content === 'string') {
-            const success = restoreFullData(content);
+            const success = await restoreFullData(content);
             if (success) {
                 alert("Yedek başarıyla yüklendi. Sayfa yenileniyor...");
                 window.location.reload();
             } else {
-                alert("Yedek yüklenirken bir hata oluştu. Dosya bozuk olabilir.");
+                alert("Yedek yüklenirken bir hata oluştu. Dosya bozuk olabilir veya sunucu erişilemez.");
             }
         }
     };
@@ -682,18 +768,26 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         <p className="text-xs text-slate-400">Şablonu indirin, <strong>2. Sayfadaki tetkik kodlarına bakarak</strong> doldurun ve yükleyin.</p>
                     </div>
                 </div>
-                <div className="flex space-x-3">
+                <div className="flex flex-col sm:flex-row gap-3">
                     <button 
-                    onClick={downloadTemplate}
-                    type="button"
-                    className="flex items-center space-x-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded text-xs text-slate-300 transition-colors"
+                      onClick={downloadTemplate}
+                      type="button"
+                      className="flex items-center justify-center space-x-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded text-xs text-slate-300 transition-colors"
                     >
                         <FileDown className="w-4 h-4" />
-                        <span>Şablon (Kodlu) İndir</span>
+                        <span>Boş Şablon İndir</span>
                     </button>
-                    <label className="flex items-center space-x-2 px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs font-medium cursor-pointer transition-colors shadow-lg shadow-blue-900/20">
+                    <button 
+                      onClick={downloadCurrentCompaniesExcel}
+                      type="button"
+                      className="flex items-center justify-center space-x-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded text-xs text-blue-300 transition-colors"
+                    >
+                        <Download className="w-4 h-4" />
+                        <span>Mevcut Listeyi İndir (Düzenlemek için)</span>
+                    </button>
+                    <label className="flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs font-medium cursor-pointer transition-colors shadow-lg shadow-blue-900/20">
                         <Upload className="w-4 h-4" />
-                        <span>Excel Yükle</span>
+                        <span>Verileri Yükle / Güncelle</span>
                         <input 
                         type="file" 
                         accept=".xlsx, .xls" 
@@ -800,6 +894,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </div>
             </form>
 
+            <div className="pt-4 border-t border-slate-700">
+               <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                  <input 
+                    type="text" 
+                    placeholder="Firma adı, hekim veya uzman ara..." 
+                    value={companySearchQuery}
+                    onChange={(e) => setCompanySearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                  />
+               </div>
+            </div>
+
             {/* Company List Controls & Headers */}
             <div className="flex items-center justify-between">
                <div className="flex items-center space-x-3">
@@ -814,7 +921,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     )}
                     <span>Tümünü Seç</span>
                  </button>
-                 <span className="text-sm text-slate-400">| Toplam {companies.length} Firma</span>
+                 <span className="text-sm text-slate-400">| Toplam {filteredCompanies.length} Firma</span>
                </div>
                
                {selectedCompanyIds.length > 0 && (
@@ -830,7 +937,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
             {/* Company List */}
             <div className="space-y-3">
-              {companies.map(company => (
+              {filteredCompanies.map(company => (
                 <div key={company.id} className={`flex flex-col md:flex-row items-start md:items-center justify-between p-4 border rounded-lg gap-4 transition-all ${selectedCompanyIds.includes(company.id) ? 'bg-blue-900/10 border-blue-500/50' : 'bg-slate-700/30 border-slate-700'}`}>
                   <div className="flex items-center space-x-4 w-full md:w-auto">
                     {/* Checkbox */}
@@ -895,9 +1002,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
         {activeTab === 'institutions' && (
           <div className="space-y-8">
-             <form onSubmit={handleAddInstitution} className="bg-slate-900/30 p-4 rounded-lg border border-slate-700 space-y-4">
+             <form onSubmit={handleInstitutionSubmit} className="bg-slate-900/30 p-4 rounded-lg border border-slate-700 space-y-4">
                 <h4 className="text-sm font-bold text-white flex items-center">
-                  <Plus className="w-4 h-4 mr-2" /> Sağlık Kurumu Ekle
+                  {editingInstitutionId ? <Edit2 className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+                  {editingInstitutionId ? 'Sağlık Kurumunu Düzenle' : 'Sağlık Kurumu Ekle'}
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                    <input required placeholder="Kurum Adı (Örn: Merkez Hastanesi)" value={iName} onChange={e => setIName(e.target.value)} className="bg-slate-800 border-slate-600 rounded px-3 py-2 text-white text-sm focus:ring-blue-500 outline-none" />
@@ -905,8 +1013,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                    <input placeholder="Detaylı Adres Tarifi" value={iAddress} onChange={e => setIAddress(e.target.value)} className="bg-slate-800 border-slate-600 rounded px-3 py-2 text-white text-sm focus:ring-blue-500 outline-none" />
                    <input placeholder="Konum Linki (Google Maps vb.)" value={iLocationUrl} onChange={e => setILocationUrl(e.target.value)} className="bg-slate-800 border-slate-600 rounded px-3 py-2 text-white text-sm focus:ring-blue-500 outline-none" />
                 </div>
-                <div className="flex justify-end">
-                  <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-sm">Ekle</button>
+                <div className="flex justify-end space-x-3">
+                  {editingInstitutionId && (
+                    <button type="button" onClick={handleCancelInstitutionEdit} className="text-slate-400 hover:text-white px-4 py-2 rounded text-sm">Vazgeç</button>
+                  )}
+                  <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-sm">
+                    {editingInstitutionId ? 'Güncelle' : 'Ekle'}
+                  </button>
                 </div>
              </form>
 
@@ -923,9 +1036,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                          {inst.address && <p className="text-xs text-slate-500 mt-1 line-clamp-1">{inst.address}</p>}
                        </div>
                     </div>
-                    <button onClick={() => onDeleteInstitution(inst.id)} className="text-slate-500 hover:text-red-400 p-1">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center space-x-1">
+                      <button onClick={() => handleEditInstitution(inst)} className="text-slate-500 hover:text-blue-400 p-1.5 hover:bg-blue-500/10 rounded transition-colors" title="Düzenle">
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => onDeleteInstitution(inst.id)} className="text-slate-500 hover:text-red-400 p-1.5 hover:bg-red-500/10 rounded transition-colors" title="Sil">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                  </div>
                ))}
                {institutions.length === 0 && <p className="text-slate-500 text-sm col-span-2 text-center py-4">Kayıtlı kurum bulunamadı.</p>}

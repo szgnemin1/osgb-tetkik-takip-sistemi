@@ -7,6 +7,17 @@ const STORAGE_KEY_TRANSACTIONS = 'osgb_transactions_v1';
 const STORAGE_KEY_INSTITUTIONS = 'osgb_institutions_v1';
 const STORAGE_KEY_SETTINGS = 'osgb_settings_v1';
 
+export interface BackupData {
+  version: string;
+  timestamp: string;
+  companies: Company[];
+  referrals: Referral[];
+  exams: ExamDefinition[];
+  institutions: MedicalInstitution[];
+  transactions: SafeTransaction[];
+  settings: AppSettings;
+}
+
 // Referrals
 export const loadReferrals = (): Referral[] => {
   try {
@@ -66,26 +77,12 @@ export const saveTransactions = (data: SafeTransaction[]) => localStorage.setIte
 export const loadAppSettings = (): AppSettings => {
   try {
     const data = localStorage.getItem(STORAGE_KEY_SETTINGS);
-    return data ? { autoPrintReferral: true, printPageSize: 'A4', ...JSON.parse(data) } : { ekgLimitAge: 40, autoPrintReferral: true, printPageSize: 'A4' }; // Default 40, autoPrint true, A4
+    return data ? JSON.parse(data) : { ekgLimitAge: 40, autoPrintReferral: true };
   } catch (error) {
-    return { ekgLimitAge: 40, autoPrintReferral: true, printPageSize: 'A4' };
+    return { ekgLimitAge: 40, autoPrintReferral: true };
   }
 };
-
 export const saveAppSettings = (settings: AppSettings) => localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(settings));
-
-// --- BACKUP & RESTORE UTILITIES ---
-
-export interface BackupData {
-  version: string;
-  timestamp: string;
-  companies: Company[];
-  referrals: Referral[];
-  exams: ExamDefinition[];
-  institutions: MedicalInstitution[];
-  transactions: SafeTransaction[];
-  settings: AppSettings;
-}
 
 export const exportFullData = (): string => {
   const backup: BackupData = {
@@ -105,12 +102,10 @@ export const restoreFullData = (jsonData: string): boolean => {
   try {
     const data: BackupData = JSON.parse(jsonData);
     
-    // Basic validation
     if (!data.companies || !data.referrals) {
       throw new Error("Geçersiz yedek dosyası formatı.");
     }
 
-    // Save all data
     if(data.companies) saveCompanies(data.companies);
     if(data.referrals) saveReferrals(data.referrals);
     if(data.exams) saveExams(data.exams);

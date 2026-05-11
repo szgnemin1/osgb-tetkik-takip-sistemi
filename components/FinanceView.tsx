@@ -17,7 +17,11 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ transactions, onAddTra
 
   const balance = useMemo(() => {
     return transactions.reduce((acc, curr) => {
-      return curr.type === 'INCOME' ? acc + curr.amount : acc - curr.amount;
+      // Sadece Nakit girişleri ve tüm çıkışları (giderleri) hesapla
+      if (curr.type === 'INCOME') {
+        return (curr.paymentMethod === 'CASH' || !curr.paymentMethod) ? acc + curr.amount : acc;
+      }
+      return acc - curr.amount;
     }, 0);
   }, [transactions]);
 

@@ -19,22 +19,19 @@ import { EndOfDayReportModal } from './components/EndOfDayReportModal';
 import { ReferralPrintTemplate } from './components/ReferralPrintTemplate';
 import { Referral, Status, Company, ExamDefinition, SafeTransaction, MedicalInstitution, AppSettings } from './types';
 import { 
-  loadReferrals, saveReferrals, 
+  loadReferrals, saveReferrals,
   loadCompanies, saveCompanies,
   loadExams, saveExams,
-  loadTransactions, saveTransactions,
   loadInstitutions, saveInstitutions,
+  loadTransactions, saveTransactions,
   loadAppSettings, saveAppSettings
 } from './services/storage';
-import { PREDEFINED_COMPANIES, DEFAULT_EXAMS, DEFAULT_INSTITUTIONS } from './services/initialData';
 
 // --- LAZY LOADING ---
-// Bu bileşenler sadece ihtiyaç duyulduğunda yüklenecek, açılışı yavaşlatmayacak.
 const NewReferralView = lazy(() => import('./components/NewReferralModal').then(module => ({ default: module.NewReferralView })));
 const FinanceView = lazy(() => import('./components/FinanceView').then(module => ({ default: module.FinanceView })));
 const SettingsView = lazy(() => import('./components/SettingsView').then(module => ({ default: module.SettingsView })));
 
-// Loading Component
 const PageLoader = () => (
   <div className="flex flex-col items-center justify-center h-full text-slate-500">
     <Loader2 className="w-8 h-8 animate-spin mb-2 text-blue-500" />
@@ -43,59 +40,36 @@ const PageLoader = () => (
 );
 
 const App: React.FC = () => {
-  // Added 'create_referral' to navigation state
   const [activeTab, setActiveTab] = useState<'dashboard' | 'referrals' | 'finance' | 'settings' | 'create_referral'>('dashboard');
-  
-  // Mobile Menu State
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Data States
-  const [referrals, setReferrals] = useState<Referral[]>([]);
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [exams, setExams] = useState<ExamDefinition[]>([]);
-  const [institutions, setInstitutions] = useState<MedicalInstitution[]>([]);
-  const [transactions, setTransactions] = useState<SafeTransaction[]>([]);
-  const [appSettings, setAppSettings] = useState<AppSettings>({ ekgLimitAge: 40, autoPrintReferral: true });
+  const [referrals, setReferrals] = useState<Referral[]>(loadReferrals());
+  const [companies, setCompanies] = useState<Company[]>(loadCompanies());
+  const [exams, setExams] = useState<ExamDefinition[]>(loadExams());
+  const [institutions, setInstitutions] = useState<MedicalInstitution[]>(loadInstitutions());
+  const [transactions, setTransactions] = useState<SafeTransaction[]>(loadTransactions());
+  const [appSettings, setAppSettings] = useState<AppSettings>(loadAppSettings());
   
-  // Edit Mode State
   const [editingReferral, setEditingReferral] = useState<Referral | null>(null);
-  
-  // Print State
   const [printingReferral, setPrintingReferral] = useState<Referral | null>(null);
-
-  // isModalOpen removed as it is now a page
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Initial load
-  useEffect(() => {
-    setReferrals(loadReferrals());
-    setCompanies(loadCompanies(PREDEFINED_COMPANIES));
-    setExams(loadExams(DEFAULT_EXAMS));
-    setInstitutions(loadInstitutions(DEFAULT_INSTITUTIONS));
-    setTransactions(loadTransactions());
-    setAppSettings(loadAppSettings());
-  }, []);
-
-  // Save Effects
-  useEffect(() => saveReferrals(referrals), [referrals]);
-  useEffect(() => saveCompanies(companies), [companies]);
-  useEffect(() => saveExams(exams), [exams]);
-  useEffect(() => saveInstitutions(institutions), [institutions]);
-  useEffect(() => saveTransactions(transactions), [transactions]);
-  useEffect(() => saveAppSettings(appSettings), [appSettings]);
+  // Save changes automatically
+  useEffect(() => { saveReferrals(referrals); }, [referrals]);
+  useEffect(() => { saveCompanies(companies); }, [companies]);
+  useEffect(() => { saveExams(exams); }, [exams]);
+  useEffect(() => { saveInstitutions(institutions); }, [institutions]);
+  useEffect(() => { saveTransactions(transactions); }, [transactions]);
+  useEffect(() => { saveAppSettings(appSettings); }, [appSettings]);
 
   // Handlers
   const handleSaveReferral = (referral: Referral, shouldPrint: boolean = false) => {
     if (editingReferral) {
-        // --- GÜNCELLEME İŞLEMİ ---
         setReferrals(prev => prev.map(r => r.id === referral.id ? referral : r));
-        setEditingReferral(null);
-    } else {
-        // --- YENİ KAYIT EKLEME İŞLEMİ ---
-        setReferrals(prev => [referral, ...prev]);
+        setTransactions(prev => prev.filter(t => t.referralId !== referral.id)); // Remove old transaction
         
-        // Kasa Kaydı Oluştur (Sadece Yeni Kayıtlarda)
         if ((referral.paymentMethod === 'CASH' || referral.paymentMethod === 'POS') && referral.totalPrice && referral.totalPrice > 0) {
             const typeLabel = referral.paymentMethod === 'CASH' ? 'Nakit' : 'Pos';
             const newTransaction: SafeTransaction = {
@@ -103,8 +77,27 @@ const App: React.FC = () => {
                 type: 'INCOME',
                 amount: referral.totalPrice,
                 description: `Sevk Geliri (${typeLabel}): ${referral.employee.fullName} (${referral.employee.company})`,
-                date: new Date().toISOString(),
-                paymentMethod: referral.paymentMethod
+                date: referral.referralDate,
+                paymentMethod: referral.paymentMethod,
+                referralId: referral.id
+            };
+            setTransactions(prev => [...prev, newTransaction]);
+        }
+        
+        setEditingReferral(null);
+    } else {
+        setReferrals(prev => [referral, ...prev]);
+        
+        if ((referral.paymentMethod === 'CASH' || referral.paymentMethod === 'POS') && referral.totalPrice && referral.totalPrice > 0) {
+            const typeLabel = referral.paymentMethod === 'CASH' ? 'Nakit' : 'Pos';
+            const newTransaction: SafeTransaction = {
+                id: Math.random().toString(36).substr(2, 9),
+                type: 'INCOME',
+                amount: referral.totalPrice,
+                description: `Sevk Geliri (${typeLabel}): ${referral.employee.fullName} (${referral.employee.company})`,
+                date: referral.referralDate,
+                paymentMethod: referral.paymentMethod,
+                referralId: referral.id
             };
             setTransactions(prev => [...prev, newTransaction]);
         }
@@ -114,7 +107,6 @@ const App: React.FC = () => {
       setPrintingReferral(referral);
     }
     
-    // Yönlendirme
     setActiveTab('referrals');
   };
 
@@ -137,6 +129,7 @@ const App: React.FC = () => {
   const handleDelete = (id: string) => {
     if(window.confirm('Bu kaydı silmek istediğinize emin misiniz?')) {
       setReferrals(prev => prev.filter(r => r.id !== id));
+      setTransactions(prev => prev.filter(t => t.referralId !== id)); // also delete related tx
     }
   };
 
@@ -146,7 +139,6 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (printingReferral) {
-      // Allow React to render the print template first
       const timer = setTimeout(() => {
         window.print();
         setPrintingReferral(null);
@@ -161,7 +153,6 @@ const App: React.FC = () => {
     setCompanies(prev => prev.map(c => c.id === updated.id ? updated : c));
   };
   const handleDeleteCompany = (id: string) => setCompanies(prev => prev.filter(c => c.id !== id));
-  // New Bulk Delete Handler
   const handleBulkDeleteCompanies = (ids: string[]) => {
       setCompanies(prev => prev.filter(c => !ids.includes(c.id)));
   };
@@ -171,6 +162,7 @@ const App: React.FC = () => {
   const handleDeleteExam = (id: string) => setExams(prev => prev.filter(e => e.id !== id));
 
   const handleAddInstitution = (i: MedicalInstitution) => setInstitutions(prev => [...prev, i]);
+  const handleUpdateInstitution = (updated: MedicalInstitution) => setInstitutions(prev => prev.map(i => i.id === updated.id ? updated : i));
   const handleDeleteInstitution = (id: string) => setInstitutions(prev => prev.filter(i => i.id !== id));
 
   const handleUpdateSettings = (newSettings: AppSettings) => setAppSettings(newSettings);
@@ -204,10 +196,9 @@ const App: React.FC = () => {
     };
   }, [referrals, transactions]);
 
-  // Handle nav click (close mobile menu)
   const handleNavClick = (tab: typeof activeTab) => {
       if (tab === 'create_referral') {
-          setEditingReferral(null); // Clear editing state if clicking "New" manually
+          setEditingReferral(null); 
       }
       setActiveTab(tab);
       setIsMobileMenuOpen(false);
@@ -216,7 +207,31 @@ const App: React.FC = () => {
   return (
     <div className="flex h-screen bg-slate-950 text-slate-200 overflow-hidden print:h-auto print:overflow-visible print:block print:bg-white">
       
-      {/* Mobile Sidebar Overlay */}
+      <style type="text/css">
+        {`
+          @media print {
+            @page {
+              size: ${appSettings.printPageSize || 'A4'} portrait;
+              margin: 10mm;
+            }
+            body {
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+              text-rendering: optimizeLegibility !important;
+              -webkit-font-smoothing: antialiased !important;
+              -moz-osx-font-smoothing: grayscale !important;
+            }
+            img, svg {
+              image-rendering: high-quality !important;
+            }
+            * {
+              text-shadow: none !important;
+              box-shadow: none !important;
+            }
+          }
+        `}
+      </style>
+
       {isMobileMenuOpen && (
         <div 
           className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm"
@@ -224,7 +239,6 @@ const App: React.FC = () => {
         />
       )}
 
-      {/* Sidebar */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800 text-white flex flex-col shadow-xl transition-transform duration-300 md:relative md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} print:hidden`}>
         <div className="p-6 flex items-center justify-between border-b border-slate-800">
           <div className="flex items-center space-x-3">
@@ -237,7 +251,7 @@ const App: React.FC = () => {
             )}
             <div>
                 <h1 className="text-xl font-bold tracking-tight">OSGB Pro</h1>
-                <p className="text-xs text-slate-400">Tetkik Takip Sistemi</p>
+                <p className="text-xs text-slate-400">Tetkik Takip</p>
             </div>
           </div>
           <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden text-slate-400 hover:text-white">
@@ -280,9 +294,7 @@ const App: React.FC = () => {
         </nav>
       </aside>
 
-      {/* Main Content */}
       <main className={`flex-1 flex flex-col h-full overflow-hidden relative bg-slate-950 ${printingReferral ? 'print:hidden' : ''}`}>
-        {/* Header */}
         <header className="h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 md:px-8 shadow-sm z-10 print:hidden shrink-0">
           <div className="flex items-center">
               <button 
@@ -314,7 +326,7 @@ const App: React.FC = () => {
                 </div>
                 <button 
                   onClick={() => {
-                      setEditingReferral(null); // Yeni kayıt için state'i temizle
+                      setEditingReferral(null);
                       setActiveTab('create_referral');
                   }}
                   className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 md:px-4 md:py-2 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-blue-900/20 active:transform active:scale-95 whitespace-nowrap"
@@ -328,7 +340,6 @@ const App: React.FC = () => {
           </div>
         </header>
 
-        {/* Content Area */}
         <div className={`flex-1 ${activeTab === 'create_referral' ? 'overflow-hidden p-0' : 'overflow-auto p-4 md:p-8 custom-scrollbar'} print:p-0 print:overflow-visible`}>
           <Suspense fallback={<PageLoader />}>
             {activeTab === 'dashboard' && (
@@ -366,7 +377,7 @@ const App: React.FC = () => {
 
             {activeTab === 'referrals' && (
               <div className="h-full flex flex-col">
-                <ReferralList 
+                 <ReferralList 
                     referrals={filteredReferrals} 
                     institutions={institutions}
                     onUpdateStatus={handleUpdateStatus} 
@@ -385,16 +396,27 @@ const App: React.FC = () => {
                 exams={exams}
                 institutions={institutions}
                 settings={appSettings}
-                initialData={editingReferral} // Düzenlenecek veriyi gönder
+                initialData={editingReferral}
               />
             )}
 
             {activeTab === 'finance' && (
-              <FinanceView 
-                transactions={transactions}
-                onAddTransaction={handleAddTransaction}
-                onResetSafe={handleResetSafe}
-              />
+              <div className="space-y-6">
+                <div className="flex justify-end mb-4">
+                  <button 
+                    onClick={() => setIsReportModalOpen(true)}
+                    className="flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-lg"
+                  >
+                    <FileText className="w-4 h-4" />
+                    <span>Gün Sonu Raporu Al (Z Raporu)</span>
+                  </button>
+                </div>
+                <FinanceView 
+                  transactions={transactions}
+                  onAddTransaction={handleAddTransaction}
+                  onResetSafe={handleResetSafe}
+                />
+              </div>
             )}
 
             {activeTab === 'settings' && (
@@ -410,6 +432,7 @@ const App: React.FC = () => {
                   onDeleteExam={handleDeleteExam}
                   institutions={institutions}
                   onAddInstitution={handleAddInstitution}
+                  onUpdateInstitution={handleUpdateInstitution}
                   onDeleteInstitution={handleDeleteInstitution}
                   settings={appSettings}
                   onUpdateSettings={handleUpdateSettings}
@@ -419,7 +442,6 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      {/* End of Day Report Modal - Still a modal */}
       {isReportModalOpen && (
         <EndOfDayReportModal
           onClose={() => setIsReportModalOpen(false)}
@@ -431,7 +453,6 @@ const App: React.FC = () => {
         />
       )}
 
-      {/* Print Template */}
       {printingReferral && (
         <ReferralPrintTemplate
           referral={printingReferral}

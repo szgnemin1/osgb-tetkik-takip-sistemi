@@ -19,6 +19,7 @@ interface ReferralListProps {
   onEdit?: (referral: Referral) => void; // Düzenleme prop'u eklendi
   onPrint?: (referral: Referral) => void; // Yazdırma prop'u eklendi
   compact?: boolean;
+  isAdmin?: boolean;
 }
 
 export const ReferralList: React.FC<ReferralListProps> = ({ 
@@ -27,7 +28,8 @@ export const ReferralList: React.FC<ReferralListProps> = ({
   onDelete,
   onEdit,
   onPrint,
-  compact = false 
+  compact = false,
+  isAdmin = false
 }) => {
 
   const getInstitutionName = (id?: string) => {
@@ -188,7 +190,7 @@ export const ReferralList: React.FC<ReferralListProps> = ({
                             <Printer className="w-4 h-4" />
                         </button>
                       )}
-                      {onEdit && (
+                      {onEdit && !isAdmin && (
                          <button 
                             onClick={() => onEdit(referral)}
                             className="text-slate-600 hover:text-blue-400 hover:bg-blue-500/10 p-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100"
@@ -197,6 +199,7 @@ export const ReferralList: React.FC<ReferralListProps> = ({
                             <Edit2 className="w-4 h-4" />
                         </button>
                       )}
+                      {!isAdmin && (
                       <button 
                           onClick={() => onDelete(referral.id)}
                           className="text-slate-600 hover:text-red-400 hover:bg-red-500/10 p-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100"
@@ -204,6 +207,7 @@ export const ReferralList: React.FC<ReferralListProps> = ({
                       >
                           <Trash2 className="w-4 h-4" />
                       </button>
+                      )}
                    </div>
                 </td>
               </tr>

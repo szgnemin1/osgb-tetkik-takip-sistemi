@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { ArrowLeft, Building2, User, Stethoscope, ShieldCheck, Receipt, Save, Search, Check, ChevronDown, X, MapPin, AlertCircle, CreditCard, Banknote } from 'lucide-react';
+import { ArrowLeft, Building2, User, Stethoscope, ShieldCheck, Receipt, Save, Search, Check, ChevronDown, X, MapPin, AlertCircle, CreditCard, Banknote, Printer, Trash2 } from 'lucide-react';
 import { Referral, Status, Company, HazardClass, ExamDefinition, MedicalInstitution, AppSettings } from '../types';
+import { DocumentScannerModal } from './DocumentScannerModal';
+import { extractIdInfoWithOCR } from '../services/ocrService';
 
 interface NewReferralViewProps {
   onClose: () => void;
@@ -19,6 +21,10 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
   const [fullName, setFullName] = useState('');
   const [tcNo, setTcNo] = useState('');
   const [birthDate, setBirthDate] = useState('');
+  const [scannedIdImage, setScannedIdImage] = useState<string | undefined>(undefined);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isExtractingId, setIsExtractingId] = useState(false);
+
   
   // Company Search State
   const [companySearchTerm, setCompanySearchTerm] = useState('');
@@ -35,14 +41,16 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
   const [estimatedPrice, setEstimatedPrice] = useState(0);
   const [estimatedCost, setEstimatedCost] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'POS' | 'INVOICE'>('INVOICE');
+  const [pendingRemoveExam, setPendingRemoveExam] = useState<string | null>(null);
 
-  // --- EDIT MODE INITIALIZATION ---
+  // Edit Mode Initialization
   useEffect(() => {
     if (initialData) {
         // Personel Bilgileri
         setFullName(initialData.employee.fullName);
         setTcNo(initialData.employee.tcNo);
         setBirthDate(initialData.employee.birthDate || '');
+        setScannedIdImage(initialData.employee.scannedIdImage);
         
         // Firma Bilgileri (İsimden objeyi bul)
         const foundCompany = companies.find(c => c.name === initialData.employee.company);
@@ -143,16 +151,22 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
     setEstimatedCost(totalCost);
   }, [selectedExamIds, exams]);
 
-  // Sort Exams (Defaults first)
+  // Sort Exams (Selected first, then Defaults, then Alphabetical)
   const sortedExams = useMemo(() => {
       return [...exams].sort((a, b) => {
+          const aIsSelected = selectedExamIds.includes(a.name);
+          const bIsSelected = selectedExamIds.includes(b.name);
+          if (aIsSelected && !bIsSelected) return -1;
+          if (!aIsSelected && bIsSelected) return 1;
+
           const aIsDefault = selectedCompanyData?.defaultExams.includes(a.name) || false;
           const bIsDefault = selectedCompanyData?.defaultExams.includes(b.name) || false;
           if (aIsDefault && !bIsDefault) return -1;
           if (!aIsDefault && bIsDefault) return 1;
+          
           return a.name.localeCompare(b.name);
       });
-  }, [exams, selectedCompanyData]);
+  }, [exams, selectedCompanyData, selectedExamIds]);
 
   // Handlers
   const handleSelectCompany = (company: Company) => {
@@ -185,12 +199,24 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
   };
 
   const toggleExam = (examName: string) => {
-    // Firma standart tetkiklerinin kaldırılmasını engelle
     const isDefault = selectedCompanyData?.defaultExams.includes(examName);
-    if (isDefault) return;
+    const isSelected = selectedExamIds.includes(examName);
+
+    if (isDefault && isSelected) {
+        if (pendingRemoveExam === examName) {
+            setPendingRemoveExam(null);
+            setSelectedExamIds(prev => prev.filter(e => e !== examName));
+        } else {
+            setPendingRemoveExam(examName);
+            setTimeout(() => {
+                setPendingRemoveExam(current => current === examName ? null : current);
+            }, 2000);
+        }
+        return;
+    }
 
     setSelectedExamIds(prev => 
-      prev.includes(examName) ? prev.filter(e => e !== examName) : [...prev, examName]
+      isSelected ? prev.filter(e => e !== examName) : [...prev, examName]
     );
   };
 
@@ -209,7 +235,8 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
         fullName,
         tcNo,
         birthDate,
-        company: selectedCompanyData ? selectedCompanyData.name : companySearchTerm // Firma silinmişse text olarak al
+        company: selectedCompanyData ? selectedCompanyData.name : companySearchTerm, // Firma silinmişse text olarak al
+        scannedIdImage
       },
       exams: selectedExamIds,
       status: initialData ? initialData.status : Status.PENDING, // Statüyü koru
@@ -220,7 +247,8 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
       totalPrice: estimatedPrice,
       totalCost: estimatedCost,
       paymentMethod: paymentMethod,
-      targetInstitutionId: selectedInstitutionId || undefined
+      targetInstitutionId: selectedInstitutionId || undefined,
+      scannedIdImage
     };
     onSubmit(newReferral, shouldPrint);
   };
@@ -342,14 +370,41 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
 
                 {/* 2. Personel Bilgisi Kartı */}
                 <div className={`bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm transition-all duration-300 shrink-0 ${!selectedCompanyData && !initialData ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
-                    <div className="flex items-center mb-3">
-                        <div className="p-1.5 bg-emerald-500/10 rounded-lg mr-2">
-                            <User className="w-4 h-4 text-emerald-500" />
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center">
+                            <div className="p-1.5 bg-emerald-500/10 rounded-lg mr-2">
+                                <User className="w-4 h-4 text-emerald-500" />
+                            </div>
+                            <h3 className="font-bold text-slate-200 text-sm">Personel Bilgisi</h3>
                         </div>
-                        <h3 className="font-bold text-slate-200 text-sm">Personel Bilgisi</h3>
+                        <div className="flex items-center space-x-3">
+                          {isExtractingId && (
+                            <span className="text-xs text-blue-400 font-medium animate-pulse">
+                              Bilgiler çıkarılıyor...
+                            </span>
+                          )}
+                          <button 
+                            type="button"
+                            onClick={() => setIsScannerOpen(true)}
+                            disabled={isExtractingId}
+                            className={`flex items-center px-2 py-1 bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 rounded-md transition-colors text-xs font-bold ${isExtractingId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          >
+                            <Printer className="w-3.5 h-3.5 mr-1" />
+                            Kimlik Tara
+                          </button>
+                        </div>
                     </div>
 
                     <div className="space-y-3">
+                        {scannedIdImage && (
+                          <div className="mb-2 relative w-full h-24 bg-slate-800 rounded-lg overflow-hidden border border-slate-700 group">
+                            <img src={scannedIdImage} alt="Taranan Kimlik" className="w-full h-full object-cover opacity-80" />
+                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                               <button type="button" onClick={() => setScannedIdImage(undefined)} className="text-white px-3 py-1 bg-red-600 rounded-md text-xs font-bold">Resmi Kaldır</button>
+                            </div>
+                            <div className="absolute bottom-1 right-1 bg-emerald-500 text-white text-[9px] px-1.5 py-0.5 rounded shadow">Tarandı</div>
+                          </div>
+                        )}
                         <div>
                             <label className="text-[10px] uppercase font-bold text-slate-500 mb-1 block ml-1">Ad Soyad <span className="text-red-500">*</span></label>
                             <input type="text" value={fullName} onChange={e => setFullName(e.target.value)} className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-sm focus:border-emerald-500 outline-none placeholder-slate-600" placeholder="Örn: Ahmet Yılmaz" />
@@ -405,9 +460,9 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
                                             isSelected 
                                             ? 'bg-blue-600 border-blue-500 shadow-lg shadow-blue-900/40 transform scale-[1.01]' 
                                             : 'bg-slate-950 border-slate-800 hover:border-slate-600 hover:bg-slate-900'
-                                        } ${isDefault ? 'cursor-not-allowed opacity-90' : ''}`}
+                                        } overflow-hidden`}
                                     >
-                                        <div className="flex justify-between items-start w-full">
+                                        <div className={`flex justify-between items-start w-full ${pendingRemoveExam === exam.name ? 'opacity-20' : ''} transition-opacity`}>
                                             <span className={`text-xs font-bold leading-tight pr-3 ${isSelected ? 'text-white' : 'text-slate-300 group-hover:text-white'}`}>
                                                 {exam.name}
                                             </span>
@@ -418,7 +473,7 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
                                             )}
                                         </div>
                                         
-                                        <div className="mt-1 flex items-end justify-between w-full">
+                                        <div className={`mt-1 flex items-end justify-between w-full ${pendingRemoveExam === exam.name ? 'opacity-20' : ''} transition-opacity`}>
                                             <span className={`text-[9px] font-mono px-1 py-0.5 rounded ${isSelected ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-500'}`}>
                                                 {exam.code}
                                             </span>
@@ -426,6 +481,15 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
                                                 ₺{exam.price}
                                             </span>
                                         </div>
+
+                                        {pendingRemoveExam === exam.name && (
+                                            <div className="absolute inset-0 flex items-center justify-center bg-red-600/90 backdrop-blur-sm">
+                                                <span className="text-[10px] font-bold text-white text-center leading-tight p-2 flex items-center">
+                                                    <Trash2 className="w-3 h-3 mr-1" />
+                                                    Kaldırmak için tekrar<br/>tıklayın
+                                                </span>
+                                            </div>
+                                        )}
 
                                         {isEkgAndMandatory && !isDefault && (
                                             <div className="absolute -top-1.5 -right-1.5 bg-indigo-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow border-2 border-slate-900 flex items-center z-10">
@@ -554,6 +618,28 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
             </div>
         </div>
       </div>
+      {/* Modals */}
+      {isScannerOpen && (
+        <DocumentScannerModal
+          onClose={() => setIsScannerOpen(false)}
+          onScanComplete={async (fileUrl) => {
+             setScannedIdImage(fileUrl);
+             setIsScannerOpen(false);
+             setIsExtractingId(true);
+             
+             try {
+               const info = await extractIdInfoWithOCR(fileUrl);
+               if (info) {
+                 if (info.fullName) setFullName(info.fullName);
+                 if (info.tcNo) setTcNo(info.tcNo);
+                 if (info.birthDate) setBirthDate(info.birthDate);
+               }
+             } finally {
+               setIsExtractingId(false);
+             }
+          }}
+        />
+      )}
     </div>
   );
 };
