@@ -1,3 +1,11 @@
+/*
+ * Project: OSGB Tetkik Takip Sistemi
+ * Copyright (C) 2026 szgn_emin
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License.
+ */
 import { Referral, Company, ExamDefinition, SafeTransaction, MedicalInstitution, AppSettings } from '../types';
 
 const STORAGE_KEY_REFERRALS = 'osgb_referrals_v1';

@@ -1,3 +1,11 @@
+/*
+ * Project: OSGB Tetkik Takip Sistemi
+ * Copyright (C) 2026 szgn_emin
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License.
+ */
 import React, { useMemo, useState } from 'react';
 import { X, FileSpreadsheet, Wallet, Building2, TrendingUp, CreditCard, Banknote, Receipt, Users, MapPin, Calculator, Calendar } from 'lucide-react';
 import { Referral, SafeTransaction, AppSettings, MedicalInstitution, Company } from '../types';
