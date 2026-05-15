@@ -1,70 +1,83 @@
 # OSGB Tetkik Takip Sistemi
 
-**OSGB Pro**, Ortak Sağlık Güvenlik Birimleri (OSGB) için geliştirilmiş modern, hızlı ve kapsamlı bir masaüstü uygulamasıdır. İşe giriş muayeneleri, periyodik tetkikler, sevk yönetimi ve finansal takibi tek bir platformda birleştirir.
-
-![OSGB Pro Screenshot](public/vite.svg)
+**OSGB Pro**, Ortak Sağlık Güvenlik Birimleri (OSGB) için geliştirilmiş modern, hızlı ve kapsamlı bir web tabanlı takip uygulamasıdır. İşe giriş muayeneleri, periyodik tetkikler, sevk yönetimi ve finansal takibi tek bir platformda birleştirir.
 
 ## 🚀 Özellikler
 
 ### 🏥 Personel ve Sevk Yönetimi
-*   **Firma Bazlı Takip:** Firmaların tehlike sınıflarına göre (Az Tehlikeli, Tehlikeli, Çok Tehlikeli) otomatik sınıflandırma.
-*   **Hızlı Sevk Oluşturma:** Firma seçildiğinde anlaşmalı tetkiklerin otomatik yüklenmesi.
-*   **Kurum Entegrasyonu:** Personelin sevk edileceği laboratuvar veya görüntüleme merkezinin seçimi ve zorunlu kurum ataması.
+*   **Firma Bazlı Takip:** Firmaların tehlike sınıflarına göre (Az Tehlikeli, Tehlikeli, Çok Tehlikeli) verimli yönetimi.
+*   **Hızlı Sevk Oluşturma:** Firma seçildiğinde anlaşmalı tetkiklerin otomatik listelenmesi.
+*   **Kurum Entegrasyonu:** Personelin sevk edileceği kurumların seçimi ve zorunlu kurum ataması.
 
 ### 💰 Finans ve Muhasebe
-*   **Gelir/Gider Takibi:** Kasa giriş-çıkış işlemleri.
-*   **Nakit vs Cari:** Firmaların ödeme yöntemine göre (Nakit/Fatura) sevklerin sınıflandırılması.
-*   **Maliyet Analizi:** Tetkiklerin satış fiyatı ve OSGB'ye maliyetinin karşılaştırmalı takibi.
-*   **Kâr/Zarar Göstergesi:** Anlık tahmini kâr hesabı.
+*   **Gelir/Gider Takibi:** Kasa giriş-çıkış (tahsilat ve ödeme) işlemleri.
+*   **Nakit vs Cari:** Firmaların ödeme yöntemine göre (Nakit/POS/Fatura) tahsilat takibi.
+*   **Kâr/Zarar Göstergesi:** O anki hareketlere göre otomatik ciro ve bakiye hesaplamaları.
 
 ### 📄 Raporlama (Z Raporu)
-*   **A4 Baskı Formatı:** Yazıcı dostu, profesyonel tasarım.
-*   **Gün Sonu/Haftalık/Aylık Rapor:** Periyodik faaliyet raporları.
-*   **İmzalı Teslimat:** Kasa devir işlemleri için imza alanları.
+*   **Yazıcı Dostu Format (A4):** Raporların ve sevk dökümlerinin yazıcıya uyumlu profesyonel tasarımı.
+*   **Gün Sonu Raporu:** İstenen tarih aralığına ve tahsilat tiplerine göre kasa devir işlemi için gün sonu dökümü.
 
-### ⚙️ Gelişmiş Ayarlar
-*   **Excel İle Toplu Yükleme:** Yüzlerce firma ve personel kaydını Excel şablonu ile saniyeler içinde içeri aktarma.
-*   **Logo Özelleştirme:** Firma logosunun sisteme ve raporlara eklenmesi.
-*   **Dinamik Parametreler:** EKG zorunluluk yaşı, tetkik fiyatları ve maliyetlerin yönetimi.
-*   **Veri Yedekleme:** Tüm veriler yerel olarak (Local Storage/JSON) güvenle saklanır.
+### 🛡️ Güvenlik ve Ayarlar
+*   **Güvenli Oturum Yönetimi:** JWT (JSON Web Token), Helmet, Brute-force koruması (Rate Limit) ve Bcrypt şifrelemeyle yetkisiz erişimlere karşı tam koruma.
+*   **Dinamik Şifre Güncelleme:** Yönetici şifresinin sistem içerisinden anında güvenle değiştirilebilmesi.
+*   **Veri Yedekleme ve Geri Yükleme:** Tek tıkla tüm veritabanının JSON olarak bilgisayara indirilmesi (yedeklenmesi) ve istenildiğinde tekrar sisteme yüklenmesi.
+*   **Dinamik Parametreler:** Tetkikler, muayene birimleri, EKG yaş sınırı gibi genel kuralların yapılandırılması.
 
 ## 🛠 Kullanılan Teknolojiler
 
-Bu proje, modern web teknolojilerinin gücünü masaüstüne taşımak için aşağıdaki araçlarla geliştirilmiştir:
-
-*   **[Electron.js](https://www.electronjs.org/):** Çapraz platform masaüstü uygulama motoru.
-*   **[React](https://react.dev/):** Kullanıcı arayüzü kütüphanesi.
-*   **[TypeScript](https://www.typescriptlang.org/):** Tip güvenliği ve ölçeklenebilir kod yapısı.
+*   **[React](https://react.dev/) & [Vite](https://vitejs.dev/):** Ultra hızlı, modern ve etkileşimli kullanıcı arayüzü.
+*   **[Node.js](https://nodejs.org/) & [Express](https://expressjs.com/):** Güçlü ve esnek arka uç (backend) sunucusu.
+*   **[TypeScript](https://www.typescriptlang.org/):** Uçtan uca tip güvenliği.
 *   **[Tailwind CSS](https://tailwindcss.com/):** Hızlı ve modern UI tasarımı.
-*   **[Vite](https://vitejs.dev/):** Ultra hızlı frontend derleme aracı.
-*   **Electron Store:** Veri kalıcılığı ve yerel depolama.
-*   **Google Gemini AI:** Tetkik sonuçlarının yapay zeka destekli ön analizi.
 
-## 📦 Kurulum ve Çalıştırma
+## 📦 Kurulum ve 7/24 Canlı Sunucuda Çalıştırma (PM2)
 
-Projeyi bilgisayarınıza klonladıktan sonra aşağıdaki adımları izleyerek çalıştırabilirsiniz:
+Projeyi kendi sunucunuza **GitHub** üzerinden çekerek (clone) **7/24 kesintisiz şekilde PM2** ile çalıştırmak için aşağıdaki adımları izleyin:
 
-### 1. Bağımlılıkları Yükleyin
-Terminalde proje klasörüne giderek gerekli paketleri yükleyin:
+### 1. Projeyi GitHub'dan Çekin
+```bash
+git clone https://github.com/szgnemin1/osgb-tetkik-takip-sistemi.git
+cd osgb-tetkik-takip-sistemi
+```
 
+### 2. Gerekli Bağımlılıkları Yükleyin
+Sistemin çalışması için gerekli Node.js paketlerini yükleyin:
 ```bash
 npm install
 ```
 
-### 2. Geliştirme Modunda Çalıştırın
-Hem React arayüzünü hem de Electron penceresini aynı anda başlatmak için:
-
-```bash
-npm run electron:dev
-```
-
 ### 3. Uygulamayı Derleyin (Build)
-Uygulamayı dağıtıma hazır `.exe` (Windows) veya `.dmg` (macOS) formatına getirmek için:
-
+Uygulamanızın hem ön yüzünü (React/Vite) hem de arka yüzünü (Server) yayına hazır hale getirin:
 ```bash
-npm run dist
+npm run build
 ```
-Derlenen dosyalar `dist-electron` klasöründe yer alacaktır.
+
+### 4. PM2 Kurulumu (Eğer sunucunuzda yüklü değilse)
+PM2, uygulamanızın çöktüğünde kendini yeniden başlatmasını ve arka planda 7/24 çalışmasını sağlayan bir süreç yöneticisidir:
+```bash
+npm install -g pm2
+```
+
+### 5. Uygulamayı PM2 ile Başlatın
+Aşağıdaki komutu kullanarak uygulamanızı PM2 ile arka planda çalışmaya başlatın:
+```bash
+pm2 start npm --name "osgb-sistemi" -- start
+```
+*(Alternatif olarak doğrudan build edilmiş backend dosyasını `pm2 start dist/server.cjs --name "osgb-sistemi"` komutu ile de başlatabilirsiniz.)*
+
+### 6. PM2'yi Sistem Başlangıcına Ekleyin (İsteğe Bağlı ama Önerilir)
+Sunucu (veya bilgisayar) yeniden başladığında uygulamanın da otomatik başlaması için:
+```bash
+pm2 startup
+pm2 save
+```
+
+### Ekstra Komutlar (PM2 Yönetimi)
+*   **Uygulama loglarını anlık izlemek için:** `pm2 logs osgb-sistemi`
+*   **Uygulamayı durdurmak için:** `pm2 stop osgb-sistemi`
+*   **Uygulamayı yeniden başlatmak için:** `pm2 restart osgb-sistemi`
+*   **Mevcut PM2 süreçlerini listelemek için:** `pm2 list`
 
 ## 🤝 Katkıda Bulunma
 
@@ -77,6 +90,3 @@ Derlenen dosyalar `dist-electron` klasöründe yer alacaktır.
 ## 📄 Lisans
 
 Bu proje **MIT Lisansı** ile lisanslanmıştır. Detaylar için `LICENSE` dosyasına bakabilirsiniz.
-
----
-*Geliştirici Notu: Bu uygulama OSGB süreçlerini dijitalleştirmek amacıyla tasarlanmıştır.*
