@@ -11,21 +11,25 @@ import {
   FileText,
   Menu,
   X,
-  Loader2
+  Loader2,
+  LogOut
 } from 'lucide-react';
 import { ReferralList } from './components/ReferralList';
 import { StatsCards } from './components/StatsCards';
 import { EndOfDayReportModal } from './components/EndOfDayReportModal';
 import { ReferralPrintTemplate } from './components/ReferralPrintTemplate';
+import { Auth } from './components/Auth';
 import { Referral, Status, Company, ExamDefinition, SafeTransaction, MedicalInstitution, AppSettings } from './types';
 import { 
-  loadReferrals, saveReferrals,
-  loadCompanies, saveCompanies,
-  loadExams, saveExams,
-  loadInstitutions, saveInstitutions,
-  loadTransactions, saveTransactions,
-  loadAppSettings, saveAppSettings
-} from './services/storage';
+  useServerData,
+  saveReferralToDb, deleteReferralFromDb,
+  saveCompanyToDb, deleteCompanyFromDb,
+  saveExamToDb, deleteExamFromDb,
+  saveInstitutionToDb, deleteInstitutionFromDb,
+  saveTransactionToDb, deleteTransactionFromDb,
+  saveSettingsToDb,
+  setApiToken, getApiToken
+} from './services/useServerData';
 
 // --- LAZY LOADING ---
 const NewReferralView = lazy(() => import('./components/NewReferralModal').then(module => ({ default: module.NewReferralView })));
@@ -43,137 +47,33 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'referrals' | 'finance' | 'settings' | 'create_referral'>('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Data States
-  const [referrals, setReferrals] = useState<Referral[]>(loadReferrals());
-  const [companies, setCompanies] = useState<Company[]>(loadCompanies());
-  const [exams, setExams] = useState<ExamDefinition[]>(loadExams());
-  const [institutions, setInstitutions] = useState<MedicalInstitution[]>(loadInstitutions());
-  const [transactions, setTransactions] = useState<SafeTransaction[]>(loadTransactions());
-  const [appSettings, setAppSettings] = useState<AppSettings>(loadAppSettings());
+  // Authentication State
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    const token = sessionStorage.getItem('api_token');
+    if (token) {
+      setApiToken(token);
+      return true;
+    }
+    return false;
+  });
+
+  // Data States from Server
+  const { referrals, companies, exams, institutions, transactions, appSettings, loading, reloadData } = useServerData(isAuthenticated);
   
   const [editingReferral, setEditingReferral] = useState<Referral | null>(null);
   const [printingReferral, setPrintingReferral] = useState<Referral | null>(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Save changes automatically
-  useEffect(() => { saveReferrals(referrals); }, [referrals]);
-  useEffect(() => { saveCompanies(companies); }, [companies]);
-  useEffect(() => { saveExams(exams); }, [exams]);
-  useEffect(() => { saveInstitutions(institutions); }, [institutions]);
-  useEffect(() => { saveTransactions(transactions); }, [transactions]);
-  useEffect(() => { saveAppSettings(appSettings); }, [appSettings]);
-
-  // Handlers
-  const handleSaveReferral = (referral: Referral, shouldPrint: boolean = false) => {
-    if (editingReferral) {
-        setReferrals(prev => prev.map(r => r.id === referral.id ? referral : r));
-        setTransactions(prev => prev.filter(t => t.referralId !== referral.id)); // Remove old transaction
-        
-        if ((referral.paymentMethod === 'CASH' || referral.paymentMethod === 'POS') && referral.totalPrice && referral.totalPrice > 0) {
-            const typeLabel = referral.paymentMethod === 'CASH' ? 'Nakit' : 'Pos';
-            const newTransaction: SafeTransaction = {
-                id: Math.random().toString(36).substr(2, 9),
-                type: 'INCOME',
-                amount: referral.totalPrice,
-                description: `Sevk Geliri (${typeLabel}): ${referral.employee.fullName} (${referral.employee.company})`,
-                date: referral.referralDate,
-                paymentMethod: referral.paymentMethod,
-                referralId: referral.id
-            };
-            setTransactions(prev => [...prev, newTransaction]);
-        }
-        
-        setEditingReferral(null);
-    } else {
-        setReferrals(prev => [referral, ...prev]);
-        
-        if ((referral.paymentMethod === 'CASH' || referral.paymentMethod === 'POS') && referral.totalPrice && referral.totalPrice > 0) {
-            const typeLabel = referral.paymentMethod === 'CASH' ? 'Nakit' : 'Pos';
-            const newTransaction: SafeTransaction = {
-                id: Math.random().toString(36).substr(2, 9),
-                type: 'INCOME',
-                amount: referral.totalPrice,
-                description: `Sevk Geliri (${typeLabel}): ${referral.employee.fullName} (${referral.employee.company})`,
-                date: referral.referralDate,
-                paymentMethod: referral.paymentMethod,
-                referralId: referral.id
-            };
-            setTransactions(prev => [...prev, newTransaction]);
-        }
-    }
-    
-    if (shouldPrint) {
-      setPrintingReferral(referral);
-    }
-    
-    setActiveTab('referrals');
-  };
-
-  const handleEditReferral = (referral: Referral) => {
-      setEditingReferral(referral);
-      setActiveTab('create_referral');
-  };
-
-  const handleCloseReferralForm = () => {
-      setEditingReferral(null);
-      setActiveTab('referrals');
-  };
-
-  const handleUpdateStatus = (id: string, newStatus: Status) => {
-    setReferrals(prev => prev.map(r => 
-      r.id === id ? { ...r, status: newStatus } : r
-    ));
-  };
-
-  const handleDelete = (id: string) => {
-    if(window.confirm('Bu kaydı silmek istediğinize emin misiniz?')) {
-      setReferrals(prev => prev.filter(r => r.id !== id));
-      setTransactions(prev => prev.filter(t => t.referralId !== id)); // also delete related tx
-    }
-  };
-
-  const handlePrintReferral = (referral: Referral) => {
-    setPrintingReferral(referral);
-  };
-
   useEffect(() => {
     if (printingReferral) {
       const timer = setTimeout(() => {
         window.print();
-        setPrintingReferral(null);
-      }, 100);
+        setTimeout(() => setPrintingReferral(null), 100);
+      }, 500);
       return () => clearTimeout(timer);
     }
   }, [printingReferral]);
-
-  // Settings Handlers
-  const handleAddCompany = (c: Company) => setCompanies(prev => [...prev, c]);
-  const handleUpdateCompany = (updated: Company) => {
-    setCompanies(prev => prev.map(c => c.id === updated.id ? updated : c));
-  };
-  const handleDeleteCompany = (id: string) => setCompanies(prev => prev.filter(c => c.id !== id));
-  const handleBulkDeleteCompanies = (ids: string[]) => {
-      setCompanies(prev => prev.filter(c => !ids.includes(c.id)));
-  };
-  
-  const handleAddExam = (e: ExamDefinition) => setExams(prev => [...prev, e]);
-  const handleUpdateExam = (updated: ExamDefinition) => setExams(prev => prev.map(e => e.id === updated.id ? updated : e));
-  const handleDeleteExam = (id: string) => setExams(prev => prev.filter(e => e.id !== id));
-
-  const handleAddInstitution = (i: MedicalInstitution) => setInstitutions(prev => [...prev, i]);
-  const handleUpdateInstitution = (updated: MedicalInstitution) => setInstitutions(prev => prev.map(i => i.id === updated.id ? updated : i));
-  const handleDeleteInstitution = (id: string) => setInstitutions(prev => prev.filter(i => i.id !== id));
-
-  const handleUpdateSettings = (newSettings: AppSettings) => setAppSettings(newSettings);
-
-  // Finance Handlers
-  const handleAddTransaction = (t: SafeTransaction) => setTransactions(prev => [...prev, t]);
-  const handleResetSafe = () => {
-    if(window.confirm('DİKKAT! Tüm kasa geçmişini silmek üzeresiniz. Bakiye sıfırlanacaktır. Bu işlem geri alınamaz. Onaylıyor musunuz?')) {
-      setTransactions([]);
-    }
-  };
 
   const filteredReferrals = useMemo(() => {
     return referrals.filter(r => 
@@ -195,6 +95,129 @@ const App: React.FC = () => {
       totalIncome: totalIncome
     };
   }, [referrals, transactions]);
+
+  // Auth lock screen
+  if (!isAuthenticated) {
+    return <Auth onAuthenticated={() => setIsAuthenticated(true)} />;
+  }
+
+  if (loading) {
+    return (
+      <div className="flex h-screen bg-slate-950 items-center justify-center">
+        <PageLoader />
+      </div>
+    );
+  }
+
+  const handleLogout = async () => {
+    try {
+      setApiToken('');
+      sessionStorage.removeItem('api_token');
+      setIsAuthenticated(false);
+    } catch(err) {
+      console.error(err);
+    }
+  };
+
+  // Handlers
+  const handleSaveReferral = async (referral: Referral, shouldPrint: boolean = false) => {
+    await saveReferralToDb(referral);
+    
+    if (editingReferral) {
+        // Find existing transaction and update/replace it if payment is involved
+        const txToDelete = transactions.filter(t => t.referralId === referral.id);
+        for (const t of txToDelete) {
+           await deleteTransactionFromDb(t.id);
+        }
+    } 
+
+    if ((referral.paymentMethod === 'CASH' || referral.paymentMethod === 'POS') && referral.totalPrice && referral.totalPrice > 0) {
+        const typeLabel = referral.paymentMethod === 'CASH' ? 'Nakit' : 'Pos';
+        const newTransaction: SafeTransaction = {
+            id: Math.random().toString(36).substr(2, 9),
+            type: 'INCOME',
+            amount: referral.totalPrice,
+            description: `Sevk Geliri (${typeLabel}): ${referral.employee.fullName} (${referral.employee.company})`,
+            date: referral.referralDate,
+            paymentMethod: referral.paymentMethod,
+            referralId: referral.id
+        };
+        await saveTransactionToDb(newTransaction);
+    }
+    
+    setEditingReferral(null);
+    await reloadData();
+    
+    if (shouldPrint || appSettings?.autoPrintReferral) {
+      setPrintingReferral(referral);
+    }
+    setActiveTab('referrals');
+  };
+
+  const handleEditReferral = (referral: Referral) => {
+      setEditingReferral(referral);
+      setActiveTab('create_referral');
+  };
+
+  const handleCloseReferralForm = () => {
+      setEditingReferral(null);
+      setActiveTab('referrals');
+  };
+
+  const handleUpdateStatus = async (id: string, newStatus: Status) => {
+    const referral = referrals.find(r => r.id === id);
+    if (referral) {
+       await saveReferralToDb({ ...referral, status: newStatus });
+       await reloadData();
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if(window.confirm('Bu kaydı silmek istediğinize emin misiniz?')) {
+      await deleteReferralFromDb(id);
+      const txs = transactions.filter(t => t.referralId === id);
+      for(const t of txs) {
+         await deleteTransactionFromDb(t.id);
+      }
+      await reloadData();
+    }
+  };
+
+  const handlePrintReferral = (referral: Referral) => {
+    setPrintingReferral(referral);
+  };
+
+  // Settings Handlers
+  const handleAddCompany = async (c: Company) => { await saveCompanyToDb(c); await reloadData(); };
+  const handleUpdateCompany = async (updated: Company) => { await saveCompanyToDb(updated); await reloadData(); };
+  const handleDeleteCompany = async (id: string) => { await deleteCompanyFromDb(id); await reloadData(); };
+  const handleBulkDeleteCompanies = async (ids: string[]) => {
+      for(const id of ids) {
+         await deleteCompanyFromDb(id);
+      }
+      await reloadData();
+  };
+  
+  const handleAddExam = async (e: ExamDefinition) => { await saveExamToDb(e); await reloadData(); };
+  const handleUpdateExam = async (updated: ExamDefinition) => { await saveExamToDb(updated); await reloadData(); };
+  const handleDeleteExam = async (id: string) => { await deleteExamFromDb(id); await reloadData(); };
+
+  const handleAddInstitution = async (i: MedicalInstitution) => { await saveInstitutionToDb(i); await reloadData(); };
+  const handleUpdateInstitution = async (updated: MedicalInstitution) => { await saveInstitutionToDb(updated); await reloadData(); };
+  const handleDeleteInstitution = async (id: string) => { await deleteInstitutionFromDb(id); await reloadData(); };
+
+  const handleUpdateSettings = async (newSettings: AppSettings) => { await saveSettingsToDb(newSettings); await reloadData(); };
+
+  // Finance Handlers
+  const handleAddTransaction = async (t: SafeTransaction) => { await saveTransactionToDb(t); await reloadData(); };
+  const handleResetSafe = async () => {
+    if(window.confirm('DİKKAT! Tüm kasa geçmişini silmek üzeresiniz. Bakiye sıfırlanacaktır. Bu işlem geri alınamaz. Onaylıyor musunuz?')) {
+       for(const tx of transactions) {
+          await deleteTransactionFromDb(tx.id);
+       }
+       await reloadData();
+    }
+  };
 
   const handleNavClick = (tab: typeof activeTab) => {
       if (tab === 'create_referral') {
@@ -292,6 +315,16 @@ const App: React.FC = () => {
             <span className="font-medium">Ayarlar</span>
           </button>
         </nav>
+        
+        <div className="p-4 border-t border-slate-800">
+           <button 
+              onClick={handleLogout}
+              className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-colors"
+           >
+              <LogOut className="w-5 h-5" />
+              <span className="font-medium">Güvenli Çıkış</span>
+           </button>
+        </div>
       </aside>
 
       <main className={`flex-1 flex flex-col h-full overflow-hidden relative bg-slate-950 ${printingReferral ? 'print:hidden' : ''}`}>

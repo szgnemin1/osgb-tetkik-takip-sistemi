@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { ArrowLeft, Building2, User, Stethoscope, ShieldCheck, Receipt, Save, Search, Check, ChevronDown, X, MapPin, AlertCircle, CreditCard, Banknote, Printer, Trash2 } from 'lucide-react';
+import { ArrowLeft, Building2, User, Stethoscope, ShieldCheck, Receipt, Save, Search, Check, ChevronDown, X, MapPin, AlertCircle, CreditCard, Banknote, Trash2 } from 'lucide-react';
 import { Referral, Status, Company, HazardClass, ExamDefinition, MedicalInstitution, AppSettings } from '../types';
-import { DocumentScannerModal } from './DocumentScannerModal';
-import { extractIdInfoWithOCR } from '../services/ocrService';
 
 interface NewReferralViewProps {
   onClose: () => void;
@@ -21,9 +19,6 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
   const [fullName, setFullName] = useState('');
   const [tcNo, setTcNo] = useState('');
   const [birthDate, setBirthDate] = useState('');
-  const [scannedIdImage, setScannedIdImage] = useState<string | undefined>(undefined);
-  const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const [isExtractingId, setIsExtractingId] = useState(false);
 
   
   // Company Search State
@@ -50,7 +45,6 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
         setFullName(initialData.employee.fullName);
         setTcNo(initialData.employee.tcNo);
         setBirthDate(initialData.employee.birthDate || '');
-        setScannedIdImage(initialData.employee.scannedIdImage);
         
         // Firma Bilgileri (İsimden objeyi bul)
         const foundCompany = companies.find(c => c.name === initialData.employee.company);
@@ -236,7 +230,6 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
         tcNo,
         birthDate,
         company: selectedCompanyData ? selectedCompanyData.name : companySearchTerm, // Firma silinmişse text olarak al
-        scannedIdImage
       },
       exams: selectedExamIds,
       status: initialData ? initialData.status : Status.PENDING, // Statüyü koru
@@ -248,7 +241,6 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
       totalCost: estimatedCost,
       paymentMethod: paymentMethod,
       targetInstitutionId: selectedInstitutionId || undefined,
-      scannedIdImage
     };
     onSubmit(newReferral, shouldPrint);
   };
@@ -377,34 +369,9 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
                             </div>
                             <h3 className="font-bold text-slate-200 text-sm">Personel Bilgisi</h3>
                         </div>
-                        <div className="flex items-center space-x-3">
-                          {isExtractingId && (
-                            <span className="text-xs text-blue-400 font-medium animate-pulse">
-                              Bilgiler çıkarılıyor...
-                            </span>
-                          )}
-                          <button 
-                            type="button"
-                            onClick={() => setIsScannerOpen(true)}
-                            disabled={isExtractingId}
-                            className={`flex items-center px-2 py-1 bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 rounded-md transition-colors text-xs font-bold ${isExtractingId ? 'opacity-50 cursor-not-allowed' : ''}`}
-                          >
-                            <Printer className="w-3.5 h-3.5 mr-1" />
-                            Kimlik Tara
-                          </button>
-                        </div>
                     </div>
 
                     <div className="space-y-3">
-                        {scannedIdImage && (
-                          <div className="mb-2 relative w-full h-24 bg-slate-800 rounded-lg overflow-hidden border border-slate-700 group">
-                            <img src={scannedIdImage} alt="Taranan Kimlik" className="w-full h-full object-cover opacity-80" />
-                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                               <button type="button" onClick={() => setScannedIdImage(undefined)} className="text-white px-3 py-1 bg-red-600 rounded-md text-xs font-bold">Resmi Kaldır</button>
-                            </div>
-                            <div className="absolute bottom-1 right-1 bg-emerald-500 text-white text-[9px] px-1.5 py-0.5 rounded shadow">Tarandı</div>
-                          </div>
-                        )}
                         <div>
                             <label className="text-[10px] uppercase font-bold text-slate-500 mb-1 block ml-1">Ad Soyad <span className="text-red-500">*</span></label>
                             <input type="text" value={fullName} onChange={e => setFullName(e.target.value)} className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-sm focus:border-emerald-500 outline-none placeholder-slate-600" placeholder="Örn: Ahmet Yılmaz" />
@@ -618,28 +585,6 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
             </div>
         </div>
       </div>
-      {/* Modals */}
-      {isScannerOpen && (
-        <DocumentScannerModal
-          onClose={() => setIsScannerOpen(false)}
-          onScanComplete={async (fileUrl) => {
-             setScannedIdImage(fileUrl);
-             setIsScannerOpen(false);
-             setIsExtractingId(true);
-             
-             try {
-               const info = await extractIdInfoWithOCR(fileUrl);
-               if (info) {
-                 if (info.fullName) setFullName(info.fullName);
-                 if (info.tcNo) setTcNo(info.tcNo);
-                 if (info.birthDate) setBirthDate(info.birthDate);
-               }
-             } finally {
-               setIsExtractingId(false);
-             }
-          }}
-        />
-      )}
     </div>
   );
 };

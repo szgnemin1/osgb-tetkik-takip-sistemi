@@ -1,0 +1,4 @@
+node_modules
+dist
+global_data.json
+.env

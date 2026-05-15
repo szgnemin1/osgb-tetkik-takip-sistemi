@@ -2,20 +2,20 @@
   "name": "osgb-tetkik-takip",
   "private": true,
   "version": "1.0.0",
-  "main": "main.js",
   "description": "OSGB Tetkik ve Sevk Takip Uygulaması",
   "author": "OSGB Pro",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview",
-    "electron:dev": "concurrently \"vite\" \"wait-on tcp:5173 && electron .\"",
-    "dist": "npm run build && electron-builder"
+    "dev": "tsx server.ts",
+    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "start": "node dist/server.cjs"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
-    "electron-store": "^8.1.0",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.5.2",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
     "lucide-react": "^0.562.0",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.3",
@@ -27,48 +27,18 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^25.8.0",
     "@types/react": "^18.2.15",
     "@types/react-dom": "^18.2.7",
     "@vitejs/plugin-react": "^4.0.3",
     "concurrently": "^8.2.0",
-    "electron": "^28.0.0",
-    "electron-builder": "^24.9.1",
+    "esbuild": "^0.28.0",
     "tsx": "^4.21.0",
     "typescript": "^5.0.2",
-    "vite": "^4.4.5",
-    "wait-on": "^7.2.0"
-  },
-  "build": {
-    "appId": "com.osgb.tetkiktakip",
-    "productName": "OSGB Tetkik Takip",
-    "copyright": "Copyright © 2024 OSGB Pro",
-    "directories": {
-      "output": "dist-electron"
-    },
-    "files": [
-      "dist/**/*",
-      "main.js",
-      "preload.js",
-      "package.json",
-      "node_modules/**/*"
-    ],
-    "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "icon": "public/icon.ico"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true
-    }
+    "vite": "^4.4.5"
   }
 }

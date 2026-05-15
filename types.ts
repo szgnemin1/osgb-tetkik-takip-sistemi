@@ -59,7 +59,6 @@ export interface Employee {
   birthDate?: string; // New field added
   company: string;
   department?: string;
-  scannedIdImage?: string; // Taranan kimlik belgesi base64
 }
 
 export interface Referral {
@@ -76,7 +75,6 @@ export interface Referral {
   totalCost?: number; // OSGB'nin ödeyeceği maliyet
   paymentMethod: 'CASH' | 'POS' | 'INVOICE'; // Nakit, Pos veya Cari
   targetInstitutionId?: string; // Hangi kuruma sevk edildiği
-  scannedIdImage?: string; // Taranan kimlik belgesi base64
 }
 
 export interface Stats {
@@ -103,4 +101,6 @@ export interface AppSettings {
   printBackgroundLogo?: string; // Base64 string for the print background watermark
   printPageSize?: 'A4' | 'A5' | 'A6'; // Sayfa boyutu
   defaultScannerId?: string; // Varsayılan tarayıcı cihaz ID'si
+  isPasswordEnabled?: boolean; // Şifre koruması aktif mi
+  appPassword?: string; // Uygulama giriş şifresi
 }

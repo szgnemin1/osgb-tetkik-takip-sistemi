@@ -2,10 +2,8 @@ import React, { useState, useRef } from 'react';
 import { Company, ExamDefinition, HazardClass, MedicalInstitution, AppSettings } from '../types';
 import { Trash2, Plus, Building2, Save, Check, Receipt, Upload, FileDown, MapPin, Sliders, CheckSquare, Square, Image as ImageIcon, Edit2, XCircle, Database, Download, RefreshCw, AlertTriangle, CreditCard, Banknote, Search } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { exportFullData, restoreFullData } from '../services/storage';
 
 interface SettingsViewProps {
-  companies: Company[];
   onAddCompany: (c: Company) => void;
   onUpdateCompany: (c: Company) => void;
   onDeleteCompany: (id: string) => void;
@@ -47,6 +45,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [printBgLogo, setPrintBgLogo] = useState<string | undefined>(settings.printBackgroundLogo);
   const [autoPrint, setAutoPrint] = useState(settings.autoPrintReferral);
   const [printPageSize, setPrintPageSize] = useState<'A4' | 'A5' | 'A6'>(settings.printPageSize || 'A4');
+  const [isPasswordEnabled, setIsPasswordEnabled] = useState(settings.isPasswordEnabled || false);
+  const [appPassword, setAppPassword] = useState(settings.appPassword || '');
 
   // Company Form State
   const [editingCompanyId, setEditingCompanyId] = useState<string | null>(null);
@@ -66,7 +66,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const printBgLogoInputRef = useRef<HTMLInputElement>(null);
-  const backupInputRef = useRef<HTMLInputElement>(null);
+
 
   // Exam Form State
   const [eName, setEName] = useState('');
@@ -87,6 +87,44 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     );
   };
 
+  // Password Change State
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [pwdError, setPwdError] = useState('');
+  const [pwdSuccess, setPwdSuccess] = useState('');
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPwdError('');
+    setPwdSuccess('');
+    
+    if (!oldPassword || !newPassword) return;
+    
+    try {
+      const { getApiToken, setApiToken } = await import('../services/useServerData');
+      const res = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getApiToken()}`
+        },
+        body: JSON.stringify({ oldPassword, newPassword })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setPwdError(data.error || 'Şifre değiştirilemedi');
+      } else {
+        setPwdSuccess('Şifre başarıyla değiştirildi.');
+        setApiToken(data.token);
+        sessionStorage.setItem('api_token', data.token);
+        setOldPassword('');
+        setNewPassword('');
+      }
+    } catch (err) {
+      setPwdError('Bir hata oluştu');
+    }
+  };
+
   const handleUpdateGeneralSettings = (e: React.FormEvent) => {
     e.preventDefault();
     onUpdateSettings({ 
@@ -95,7 +133,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         companyLogo: logo,
         printBackgroundLogo: printBgLogo,
         autoPrintReferral: autoPrint,
-        printPageSize: printPageSize
+        printPageSize: printPageSize,
+        isPasswordEnabled: isPasswordEnabled,
+        appPassword: appPassword
     });
     alert("Ayarlar güncellendi.");
   };
@@ -431,52 +471,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   // --- End Bulk Import Logic ---
 
-  // --- Backup & Restore Logic ---
-  const handleBackup = async () => {
-    const jsonString = await exportFullData();
-    if (!jsonString) {
-        alert("Yedek alınamadı.");
-        return;
-    }
-    const blob = new Blob([jsonString], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    
-    const a = document.createElement('a');
-    a.href = url;
-    const dateStr = new Date().toISOString().split('T')[0];
-    a.download = `osgb_yedek_${dateStr}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
 
-  const handleRestore = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!window.confirm("DİKKAT: Yedek dosyasını yüklediğinizde MEVCUT TÜM VERİLER SİLİNECEK ve yerine yedektekiler gelecektir. Devam etmek istiyor musunuz?")) {
-        if(backupInputRef.current) backupInputRef.current.value = '';
-        return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-        const content = event.target?.result;
-        if (typeof content === 'string') {
-            const success = await restoreFullData(content);
-            if (success) {
-                alert("Yedek başarıyla yüklendi. Sayfa yenileniyor...");
-                window.location.reload();
-            } else {
-                alert("Yedek yüklenirken bir hata oluştu. Dosya bozuk olabilir veya sunucu erişilemez.");
-            }
-        }
-    };
-    reader.readAsText(file);
-    if(backupInputRef.current) backupInputRef.current.value = '';
-  };
-  // --- End Backup Logic ---
 
   const handleAddExam = (e: React.FormEvent) => {
     e.preventDefault();
@@ -541,12 +536,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         >
           Tetkikler
         </button>
-        <button
-          onClick={() => setActiveTab('backup')}
-          className={`px-6 py-4 text-center font-medium text-sm transition-colors whitespace-nowrap ${activeTab === 'backup' ? 'bg-slate-900/50 text-emerald-400 border-b-2 border-emerald-500' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
-        >
-          Veri Yedekleme
-        </button>
+
       </div>
 
       <div className="p-6">
@@ -684,6 +674,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       </select>
                    </div>
 
+                   {/* END Auto Print & Print Size */}
+
                    <div className="flex justify-end pt-2">
                       <button type="submit" className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-lg text-sm font-bold transition-colors shadow-lg shadow-blue-900/20">
                          <Save className="w-4 h-4" />
@@ -692,65 +684,59 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                    </div>
                 </form>
              </div>
-          </div>
-        )}
 
-        {activeTab === 'backup' && (
-            <div className="space-y-6">
-                <div className="bg-slate-900/30 p-6 rounded-lg border border-slate-700">
-                    <div className="flex items-center mb-6">
-                        <div className="p-3 bg-emerald-500/10 rounded-lg mr-4">
-                            <Database className="w-8 h-8 text-emerald-500" />
-                        </div>
-                        <div>
-                            <h3 className="text-lg font-bold text-white">Sistem Yedekleme ve Geri Yükleme</h3>
-                            <p className="text-sm text-slate-400">Firmaları, sevk kayıtlarını ve kasa hareketlerini başka bilgisayara taşımak için bu alanı kullanın.</p>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Yedek Alma */}
-                        <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 flex flex-col items-center text-center hover:border-blue-500 transition-colors">
-                            <Download className="w-12 h-12 text-blue-500 mb-4" />
-                            <h4 className="text-lg font-bold text-white mb-2">Yedek Al (Export)</h4>
-                            <p className="text-sm text-slate-400 mb-6">Tüm verileri (Firmalar, Sevkler, Kasa, Ayarlar) tek bir dosya (.json) olarak bilgisayarınıza indirin.</p>
-                            <button 
-                                onClick={() => handleBackup()}
-                                className="mt-auto flex items-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-lg font-bold shadow-lg shadow-blue-900/20 transition-all active:scale-95"
-                            >
-                                <FileDown className="w-5 h-5" />
-                                <span>Yedeği Bilgisayara İndir</span>
-                            </button>
-                        </div>
-
-                        {/* Yedek Yükleme */}
-                        <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 flex flex-col items-center text-center hover:border-orange-500 transition-colors">
-                            <RefreshCw className="w-12 h-12 text-orange-500 mb-4" />
-                            <h4 className="text-lg font-bold text-white mb-2">Yedek Yükle (Import)</h4>
-                            <p className="text-sm text-slate-400 mb-2">Daha önce alınan .json uzantılı yedek dosyasını seçerek verileri geri yükleyin.</p>
-                            
-                            <div className="bg-orange-500/10 border border-orange-500/20 p-3 rounded-lg mb-6 flex items-start text-left">
-                                <AlertTriangle className="w-5 h-5 text-orange-500 mr-2 shrink-0 mt-0.5" />
-                                <span className="text-xs text-orange-200">
-                                    <strong>DİKKAT:</strong> Yedek yükleme işlemi, şu anki tüm verileri siler ve üzerine yazar. Bu işlem geri alınamaz.
-                                </span>
-                            </div>
-
-                            <label className="mt-auto cursor-pointer flex items-center space-x-2 bg-slate-700 hover:bg-slate-600 text-white px-6 py-3 rounded-lg font-bold border border-slate-600 transition-all active:scale-95">
-                                <Upload className="w-5 h-5" />
-                                <span>Yedek Dosyasını Seç ve Yükle</span>
-                                <input 
-                                    type="file" 
-                                    accept=".json"
-                                    ref={backupInputRef}
-                                    onChange={handleRestore}
-                                    className="hidden" 
-                                />
-                            </label>
-                        </div>
-                    </div>
+             <div className="bg-slate-900/30 p-6 rounded-lg border border-slate-700 max-w-2xl mt-8">
+                <div className="flex items-center mb-4">
+                   <div className="p-2 bg-orange-500/10 rounded mr-3">
+                      <Sliders className="w-5 h-5 text-orange-500" />
+                   </div>
+                   <h3 className="text-lg font-bold text-white">Sistem Şifresini Değiştir</h3>
                 </div>
-            </div>
+                
+                <form onSubmit={handlePasswordChange} className="space-y-6">
+                    {pwdError && (
+                      <div className="bg-red-500/10 border border-red-500/50 text-red-500 p-3 rounded text-sm">
+                        {pwdError}
+                      </div>
+                    )}
+                    {pwdSuccess && (
+                      <div className="bg-emerald-500/10 border border-emerald-500/50 text-emerald-500 p-3 rounded text-sm">
+                        {pwdSuccess}
+                      </div>
+                    )}
+
+                    <div className="space-y-4">
+                      <div>
+                          <label className="block text-sm font-medium text-slate-400 mb-1">Mevcut Şifre</label>
+                          <input 
+                              type="password" 
+                              value={oldPassword} 
+                              onChange={(e) => setOldPassword(e.target.value)}
+                              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white text-sm focus:ring-blue-500 outline-none" 
+                              required
+                          />
+                      </div>
+                      <div>
+                          <label className="block text-sm font-medium text-slate-400 mb-1">Yeni Şifre</label>
+                          <input 
+                              type="password" 
+                              value={newPassword} 
+                              onChange={(e) => setNewPassword(e.target.value)}
+                              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white text-sm focus:ring-blue-500 outline-none" 
+                              required
+                          />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end pt-2">
+                      <button type="submit" className="flex items-center space-x-2 bg-orange-600 hover:bg-orange-500 text-white px-5 py-2.5 rounded-lg text-sm font-bold transition-colors shadow-lg shadow-orange-900/20">
+                         <Save className="w-4 h-4" />
+                         <span>Şifreyi Güncelle</span>
+                      </button>
+                   </div>
+                </form>
+             </div>
+          </div>
         )}
 
         {activeTab === 'companies' && (
