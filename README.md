@@ -89,4 +89,4 @@ pm2 save
 
 ## 📄 Lisans
 
-Bu proje **MIT Lisansı** ile lisanslanmıştır. Detaylar için `LICENSE` dosyasına bakabilirsiniz.
+Bu proje **GNU General Public License v3.0** lisansı ile yayınlanmıştır.
