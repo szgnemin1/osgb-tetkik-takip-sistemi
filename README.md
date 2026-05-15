@@ -1,3 +1,7 @@
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
+
+
 # OSGB Tetkik Takip Sistemi
 
 **OSGB Pro**, Ortak Sağlık Güvenlik Birimleri (OSGB) için geliştirilmiş modern, hızlı ve kapsamlı bir web tabanlı takip uygulamasıdır. İşe giriş muayeneleri, periyodik tetkikler, sevk yönetimi ve finansal takibi tek bir platformda birleştirir.
