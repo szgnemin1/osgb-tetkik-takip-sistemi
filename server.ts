@@ -148,6 +148,26 @@ async function startServer() {
     res.json({ success: true, token });
   });
 
+  // Backup restore endpoint
+  app.post("/api/backup/restore", authMiddleware, (req, res) => {
+    try {
+      const newData = req.body;
+      if (!newData || typeof newData !== 'object') {
+         return res.status(400).json({ error: "Geçersiz yedek dosyası" });
+      }
+      
+      // Preserve current password hash to avoid locking out the user
+      const currentDb = readData();
+      newData.appSettings = newData.appSettings || {};
+      newData.appSettings.passwordHash = currentDb.appSettings?.passwordHash;
+      
+      writeData(newData);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: "Geri yükleme sırasında hata oluştu" });
+    }
+  });
+
   // Data endpoints
   app.get("/api/data", authMiddleware, (req, res) => {
     res.json(readData());

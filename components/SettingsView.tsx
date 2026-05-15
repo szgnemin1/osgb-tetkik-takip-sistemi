@@ -93,6 +93,71 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [pwdError, setPwdError] = useState('');
   const [pwdSuccess, setPwdSuccess] = useState('');
 
+  // Backup State
+  const backupInputRef = useRef<HTMLInputElement>(null);
+
+  const handleDownloadBackup = async () => {
+    try {
+      const { getApiToken } = await import('../services/useServerData');
+      const res = await fetch('/api/data', {
+        headers: {
+          'Authorization': `Bearer ${getApiToken()}`
+        }
+      });
+      if (!res.ok) throw new Error('Data fetch failed');
+      const data = await res.json();
+      
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `osgb_yedek_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      alert("Yedek indirilirken bir hata oluştu.");
+    }
+  };
+
+  const handleRestoreBackup = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!window.confirm('DİKKAT: Bu işlem mevcut tüm verilerinizi (Firmalar, Tetkikler, Sevk Geçmişi vb.) SİLECEK ve yedek dosyasındakilerle değiştirecektir. İşleme devam etmek istediğinize emin misiniz?')) {
+        if (backupInputRef.current) backupInputRef.current.value = '';
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const jsonStr = evt.target?.result as string;
+        const backupData = JSON.parse(jsonStr);
+        
+        const { getApiToken } = await import('../services/useServerData');
+        const res = await fetch('/api/backup/restore', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${getApiToken()}`
+          },
+          body: JSON.stringify(backupData)
+        });
+        
+        if (!res.ok) throw new Error('Yedek yükleme başarısız');
+        
+        alert("Yedek başarıyla geri yüklendi! Sistem yenileniyor...");
+        window.location.reload();
+      } catch (err) {
+        alert("Yedek geri yüklenirken hata oluştu veya geçersiz dosya biçimi.");
+      } finally {
+        if (backupInputRef.current) backupInputRef.current.value = '';
+      }
+    };
+    reader.readAsText(file);
+  };
+
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     setPwdError('');
@@ -535,6 +600,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           className={`px-6 py-4 text-center font-medium text-sm transition-colors whitespace-nowrap ${activeTab === 'exams' ? 'bg-slate-900/50 text-blue-400 border-b-2 border-blue-500' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
         >
           Tetkikler
+        </button>
+        <button
+          onClick={() => setActiveTab('backup')}
+          className={`px-6 py-4 text-center font-medium text-sm transition-colors whitespace-nowrap ${activeTab === 'backup' ? 'bg-slate-900/50 text-blue-400 border-b-2 border-blue-500' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
+        >
+          Yedekleme
         </button>
 
       </div>
@@ -1097,6 +1168,56 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {activeTab === 'backup' && (
+          <div className="space-y-6">
+             <div className="bg-slate-900/30 p-6 rounded-lg border border-slate-700 max-w-2xl">
+                <div className="flex items-center mb-4">
+                   <div className="p-2 bg-emerald-500/10 rounded mr-3">
+                      <Database className="w-5 h-5 text-emerald-500" />
+                   </div>
+                   <h3 className="text-lg font-bold text-white">Veri Yedekleme ve Geri Yükleme</h3>
+                </div>
+                
+                <p className="text-slate-400 text-sm mb-6">
+                  Sistemdeki tüm verileri (firmalar, tetkikler, kurumlar, kasa hareketleri vb.) JSON formatında bilgisayarınıza indirebilir veya daha önce aldığınız bir yedeği sisteme geri yükleyebilirsiniz.
+                </p>
+
+                <div className="flex flex-col sm:flex-row gap-4 mt-6">
+                    <button 
+                        onClick={handleDownloadBackup}
+                        className="flex items-center justify-center space-x-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white px-5 py-3 rounded-lg text-sm font-bold transition-colors shadow-lg"
+                    >
+                        <Download className="w-4 h-4" />
+                        <span>Tüm Verileri Yedekle (İndir)</span>
+                    </button>
+                    
+                    <label className="flex items-center justify-center space-x-2 bg-orange-600 hover:bg-orange-500 border border-orange-500/50 text-white px-5 py-3 rounded-lg text-sm font-bold transition-colors shadow-lg shadow-orange-900/20 cursor-pointer">
+                        <Upload className="w-4 h-4" />
+                        <span>Yedeği Geri Yükle</span>
+                        <input 
+                            type="file" 
+                            accept=".json" 
+                            className="hidden" 
+                            ref={backupInputRef}
+                            onChange={handleRestoreBackup}
+                        />
+                    </label>
+                </div>
+
+                <div className="mt-8 p-4 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start space-x-3">
+                    <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                    <div>
+                        <h4 className="text-sm font-bold text-red-400">Uyarı</h4>
+                        <p className="text-xs text-red-300 mt-1 leading-relaxed">
+                            Yedeği geri yüklediğinizde <strong>mevcut sistemdeki tüm veriler silinir</strong> ve yerine yedek dosyasındaki veriler yazılır. Bu işlem geri alınamaz. İşlem tamamlandıktan sonra sistem otomatik olarak yeniden başlatılacaktır.<br/>
+                            <em>Not: Şifreniz yedek dosyasından etkilenmez.</em>
+                        </p>
+                    </div>
+                </div>
+             </div>
           </div>
         )}
       </div>
