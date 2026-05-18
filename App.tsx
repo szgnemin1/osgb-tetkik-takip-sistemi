@@ -84,11 +84,13 @@ const App: React.FC = () => {
   }, [printingReferral]);
 
   const filteredReferrals = useMemo(() => {
-    return referrals.filter(r => 
-      r.employee.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      r.employee.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      r.employee.tcNo.includes(searchTerm)
-    );
+    return referrals
+      .filter(r => 
+        r?.employee?.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        r?.employee?.company?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        r?.employee?.tcNo?.includes(searchTerm)
+      )
+      .sort((a, b) => new Date(b.referralDate).getTime() - new Date(a.referralDate).getTime());
   }, [referrals, searchTerm]);
 
   const stats = useMemo(() => {
