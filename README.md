@@ -1,7 +1,3 @@
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-
-
-
 # OSGB Tetkik Takip Sistemi
 
 **OSGB Pro**, Ortak Sağlık Güvenlik Birimleri (OSGB) için geliştirilmiş modern, hızlı ve kapsamlı bir web tabanlı takip uygulamasıdır. İşe giriş muayeneleri, periyodik tetkikler, sevk yönetimi ve finansal takibi tek bir platformda birleştirir.
@@ -82,6 +78,17 @@ pm2 save
 *   **Uygulamayı durdurmak için:** `pm2 stop osgb-sistemi`
 *   **Uygulamayı yeniden başlatmak için:** `pm2 restart osgb-sistemi`
 *   **Mevcut PM2 süreçlerini listelemek için:** `pm2 list`
+
+## 🌐 YunoHost & Subpath Kurulumu (yonetim.cankayaosgb.tr/tetkik)
+
+Eğer uygulamanızı YunoHost üzerinde "Custom Webapp" seçeneğiyle ve `/tetkik` gibi bir alt dizinde (subpath) yayınlamak istiyorsanız, sistemdeki **gerekli tüm altyapı güncellemeleri** yapılmıştır.
+
+Sistemi YunoHost ile `yonetim.cankayaosgb.tr/tetkik` adresinde çalıştırmak için:
+
+1. YunoHost Admin panelinden **Custom Webapp** kurun.
+2. Domain olarak `yonetim.cankayaosgb.tr`, yol (path) olarak `/tetkik` seçin.
+3. Uygulamayı sunucu içinde NGINX'in proxy yapacağı bir portta (Örn: `3000`) çalıştırın. NGINX ayarlarında `proxy_pass http://127.0.0.1:3000;` ayarının yapılı olduğundan emin olun.
+4. Yazılım kendi içerisinde `/tetkik` isteklerini ve NGINX stripping (yol silme) kurallarını otomatik tanıyıp api ve arayüz dosyalarını sorunsuz çalıştıracaktır.
 
 ## 🤝 Katkıda Bulunma
 

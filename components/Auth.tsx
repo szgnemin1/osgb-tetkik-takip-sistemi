@@ -25,7 +25,8 @@ export const Auth: React.FC<AuthProps> = ({ onAuthenticated }) => {
     setLoading(true);
     
     try {
-      const res = await fetch('/api/auth/login', {
+      const baseUrl = import.meta.env.BASE_URL || '/';
+      const res = await fetch(`${baseUrl}api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password })

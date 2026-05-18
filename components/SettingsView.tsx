@@ -107,7 +107,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const handleDownloadBackup = async () => {
     try {
       const { getApiToken } = await import('../services/useServerData');
-      const res = await fetch('/api/data', {
+      const baseUrl = import.meta.env.BASE_URL || '/';
+      const res = await fetch(`${baseUrl}api/data`, {
         headers: {
           'Authorization': `Bearer ${getApiToken()}`
         }
@@ -144,7 +145,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         const backupData = JSON.parse(jsonStr);
         
         const { getApiToken } = await import('../services/useServerData');
-        const res = await fetch('/api/backup/restore', {
+        const baseUrl = import.meta.env.BASE_URL || '/';
+        const res = await fetch(`${baseUrl}api/backup/restore`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -175,7 +177,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     
     try {
       const { getApiToken, setApiToken } = await import('../services/useServerData');
-      const res = await fetch('/api/auth/change-password', {
+      const baseUrl = import.meta.env.BASE_URL || '/';
+      const res = await fetch(`${baseUrl}api/auth/change-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

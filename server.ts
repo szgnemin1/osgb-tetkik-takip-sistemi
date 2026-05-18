@@ -85,6 +85,17 @@ async function startServer() {
   const app = express();
   const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
+  // Rewrite for subpath deployments (e.g. YunoHost)
+  // This allows the app to respond correctly whether Nginx strips the path or not.
+  app.use((req, res, next) => {
+    if (req.url.startsWith('/tetkik/')) {
+      req.url = req.url.replace('/tetkik/', '/');
+    } else if (req.url === '/tetkik') {
+      req.url = '/';
+    }
+    next();
+  });
+
   // Generic Security Headers
   app.use(helmet({
     contentSecurityPolicy: false, // Disabled for Vite development convenience

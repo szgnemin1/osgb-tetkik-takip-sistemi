@@ -38,7 +38,10 @@ const fetchWithToken = async (url: string, options: RequestInit = {}) => {
     headers['Authorization'] = `Bearer ${API_TOKEN}`;
   }
 
-  const res = await fetch(url, { ...options, headers });
+  const baseUrl = import.meta.env.BASE_URL || '/';
+  const finalUrl = url.startsWith('/') ? `${baseUrl}${url.slice(1)}` : url;
+
+  const res = await fetch(finalUrl, { ...options, headers });
   if (!res.ok) {
     if (res.status === 401) {
       throw new Error('Unauthorized');
