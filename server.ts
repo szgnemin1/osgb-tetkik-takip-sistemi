@@ -101,7 +101,8 @@ async function startServer() {
     contentSecurityPolicy: false, // Disabled for Vite development convenience
   }));
   app.use(cors());
-  app.use(express.json({ limit: "10mb" })); // Prevent large payload attacks
+  app.use(express.json({ limit: "50mb" })); // Prevent large payload attacks
+  app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
   // Rate Limiting for Login (Brute Force Protection)
   const loginLimiter = rateLimit({

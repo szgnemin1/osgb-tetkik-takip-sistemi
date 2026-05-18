@@ -140,6 +140,9 @@ location /tetkik/ {
     proxy_set_header Host $host;
     proxy_cache_bypass $http_upgrade;
     
+    # Yedek geri yükleme gibi büyük JSON dosyaları için limit arttırımı
+    client_max_body_size 50M;
+    
     # YunoHost'un koyduğu include satırlarına dokunmanıza gerek yok (SSO ayarları vs. kalabilir)
 }
 ```
