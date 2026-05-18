@@ -16,6 +16,7 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    allowedHosts: true,
   },
   build: {
     // Electron (Chromium) için hedef belirleme. 

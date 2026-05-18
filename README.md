@@ -79,16 +79,92 @@ pm2 save
 *   **Uygulamayı yeniden başlatmak için:** `pm2 restart osgb-sistemi`
 *   **Mevcut PM2 süreçlerini listelemek için:** `pm2 list`
 
-## 🌐 YunoHost & Subpath Kurulumu (yonetim.cankayaosgb.tr/tetkik)
+## 🌐 YunoHost Üzerinde Kurulum (yonetim.cankayaosgb.tr/tetkik)
 
-Eğer uygulamanızı YunoHost üzerinde "Custom Webapp" seçeneğiyle ve `/tetkik` gibi bir alt dizinde (subpath) yayınlamak istiyorsanız, sistemdeki **gerekli tüm altyapı güncellemeleri** yapılmıştır.
+Uygulamayı YunoHost'ta bir "Custom Webapp" (Özel Web Uygulaması) olarak kurmak için aşağıdaki adımları sunucunuzun SSH terminalinde (root veya admin kullanıcısı ile) uygulayın:
 
-Sistemi YunoHost ile `yonetim.cankayaosgb.tr/tetkik` adresinde çalıştırmak için:
+### 1. Custom Webapp Kurulumu
+YunoHost admin panelinden veya komut satırından yeni bir Custom Webapp oluşturun.
+- **Domain:** `yonetim.cankayaosgb.tr`
+- **URL Path:** `/tetkik`
+- Sizin için YunoHost bir dizin oluşturacaktır (Örn: `/var/www/my_webapp__2`)
 
-1. YunoHost Admin panelinden **Custom Webapp** kurun.
-2. Domain olarak `yonetim.cankayaosgb.tr`, yol (path) olarak `/tetkik` seçin.
-3. Uygulamayı sunucu içinde NGINX'in proxy yapacağı bir portta (Örn: `3000`) çalıştırın. NGINX ayarlarında `proxy_pass http://127.0.0.1:3000;` ayarının yapılı olduğundan emin olun.
-4. Yazılım kendi içerisinde `/tetkik` isteklerini ve NGINX stripping (yol silme) kurallarını otomatik tanıyıp api ve arayüz dosyalarını sorunsuz çalıştıracaktır.
+### 2. Dosyaları Sunucuya Çekme ve Derleme
+SSH üzerinden sunucuya bağlanın ve Custom Webapp'in kurulu olduğu dizine gidin (Örnekteki dizin adını kendi dizininize göre değiştirin):
+
+```bash
+# Uygulama dizinine gidin
+cd /var/www/my_webapp
+
+# İçindeki varsayılan dosyaları silin (YunoHost'un koyduğu örnek index dosyasını temizler)
+rm -rf * 
+
+# Github'dan projeyi indirin (Sonundaki nokta '.' projeyi mevcut klasörün içine çıkarmak içindir)
+git clone https://github.com/szgnemin1/osgb-tetkik-takip-sistemi.git .
+
+# Bağımlılıkları yükleyin
+npm install
+
+# Projeyi derleyin
+npm run build
+```
+
+### 3. Uygulamayı 7/24 Çalıştırma (PM2)
+```bash
+# PM2 sistemi yüklü değilse genel olarak yükleyin
+npm install -g pm2
+
+# Uygulamayı başlatın (Varsayılan olarak 3000 portunda çalışır)
+pm2 start npm --name "osgb-tetkik" -- start
+
+# Yeniden başlatmalarda otomatik açılması için kaydedin
+pm2 save
+pm2 startup
+```
+
+### 4. NGINX Ayarları
+YunoHost NGINX ayar dosyasını düzenleyip trafiği web uygulamanıza (Port 3000) yönlendirmeniz gerekir. Ayar dosyasını açın (Ayar dosyasının adı uygulamanıza göre değişebilir, klasörün içine `ls` ile bakarak doğrusunu bulabilirsiniz):
+
+```bash
+nano /etc/nginx/conf.d/yonetim.cankayaosgb.tr.d/my_webapp.conf
+```
+
+Dosya içindeki `location /tetkik/` (veya `location /tetkik`) ile başlayan bloğu bulun ve içini proxy yapacak şekilde şu şekilde düzenleyin:
+
+```nginx
+location /tetkik/ {
+    proxy_pass http://127.0.0.1:3000;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection 'upgrade';
+    proxy_set_header Host $host;
+    proxy_cache_bypass $http_upgrade;
+    
+    # YunoHost'un koyduğu include satırlarına dokunmanıza gerek yok (SSO ayarları vs. kalabilir)
+}
+```
+Ayarları kaydedip çıkın (`CTRL+X`, `Y`, `Enter`) ve Nginx'i yeniden başlatın:
+```bash
+systemctl restart nginx
+```
+
+## 🔄 Sistemi Güncellemek
+
+GitHub'a projenin yeni hali yüklendiğinde, güncellemeyi canlı sunucunuza (YunoHost) entegre etmek için SSH üzerinden uygulama dizinine (Örn: `/var/www/my_webapp`) girerek sırasıyla şu 4 komutu çalıştırmanız yeterlidir:
+
+```bash
+# 1. En güncel kodları Github'dan çekin
+git pull origin main
+
+# 2. Yeni eklenen bir kütüphane varsa yüklenmesini sağlayın
+npm install
+
+# 3. Kodu yayına hazır hale getirmek için derleyin
+npm run build
+
+# 4. Arka planda çalışan uygulamayı yeniden başlatın
+pm2 restart osgb-tetkik
+```
 
 ## 🤝 Katkıda Bulunma
 
