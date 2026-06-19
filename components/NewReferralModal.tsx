@@ -46,9 +46,17 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'POS' | 'INVOICE'>('INVOICE');
   const [pendingRemoveExam, setPendingRemoveExam] = useState<string | null>(null);
 
+  // Keep track of which referral is currently initialized in state to prevent overwriting user typing when background updates happen
+  const hasInitializedIdRef = useRef<string | null>(null);
+
   // Edit Mode Initialization
   useEffect(() => {
     if (initialData) {
+        if (hasInitializedIdRef.current === initialData.id) {
+            return; // Already initialized this referral, do not overwrite user modifications
+        }
+        hasInitializedIdRef.current = initialData.id;
+
         // Personel Bilgileri
         setFullName(initialData.employee.fullName);
         setTcNo(initialData.employee.tcNo);
@@ -69,6 +77,8 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
         setSelectedInstitutionId(initialData.targetInstitutionId || '');
         setNotes(initialData.notes || '');
         setPaymentMethod(initialData.paymentMethod);
+    } else {
+        hasInitializedIdRef.current = null;
     }
   }, [initialData, companies]);
 
