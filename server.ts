@@ -188,6 +188,72 @@ async function startServer() {
     }
   });
 
+  // App Software Update endpoint from Git + Build
+  app.post("/api/app/update", authMiddleware, async (req, res) => {
+    const { exec } = await import("child_process");
+
+    const executeCommand = (cmd: string): Promise<{ success: boolean, stdout: string, stderr: string }> => {
+      return new Promise((resolve) => {
+        exec(cmd, (error, stdout, stderr) => {
+          if (error) {
+            resolve({ success: false, stdout, stderr: stderr || error.message });
+          } else {
+            resolve({ success: true, stdout, stderr });
+          }
+        });
+      });
+    };
+
+    try {
+      console.log("[Web Update] Application update triggered via admin web UI.");
+      
+      // 1. Git pull
+      console.log("[Web Update] Running git pull...");
+      const gitRes = await executeCommand("git pull");
+      if (!gitRes.success) {
+        return res.status(500).json({ 
+          error: "Git (Geri Çekme) başarısız oldu. Lütfen internet bağlantınızı veya yerel dosya çakışmalarını kontrol edin.", 
+          details: gitRes.stderr || gitRes.stdout
+        });
+      }
+      
+      // 2. npm install
+      console.log("[Web Update] Running npm install...");
+      const npmRes = await executeCommand("npm install");
+      if (!npmRes.success) {
+        return res.status(500).json({ 
+          error: "Bağımlılıklar (npm install) yüklenirken hata oluştu.", 
+          details: npmRes.stderr || npmRes.stdout
+        });
+      }
+      
+      // 3. npm run build
+      console.log("[Web Update] Running npm run build...");
+      const buildRes = await executeCommand("npm run build");
+      if (!buildRes.success) {
+        return res.status(500).json({ 
+          error: "Uygulama derlenirken (npm run build) hata oluştu.", 
+          details: buildRes.stderr || buildRes.stdout
+        });
+      }
+      
+      console.log("[Web Update] Application successfully built! Scheduling restart...");
+      res.json({ 
+        success: true, 
+        message: "Güncelleme başarıyla tamamlandı! Sunucu yeni sürümle yeniden başlatılıyor..." 
+      });
+      
+      // Standalone exit to trigger service manager auto-restart with updated build
+      setTimeout(() => {
+        console.log("[Web Update] Exiting process with exit code 0 to trigger automatic daemon restart...");
+        process.exit(0);
+      }, 1500);
+
+    } catch (err: any) {
+      res.status(500).json({ error: "Güncelleme sırasında beklenmeyen bir hata oluştu.", details: err.message });
+    }
+  });
+
   // Data endpoints
   app.get("/api/data", authMiddleware, (req, res) => {
     res.json(readData());

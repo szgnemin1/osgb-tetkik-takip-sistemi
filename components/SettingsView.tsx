@@ -45,7 +45,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   settings,
   onUpdateSettings
 }) => {
-  const [activeTab, setActiveTab] = useState<'general' | 'companies' | 'exams' | 'institutions' | 'backup'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'companies' | 'exams' | 'institutions' | 'backup' | 'update'>('general');
+
+  // Software update state
+  const [updateStatus, setUpdateStatus] = useState<'idle' | 'updating' | 'success' | 'error'>('idle');
+  const [updateError, setUpdateError] = useState('');
+  const [updateDetails, setUpdateDetails] = useState('');
 
   // General Settings State
   const [ekgAgeLimit, setEkgAgeLimit] = useState(settings.ekgLimitAge);
@@ -198,6 +203,51 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       }
     } catch (err) {
       setPwdError('Bir hata oluştu');
+    }
+  };
+
+  const handleTriggerUpdate = async () => {
+    if (!window.confirm("Yazılım sürümünü web üzerinden güncellemek istediğinize emin misiniz? Güncelleme işlemi sırasında Git deposundaki en son kodlar çekilecek, paketler kurulacak ve sistem otomatik olarak yeniden derlenecektir. Bu işlem yaklaşık 30-40 saniye sürebilir.")) {
+      return;
+    }
+
+    setUpdateStatus('updating');
+    setUpdateError('');
+    setUpdateDetails('');
+
+    try {
+      const { getApiToken } = await import('../services/useServerData');
+      const baseUrl = import.meta.env.BASE_URL || '/';
+      const res = await fetch(`${baseUrl}api/app/update`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getApiToken()}`
+        }
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setUpdateStatus('error');
+        setUpdateError(data.error || 'Güncelleme hatası oluştu.');
+        setUpdateDetails(data.details || '');
+      } else {
+        setUpdateStatus('success');
+        
+        let countdown = 10;
+        const interval = setInterval(() => {
+           countdown--;
+           if (countdown <= 0) {
+             clearInterval(interval);
+             window.location.reload();
+           }
+        }, 1000);
+      }
+    } catch (err: any) {
+      setUpdateStatus('error');
+      setUpdateError('Sunucu bağlantı hatası veya zaman aşımı yaşandı.');
+      setUpdateDetails(err.message || '');
     }
   };
 
@@ -575,12 +625,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const handleUpdateExamField = (id: string, field: keyof ExamDefinition, value: string) => {
     const exam = exams.find(e => e.id === id);
-    if (exam) {
+    if (exam && value.trim()) {
       const updated = { ...exam };
       if (field === 'price') updated.price = parseFloat(value);
       if (field === 'cost') updated.cost = parseFloat(value);
       if (field === 'code') updated.code = value;
-      // Name update could be added here if needed
+      if (field === 'name') updated.name = value.trim();
       onUpdateExam(updated);
     }
   };
@@ -617,6 +667,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           className={`px-6 py-4 text-center font-medium text-sm transition-colors whitespace-nowrap ${activeTab === 'backup' ? 'bg-slate-900/50 text-blue-400 border-b-2 border-blue-500' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
         >
           Yedekleme
+        </button>
+        <button
+          onClick={() => setActiveTab('update')}
+          className={`px-6 py-4 text-center font-medium text-sm transition-colors whitespace-nowrap ${activeTab === 'update' ? 'bg-slate-900/50 text-blue-400 border-b-2 border-blue-500' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
+        >
+          Yazılım Güncelleme
         </button>
 
       </div>
@@ -1120,7 +1176,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         )}
 
         {activeTab === 'exams' && (
-          <div className="space-y-8">
+          <div className="space-y-6">
+             <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 text-xs text-blue-300 leading-relaxed flex items-start gap-2.5">
+                <Sliders className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+                <div>
+                   <strong>İpucu:</strong> Tetkiklerin adını, kodunu, satış fiyatını veya maliyetini doğrudan altısıra listesindeki kutulara tıklayarak güncelleyebilirsiniz. Yapılan değişiklikler otomatik kaydedilecektir. Tetkik ismi güncellendiğinde, o tetkiki varsayılan olarak kullanan firmalar ile geçmiş sevk kayıtlarındaki tetkik isimleri de veri bütünlüğünü korumak için otomatik olarak güncellenecektir.
+                </div>
+             </div>
+
             {/* Add Exam Form */}
             <form onSubmit={handleAddExam} className="bg-slate-900/30 p-4 rounded-lg border border-slate-700 space-y-4">
               <h4 className="text-sm font-bold text-white flex items-center">
@@ -1145,9 +1208,21 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     <div className="px-2 py-1 bg-slate-800 rounded border border-slate-600 text-xs text-blue-400 font-mono">
                        {exam.code}
                     </div>
-                    <div>
-                       <span className="font-medium text-white text-sm block">{exam.name}</span>
-                       <span className="text-[10px] text-slate-500 block">Maliyet: {exam.cost ? `₺${exam.cost}` : '-'}</span>
+                    <div className="flex-1 min-w-0">
+                       <input 
+                           type="text" 
+                           defaultValue={exam.name} 
+                           onBlur={(e) => handleUpdateExamField(exam.id, 'name', e.target.value)}
+                           onKeyDown={(e) => {
+                             if (e.key === 'Enter') {
+                               handleUpdateExamField(exam.id, 'name', (e.target as HTMLInputElement).value);
+                               (e.target as HTMLInputElement).blur();
+                             }
+                           }}
+                           title="Tetkik adını değiştirmek için buraya tıklayıp yazabilirsiniz"
+                           className="bg-transparent border-b border-transparent hover:border-slate-500 hover:bg-slate-800/40 focus:border-blue-500 focus:bg-slate-800 text-sm font-medium text-white px-1.5 py-0.5 rounded outline-none w-full transition-all"
+                       />
+                       <span className="text-[10px] text-slate-500 block pl-1.5">Maliyet: {exam.cost ? `₺${exam.cost}` : '-'}</span>
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
@@ -1228,6 +1303,96 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         </p>
                     </div>
                 </div>
+             </div>
+          </div>
+        )}
+
+        {activeTab === 'update' && (
+          <div className="space-y-6">
+             <div className="bg-slate-900/30 p-6 rounded-lg border border-slate-700 max-w-2xl">
+                <div className="flex items-center mb-4">
+                   <div className="p-2 bg-blue-500/10 rounded mr-3">
+                      <RefreshCw className={`w-5 h-5 text-blue-500 ${updateStatus === 'updating' ? 'animate-spin' : ''}`} />
+                   </div>
+                   <h3 className="text-lg font-bold text-white">Yazılım Sürüm Güncelleme</h3>
+                </div>
+                
+                <p className="text-slate-400 text-sm mb-6 leading-relaxed">
+                  Sunucuda kurulu olan <strong>OSGB Tetkik Sevk Takip Sistemi</strong> yazılımını doğrudan GitHub veya kurulduğu repo üzerinden en son sürüme güvenli bir şekilde güncelleyebilirsiniz. Bu işlem terminale bağlanıp manual git/build komutları çalıştırma zorunluluğunu ortadan kaldırır.
+                </p>
+
+                {updateStatus === 'idle' && (
+                  <div className="bg-slate-800 p-4 border border-slate-700 rounded-lg mb-6">
+                    <h5 className="font-bold text-white text-xs mb-2 uppercase tracking-wide">Yürütülecek İşlemler Sırasıyla:</h5>
+                    <ul className="text-xs text-slate-300 space-y-2 list-decimal list-inside pl-1">
+                      <li>Uzak Git deposundan (git pull) en son kaynak kodlar çekilir.</li>
+                      <li>Bağımlılıklar (npm install) kontrol edilir ve güncellenir.</li>
+                      <li>Proje üretim modunda (npm run build) sıfırdan yeniden derlenir.</li>
+                      <li>Mevcut sunucu yeni kararlı dosyalarla otomatik yeniden başlatılır.</li>
+                    </ul>
+                  </div>
+                )}
+
+                {updateStatus === 'updating' && (
+                  <div className="bg-slate-900/50 p-6 border border-blue-500/30 rounded-lg mb-6 space-y-4">
+                     <div className="flex items-center space-x-3 text-blue-400">
+                        <RefreshCw className="w-5 h-5 animate-spin" />
+                        <span className="text-sm font-semibold">Güncelleme yürütülüyor, lütfen bekleyiniz...</span>
+                     </div>
+                     <p className="text-xs text-slate-400">
+                       Bu işlem internet hızına ve sunucu kaynaklarına bağlı olarak 15-45 saniye sürebilir. Lütfen sayfayı kapatmayın veya yenilemeyin.
+                     </p>
+                     <div className="h-1 w-full bg-slate-800 overflow-hidden rounded relative">
+                        <div className="h-full bg-blue-500 animate-pulse w-3/4 duration-1000 rounded"></div>
+                     </div>
+                  </div>
+                )}
+
+                {updateStatus === 'success' && (
+                  <div className="bg-emerald-500/10 p-6 border border-emerald-500/30 rounded-lg mb-6 space-y-3">
+                     <div className="flex items-center space-x-3 text-emerald-400">
+                        <Check className="w-5 h-5 text-emerald-400 bg-emerald-500/20 rounded p-0.5" />
+                        <span className="text-sm font-bold">Harika! Yazılım Başarıyla Güncellendi.</span>
+                     </div>
+                     <p className="text-xs text-emerald-300 leading-relaxed">
+                       Tüm güncellemeler başarıyla sunucuya kuruldu, yeni build başarıyla oluşturuldu ve sunucu servis arka planında yeniden başlatıldı. Tarayıcınız birkaç saniye içinde otomatik olarak taze sayfayı yükleyecektir...
+                     </p>
+                  </div>
+                )}
+
+                {updateStatus === 'error' && (
+                  <div className="bg-red-500/10 p-6 border border-red-500/30 rounded-lg mb-6 space-y-3">
+                     <div className="flex items-center space-x-3 text-red-400">
+                        <AlertTriangle className="w-5 h-5 text-red-400 bg-red-500/20 rounded p-0.5" />
+                        <span className="text-sm font-bold">Güncelleme Sırasında Hata Oluştu!</span>
+                     </div>
+                     <p className="text-xs text-red-300 font-medium">
+                       Hata Mesajı: {updateError}
+                     </p>
+                     {updateDetails && (
+                       <pre className="text-[10px] p-3 bg-black/40 border border-red-500/10 rounded text-red-400 font-mono max-h-40 overflow-auto whitespace-pre-wrap leading-relaxed">
+                         {updateDetails}
+                       </pre>
+                     )}
+                     <div className="pt-2">
+                        <p className="text-[11px] text-slate-400">
+                          Not: Eğer yerel değişiklikler yaptıysanız git pull çakışma yapmış olabilir veya sunucu ağ bağlantısında bir problem oluşmuş olabilir.
+                        </p>
+                     </div>
+                  </div>
+                )}
+
+                {updateStatus !== 'updating' && updateStatus !== 'success' && (
+                  <div className="flex justify-start">
+                     <button 
+                         onClick={handleTriggerUpdate}
+                         className="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-3 rounded-lg text-sm font-bold transition-all shadow-lg shadow-blue-900/20 active:scale-95"
+                     >
+                         <RefreshCw className="w-4 h-4" />
+                         <span>Sürümü Resmi Repodan Şimdi Güncelle</span>
+                     </button>
+                  </div>
+                )}
              </div>
           </div>
         )}

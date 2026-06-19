@@ -209,7 +209,35 @@ const App: React.FC = () => {
   };
   
   const handleAddExam = async (e: ExamDefinition) => { await saveExamToDb(e); await reloadData(); };
-  const handleUpdateExam = async (updated: ExamDefinition) => { await saveExamToDb(updated); await reloadData(); };
+  const handleUpdateExam = async (updated: ExamDefinition) => {
+    try {
+      const oldExam = exams.find(ex => ex.id === updated.id);
+      if (oldExam && oldExam.name !== updated.name) {
+        const oldName = oldExam.name;
+        const newName = updated.name;
+        
+        // Propagate to companies defaultExams list
+        for (const comp of companies) {
+          if (comp.defaultExams.includes(oldName)) {
+            const updatedDefaultExams = comp.defaultExams.map(n => n === oldName ? newName : n);
+            await saveCompanyToDb({ ...comp, defaultExams: updatedDefaultExams });
+          }
+        }
+        
+        // Propagate to referrals exams list
+        for (const ref of referrals) {
+          if (ref.exams && ref.exams.includes(oldName)) {
+            const updatedExams = ref.exams.map(n => n === oldName ? newName : n);
+            await saveReferralToDb({ ...ref, exams: updatedExams });
+          }
+        }
+      }
+      await saveExamToDb(updated);
+      await reloadData();
+    } catch (err) {
+      console.error("Exam update and propagation error:", err);
+    }
+  };
   const handleDeleteExam = async (id: string) => { await deleteExamFromDb(id); await reloadData(); };
 
   const handleAddInstitution = async (i: MedicalInstitution) => { await saveInstitutionToDb(i); await reloadData(); };
