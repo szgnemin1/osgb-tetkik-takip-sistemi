@@ -263,14 +263,6 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
 
   // Run the batch import
   const handleStartImport = async () => {
-    if (!selectedCompanyId) {
-      alert("Lütfen tüm kayıtların ekleneceği firmayı seçin.");
-      return;
-    }
-    if (!selectedInstitutionId) {
-      alert("Lütfen sevk edilecek kurumu seçin.");
-      return;
-    }
     if (parsedRows.length === 0) {
       alert("Lütfen önce sevk bilgilerini yapıştırın ve eşleştirin.");
       return;
@@ -291,13 +283,13 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
     setIsSuccess(false);
 
     try {
-      const company = companies.find(c => c.id === selectedCompanyId)!;
+      const company = companies.find(c => c.id === selectedCompanyId);
 
       for (let i = 0; i < validRows.length; i++) {
         const row = validRows[i];
 
         // Tetkik bulunamadıysa firmanın varsayılan tetkiklerini aktaralım
-        const finalExams = row.matchedExamNames.length > 0 ? row.matchedExamNames : company.defaultExams;
+        const finalExams = row.matchedExamNames.length > 0 ? row.matchedExamNames : (company && company.defaultExams ? company.defaultExams : []);
         
         let customPrice = row.totalPrice;
         let customCost = row.totalCost;
@@ -322,18 +314,18 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
             id: employeeId,
             fullName: row.name,
             tcNo: row.tcNo,
-            company: company.name
+            company: company ? company.name : 'Bireysel / Belirtilmemiş'
           },
           exams: finalExams,
           status: defaultStatus,
           referralDate: row.parsedDate,
           notes: row.rawExams ? `Toplu Ekleme ile Eklendi (Kullanıcı metni: ${row.rawExams})` : 'Toplu Ekleme ile Eklendi',
-          doctorName: company.assignedDoctor,
-          specialistName: company.assignedSpecialist,
+          doctorName: company ? company.assignedDoctor : '',
+          specialistName: company ? company.assignedSpecialist : '',
           totalPrice: customPrice,
           totalCost: customCost,
           paymentMethod: paymentMethod,
-          targetInstitutionId: selectedInstitutionId
+          targetInstitutionId: selectedInstitutionId || (institutions.length > 0 ? institutions[0].id : '')
         };
 
         // 1. Save Referral
@@ -346,7 +338,7 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
             id: Math.random().toString(36).substr(2, 9),
             type: 'INCOME',
             amount: customPrice,
-            description: `Sevk Geliri (${typeLabel} - Toplu Giriş): ${row.name} (${company.name})`,
+            description: `Sevk Geliri (${typeLabel} - Toplu Giriş): ${row.name} (${company ? company.name : 'Bireysel / Belirtilmemiş'})`,
             date: row.parsedDate,
             paymentMethod: paymentMethod,
             referralId: referralId
@@ -429,16 +421,15 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
              <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5 flex items-center gap-1">
                    <Building className="w-3.5 h-3.5 text-blue-400" />
-                   Firma seçin *
+                   Firma seçin (Opsiyonel)
                 </label>
                 <select
                   disabled={isProcessing}
-                  required
                   value={selectedCompanyId}
                   onChange={(e) => handleCompanyChange(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-blue-500 text-sm outline-none cursor-pointer"
                 >
-                  <option value="">-- Firma Seçin --</option>
+                  <option value="">-- Firma Seçmeyin (Bireysel Giriş) --</option>
                   {companies.map(c => (
                      <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
@@ -449,7 +440,7 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
              <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5 flex items-center gap-1">
                    <Info className="w-3.5 h-3.5 text-blue-400" />
-                   Sevk Edilecek Kurum *
+                   Sevk Edilecek Kurum (Opsiyonel)
                 </label>
                 <select
                   disabled={isProcessing}
@@ -457,7 +448,7 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
                   onChange={(e) => setSelectedInstitutionId(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-blue-500 text-sm outline-none cursor-pointer"
                 >
-                  <option value="">-- Kurum Seçin --</option>
+                  <option value="">-- İlk Kurumu Otomatik Seç --</option>
                   {institutions.map(inst => (
                      <option key={inst.id} value={inst.id}>{inst.name}</option>
                   ))}
@@ -525,7 +516,7 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
                 </span>
                 {selectedCompany && (
                    <span className="text-[11px] text-slate-400">
-                      Boş tetkikler için atanacak varsayılan paket: <strong>{company.defaultExams.join(', ') || 'Yok'}</strong>
+                      Boş tetkikler için atanacak varsayılan paket: <strong>{(selectedCompany.defaultExams || []).join(', ') || 'Yok'}</strong>
                    </span>
                 )}
               </div>
@@ -633,7 +624,7 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
                 İptal
               </button>
               <button
-                disabled={isProcessing || !selectedCompanyId || !selectedInstitutionId || parsedRows.filter(r => r.isValid).length === 0}
+                disabled={isProcessing || parsedRows.filter(r => r.isValid).length === 0}
                 onClick={handleStartImport}
                 className="flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:hover:bg-emerald-600 text-white px-5 py-2 rounded-lg text-sm font-bold transition-all shadow-lg active:scale-95"
               >
