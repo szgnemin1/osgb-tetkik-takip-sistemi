@@ -27,6 +27,7 @@ import { StatsCards } from './components/StatsCards';
 import { EndOfDayReportModal } from './components/EndOfDayReportModal';
 import { ReferralPrintTemplate } from './components/ReferralPrintTemplate';
 import { Auth } from './components/Auth';
+import { BulkImportModal } from './components/BulkImportModal';
 import { Referral, Status, Company, ExamDefinition, SafeTransaction, MedicalInstitution, AppSettings } from './types';
 import { 
   useServerData,
@@ -71,7 +72,24 @@ const App: React.FC = () => {
   const [editingReferral, setEditingReferral] = useState<Referral | null>(null);
   const [printingReferral, setPrintingReferral] = useState<Referral | null>(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+  const [logoClickCount, setLogoClickCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Secret keyboard shortcut to open bulk import: Ctrl+Shift+B, Alt+Shift+B, or Ctrl+Alt+B
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'b') ||
+        (e.altKey && e.shiftKey && e.key.toLowerCase() === 'b')
+      ) {
+        e.preventDefault();
+        setIsBulkModalOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   useEffect(() => {
     if (printingReferral) {
@@ -302,7 +320,20 @@ const App: React.FC = () => {
 
       <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800 text-white flex flex-col shadow-xl transition-transform duration-300 md:relative md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} print:hidden`}>
         <div className="p-6 flex items-center justify-between border-b border-slate-800">
-          <div className="flex items-center space-x-3">
+          <div 
+            className="flex items-center space-x-3 cursor-pointer select-none"
+            onClick={() => {
+              setLogoClickCount(prev => {
+                const next = prev + 1;
+                if (next >= 5) {
+                  setIsBulkModalOpen(true);
+                  return 0;
+                }
+                return next;
+              });
+            }}
+            title="Sürüm bilgileri ve toplu giriş"
+          >
             {appSettings.companyLogo ? (
                <img src={appSettings.companyLogo} alt="Logo" className="w-10 h-10 object-contain rounded bg-white p-0.5" />
             ) : (
@@ -521,6 +552,19 @@ const App: React.FC = () => {
           settings={appSettings}
           institutions={institutions}
           companies={companies}
+        />
+      )}
+
+      {isBulkModalOpen && (
+        <BulkImportModal
+          isOpen={isBulkModalOpen}
+          onClose={() => setIsBulkModalOpen(false)}
+          companies={companies}
+          exams={exams}
+          institutions={institutions}
+          onImportCompleted={reloadData}
+          saveReferralToDb={saveReferralToDb}
+          saveTransactionToDb={saveTransactionToDb}
         />
       )}
 
