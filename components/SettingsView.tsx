@@ -7,7 +7,7 @@
  * the Free Software Foundation, either version 3 of the License.
  */
 import React, { useState, useRef } from 'react';
-import { Company, ExamDefinition, HazardClass, MedicalInstitution, AppSettings } from '../types';
+import { Company, ExamDefinition, HazardClass, MedicalInstitution, AppSettings, turkishIncludes } from '../types';
 import { Trash2, Plus, Building2, Save, Check, Receipt, Upload, FileDown, MapPin, Sliders, CheckSquare, Square, Image as ImageIcon, Edit2, XCircle, Database, Download, RefreshCw, AlertTriangle, CreditCard, Banknote, Search } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -430,9 +430,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   const filteredCompanies = companies.filter(c => 
-    c.name.toLowerCase().includes(companySearchQuery.toLowerCase()) ||
-    c.assignedDoctor.toLowerCase().includes(companySearchQuery.toLowerCase()) ||
-    c.assignedSpecialist.toLowerCase().includes(companySearchQuery.toLowerCase())
+    turkishIncludes(c.name, companySearchQuery) ||
+    turkishIncludes(c.assignedDoctor, companySearchQuery) ||
+    turkishIncludes(c.assignedSpecialist, companySearchQuery)
   );
 
   // --- Bulk Import / Template Logic (Excel .xlsx) ---

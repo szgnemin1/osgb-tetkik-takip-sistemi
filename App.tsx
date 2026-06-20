@@ -28,7 +28,7 @@ import { EndOfDayReportModal } from './components/EndOfDayReportModal';
 import { ReferralPrintTemplate } from './components/ReferralPrintTemplate';
 import { Auth } from './components/Auth';
 import { BulkImportModal } from './components/BulkImportModal';
-import { Referral, Status, Company, ExamDefinition, SafeTransaction, MedicalInstitution, AppSettings } from './types';
+import { Referral, Status, Company, ExamDefinition, SafeTransaction, MedicalInstitution, AppSettings, turkishIncludes } from './types';
 import { 
   useServerData,
   saveReferralToDb, deleteReferralFromDb,
@@ -104,9 +104,9 @@ const App: React.FC = () => {
   const filteredReferrals = useMemo(() => {
     return referrals
       .filter(r => 
-        r?.employee?.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        r?.employee?.company?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        r?.employee?.tcNo?.includes(searchTerm)
+        turkishIncludes(r?.employee?.fullName, searchTerm) ||
+        turkishIncludes(r?.employee?.company, searchTerm) ||
+        turkishIncludes(r?.employee?.tcNo, searchTerm)
       )
       .sort((a, b) => new Date(b.referralDate).getTime() - new Date(a.referralDate).getTime());
   }, [referrals, searchTerm]);

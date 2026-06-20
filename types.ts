@@ -112,3 +112,28 @@ export interface AppSettings {
   isPasswordEnabled?: boolean; // Şifre koruması aktif mi
   appPassword?: string; // Uygulama giriş şifresi
 }
+
+/**
+ * Converts a string to lowercase with robust Turkish characters support.
+ */
+export const turkishToLowerCase = (str: string | null | undefined): string => {
+  if (!str) return '';
+  return str
+    .replace(/İ/g, 'i')
+    .replace(/I/g, 'ı')
+    .replace(/Ş/g, 'ş')
+    .replace(/Ğ/g, 'ğ')
+    .replace(/Ü/g, 'ü')
+    .replace(/Ö/g, 'ö')
+    .replace(/Ç/g, 'ç')
+    .toLowerCase();
+};
+
+/**
+ * Returns true if the test string contains the query string, under Turkish-friendly lowercase rules.
+ */
+export const turkishIncludes = (str: string | null | undefined, searchStr: string | null | undefined): boolean => {
+  if (str === null || str === undefined) return false;
+  if (!searchStr) return true;
+  return turkishToLowerCase(str).includes(turkishToLowerCase(searchStr));
+};

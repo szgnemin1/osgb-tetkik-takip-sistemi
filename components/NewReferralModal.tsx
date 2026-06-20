@@ -8,7 +8,7 @@
  */
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { ArrowLeft, Building2, User, Stethoscope, ShieldCheck, Receipt, Save, Search, Check, ChevronDown, X, MapPin, AlertCircle, CreditCard, Banknote, Trash2 } from 'lucide-react';
-import { Referral, Status, Company, HazardClass, ExamDefinition, MedicalInstitution, AppSettings } from '../types';
+import { Referral, Status, Company, HazardClass, ExamDefinition, MedicalInstitution, AppSettings, turkishIncludes } from '../types';
 
 interface NewReferralViewProps {
   onClose: () => void;
@@ -132,7 +132,7 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
 
   // Search Filters
   const filteredCompanies = companies.filter(c => 
-    c.name.toLowerCase().includes(companySearchTerm.toLowerCase())
+    turkishIncludes(c.name, companySearchTerm)
   );
 
   // Dropdown Click Outside
@@ -186,28 +186,21 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
       setCompanySearchTerm(company.name);
       setIsCompanyDropdownOpen(false);
       
-      // Load Defaults only if NOT editing (don't overwrite existing selection)
-      if (!initialData) {
-          setSelectedExamIds(company.defaultExams);
-          setPaymentMethod(company.defaultPaymentMethod || 'INVOICE');
-          if (company.forcedInstitutionId) {
-              setSelectedInstitutionId(company.forcedInstitutionId);
-          } else {
-              setSelectedInstitutionId('');
-          }
+      // Load Defaults and prices for the selected company immediately
+      setSelectedExamIds(company.defaultExams || []);
+      setPaymentMethod(company.defaultPaymentMethod || 'INVOICE');
+      if (company.forcedInstitutionId) {
+          setSelectedInstitutionId(company.forcedInstitutionId);
       } else {
-          // Düzenleme modunda firma değişirse sadece ödeme tipini güncelle, tetkikleri koru
-          setPaymentMethod(company.defaultPaymentMethod || 'INVOICE');
+          setSelectedInstitutionId('');
       }
   };
 
   const handleClearCompany = () => {
       setSelectedCompanyData(null);
       setCompanySearchTerm('');
-      if (!initialData) {
-          setSelectedExamIds([]);
-          setSelectedInstitutionId('');
-      }
+      setSelectedExamIds([]);
+      setSelectedInstitutionId('');
   };
 
   const toggleExam = (examName: string) => {
