@@ -111,6 +111,8 @@ export interface AppSettings {
   defaultScannerId?: string; // Varsayılan tarayıcı cihaz ID'si
   isPasswordEnabled?: boolean; // Şifre koruması aktif mi
   appPassword?: string; // Uygulama giriş şifresi
+  webhookUrl?: string; // Webhook sync target URL
+  backupApiKey?: string; // API key for external sync RSS feed
 }
 
 /**

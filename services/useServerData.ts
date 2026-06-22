@@ -60,19 +60,72 @@ export function useServerData(isAuthenticated: boolean) {
   const [appSettings, setAppSettings] = useState<AppSettings>({ ekgLimitAge: 40, autoPrintReferral: true });
   const [loading, setLoading] = useState(true);
 
-  // Function to reload data
+  // Function to reload data with auto-backup & silent restoration safety net
   const loadData = async () => {
     if (!isAuthenticated) return;
     try {
       const data = await fetchWithToken('/api/data');
-      setReferrals(data.referrals || []);
-      setCompanies(data.companies || []);
-      setExams(data.exams || []);
-      setInstitutions(data.institutions || []);
-      setTransactions(data.transactions || []);
-      if (data.appSettings) {
-        setAppSettings(data.appSettings);
+      
+      const serverReferrals = data.referrals || [];
+      const serverCompanies = data.companies || [];
+      const serverExams = data.exams || [];
+      const serverInstitutions = data.institutions || [];
+      const serverTransactions = data.transactions || [];
+      const serverSettings = data.appSettings || { ekgLimitAge: 40, autoPrintReferral: true };
+
+      const hasServerData = serverReferrals.length > 0 || serverCompanies.length > 0 || serverExams.length > 0 || serverInstitutions.length > 0;
+
+      // Evaluate browser's auto backup
+      const localBackupStr = localStorage.getItem('osgb_auto_backup');
+      if (!hasServerData && localBackupStr) {
+        try {
+          const localBackup = JSON.parse(localBackupStr);
+          const hasLocalData = (localBackup.referrals && localBackup.referrals.length > 0) ||
+                               (localBackup.companies && localBackup.companies.length > 0) ||
+                               (localBackup.exams && localBackup.exams.length > 0) ||
+                               (localBackup.institutions && localBackup.institutions.length > 0);
+          
+          if (hasLocalData) {
+            console.log("Sunucu verisi boş/sıfırlanmış tespit edildi, tarayıcı yedeği otomatik yükleniyor...");
+            await fetchWithToken('/api/backup/restore', {
+              method: 'POST',
+              body: JSON.stringify(localBackup)
+            });
+            // Reload fresh from server
+            const freshData = await fetchWithToken('/api/data');
+            setReferrals(freshData.referrals || []);
+            setCompanies(freshData.companies || []);
+            setExams(freshData.exams || []);
+            setInstitutions(freshData.institutions || []);
+            setTransactions(freshData.transactions || []);
+            if (freshData.appSettings) {
+              setAppSettings(freshData.appSettings);
+            }
+            return;
+          }
+        } catch (backupErr) {
+          console.error("Otomatik yedek yükleme sırasında hata oluştu:", backupErr);
+        }
       }
+
+      // Standard load paths
+      setReferrals(serverReferrals);
+      setCompanies(serverCompanies);
+      setExams(serverExams);
+      setInstitutions(serverInstitutions);
+      setTransactions(serverTransactions);
+      setAppSettings(serverSettings);
+
+      // Save local backup whenever server is successfully loaded
+      localStorage.setItem('osgb_auto_backup', JSON.stringify({
+        referrals: serverReferrals,
+        companies: serverCompanies,
+        exams: serverExams,
+        institutions: serverInstitutions,
+        transactions: serverTransactions,
+        appSettings: serverSettings
+      }));
+
     } catch (e) {
       console.error(e);
       // Auto-logout on unauthorized

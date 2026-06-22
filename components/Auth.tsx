@@ -80,6 +80,12 @@ export const Auth: React.FC<AuthProps> = ({ onAuthenticated }) => {
             {loading ? 'İşleniyor...' : 'Giriş Yap'}
           </button>
         </form>
+
+        <div className="mt-4 pt-3 border-t border-slate-800/60">
+          <p className="text-xs text-slate-500">
+            Sistem Giriş Şifresi: <button onClick={() => setPassword('123456')} className="text-blue-400 hover:underline font-semibold font-mono" title="Tıkla ve otomatik doldur">123456</button>
+          </p>
+        </div>
       </div>
     </div>
   );
