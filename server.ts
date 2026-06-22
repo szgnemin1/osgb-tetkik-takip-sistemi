@@ -112,6 +112,83 @@ function triggerWebhookSync(db: any) {
   });
 }
 
+function sendTelegramNotification(message: string, settings: any) {
+  if (!settings?.isTelegramEnabled || !settings?.telegramBotToken || !settings?.telegramChatId) {
+    return;
+  }
+  const token = settings.telegramBotToken;
+  const chatId = settings.telegramChatId;
+  const url = `https://api.telegram.org/bot${token}/sendMessage`;
+
+  fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: chatId,
+      text: message,
+      parse_mode: "HTML"
+    }),
+    signal: AbortSignal.timeout(10000)
+  })
+  .then(res => {
+    if (!res.ok) {
+      console.warn(`[Telegram Sync] Telegram API returned status: ${res.status}`);
+    } else {
+      console.log(`[Telegram Sync] Telegram notification sent successfully!`);
+    }
+  })
+  .catch(err => {
+    console.error("[Telegram Sync] Error sending telegram notification:", err);
+  });
+}
+
+function notifyTelegramReferral(item: any, db: any) {
+  if (!db.appSettings?.isTelegramEnabled || !db.appSettings?.telegramBotToken || !db.appSettings?.telegramChatId) {
+    return;
+  }
+
+  const employeeName = item.employee?.fullName || "Bilinmiyor";
+  const tcNo = item.employee?.tcNo || "Bilinmiyor";
+  const companyName = item.employee?.company || "Bilinmiyor";
+  
+  // Try to find status text
+  let statusText = item.status || "Bekliyor";
+  if (statusText === "PENDING") statusText = "Bekliyor (Gitmedi)";
+  else if (statusText === "AT_HOSPITAL") statusText = "Hastanede / Tetkikte";
+  else if (statusText === "AWAITING_RESULT") statusText = "Sonuç Bekleniyor";
+  else if (statusText === "COMPLETED") statusText = "✅ Tamamlandı";
+  else if (statusText === "CANCELLED") statusText = "❌ İptal Edildi";
+
+  // Resolve exams
+  const examsList = (item.exams || []).map((examId: string) => {
+    const examDef = db.exams?.find((e: any) => e.id === examId);
+    return examDef ? `• ${examDef.name} (${examDef.code || ''})` : `• ${examId}`;
+  }).join("\n");
+
+  // Format payment method
+  let paymentText = item.paymentMethod || "-";
+  if (paymentText === "CASH") paymentText = "💵 Nakit";
+  else if (paymentText === "POS") paymentText = "💳 POS";
+  else if (paymentText === "INVOICE") paymentText = "💼 Cari / Fatura";
+
+  const date = item.referralDate ? new Date(item.referralDate).toLocaleDateString("tr-TR") : "-";
+  const notes = item.notes ? item.notes : "-";
+  const price = item.totalPrice !== undefined ? `${item.totalPrice} TL` : "-";
+  const cost = item.totalCost !== undefined ? `${item.totalCost} TL` : "-";
+
+  const message = `<b>🔔 TETKİK DURUM GÜNCELLEMESİ</b>\n\n` +
+    `<b>👤 Çalışan:</b> ${employeeName} (TC: ${tcNo})\n` +
+    `<b>🏢 Firma:</b> ${companyName}\n` +
+    `<b>📅 Tarih:</b> ${date}\n` +
+    `<b>📋 Durum:</b> ${statusText}\n` +
+    `<b>💳 Ödeme Tipi:</b> ${paymentText}\n\n` +
+    `<b>🧪 Yapılan Tetkikler:</b>\n${examsList || 'Belirtilmemiş'}\n\n` +
+    `<b>💰 Ücret:</b> ${price} / <b>Maliyet:</b> ${cost}\n` +
+    `<b>📝 Notlar:</b> ${notes}`;
+
+  sendTelegramNotification(message, db.appSettings);
+}
+
 function writeData(data: any, triggerSync: boolean = true) {
   try {
     fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), "utf8");
@@ -245,6 +322,41 @@ async function startServer() {
       clientId: process.env.GOOGLE_CLIENT_ID || process.env.CLIENT_ID || process.env.OAUTH_CLIENT_ID || "49611592469-8lcoj8l3g81h29b8p079e00ep1oohnoo.apps.googleusercontent.com",
       webhookUrl: db.appSettings?.webhookUrl || "",
       backupApiKey: db.appSettings?.backupApiKey || ""
+    });
+  });
+
+  // Test Telegram Bot connection
+  app.post("/api/telegram/test-bot", authMiddleware, (req, res) => {
+    const { token, chatId } = req.body;
+    if (!token || !chatId) {
+      return res.status(400).json({ error: "Token ve Sohbet Kimliği (Chat ID) gereklidir." });
+    }
+
+    const testMessage = `<b>🔔 OSGB Tetkik Takip Sistemi</b>\n\n` +
+      `Telegram bildirim entegrasyonu başarıyla test edildi! 🎉\n` +
+      `Sisteminiz artık tetkik (sevk) hareketlerini buraya raporlayacak.`;
+
+    const url = `https://api.telegram.org/bot${token}/sendMessage`;
+
+    fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: testMessage,
+        parse_mode: "HTML"
+      }),
+      signal: AbortSignal.timeout(10000)
+    })
+    .then(async (tgRes) => {
+      if (!tgRes.ok) {
+        const errText = await tgRes.text();
+        return res.status(400).json({ error: `Telegram Hatası: ${tgRes.status} - ${errText}` });
+      }
+      res.json({ success: true, message: "Test mesajı başarıyla Telegram botunuza gönderildi!" });
+    })
+    .catch(err => {
+      res.status(500).json({ error: `Telegram ile bağlantı kurulamadı: ${err.message}` });
     });
   });
 
@@ -395,6 +507,15 @@ async function startServer() {
         db[collection][idx] = { ...db[collection][idx], ...item };
       } else {
         db[collection].push(item);
+      }
+
+      // If collection is referrals, trigger telegram notification
+      if (collection === 'referrals') {
+        try {
+          notifyTelegramReferral(item, db);
+        } catch (tgErr) {
+          console.error("Failed to send telegram notification:", tgErr);
+        }
       }
     } else if (action === 'delete') {
       db[collection] = db[collection].filter((x: any) => x.id !== item.id);

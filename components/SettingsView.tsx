@@ -8,7 +8,7 @@
  */
 import React, { useState, useRef, useEffect } from 'react';
 import { Company, ExamDefinition, HazardClass, MedicalInstitution, AppSettings, turkishIncludes } from '../types';
-import { Trash2, Plus, Building2, Save, Check, Receipt, Upload, FileDown, MapPin, Sliders, CheckSquare, Square, Image as ImageIcon, Edit2, XCircle, Database, Download, RefreshCw, AlertTriangle, CreditCard, Banknote, Search, Cloud, Globe, Lock, ShieldCheck, Activity, Link, Eye, Copy } from 'lucide-react';
+import { Trash2, Plus, Building2, Save, Check, Receipt, Upload, FileDown, MapPin, Sliders, CheckSquare, Square, Image as ImageIcon, Edit2, XCircle, Database, Download, RefreshCw, AlertTriangle, CreditCard, Banknote, Search, Cloud, Globe, Lock, ShieldCheck, Activity, Link, Eye, Copy, Send, Bell } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 interface SettingsViewProps {
@@ -61,6 +61,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [isPasswordEnabled, setIsPasswordEnabled] = useState(settings.isPasswordEnabled || false);
   const [appPassword, setAppPassword] = useState(settings.appPassword || '');
 
+  // Telegram Settings State
+  const [telegramBotToken, setTelegramBotToken] = useState(settings.telegramBotToken || '');
+  const [telegramChatId, setTelegramChatId] = useState(settings.telegramChatId || '');
+  const [isTelegramEnabled, setIsTelegramEnabled] = useState(settings.isTelegramEnabled || false);
+  const [telegramTestStatus, setTelegramTestStatus] = useState<{ type: 'idle' | 'loading' | 'success' | 'error'; message: string }>({ type: 'idle', message: '' });
+
   // Company Form State
   const [editingCompanyId, setEditingCompanyId] = useState<string | null>(null);
   const [cName, setCName] = useState('');
@@ -108,200 +114,47 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   // Backup & External Sync State
   const backupInputRef = useRef<HTMLInputElement>(null);
-  const [backupConfig, setBackupConfig] = useState<{ clientId: string; backupApiKey: string; webhookUrl: string }>({ clientId: '', backupApiKey: '', webhookUrl: '' });
-  const [webhookUrlInput, setWebhookUrlInput] = useState('');
-  const [webhookTestStatus, setWebhookTestStatus] = useState<{ type: 'idle' | 'success' | 'error'; message: string }>({ type: 'idle', message: '' });
-  const [googleAccessToken, setGoogleAccessToken] = useState<string | null>(null);
-  const [googleFiles, setGoogleFiles] = useState<any[]>([]);
-  const [googleLoading, setGoogleLoading] = useState(false);
-  const [googleError, setGoogleError] = useState<string | null>(null);
 
-  // Load configuration on mount
-  useEffect(() => {
-    const fetchBackupConfig = async () => {
-      try {
-        const { getApiToken } = await import('../services/useServerData');
-        const baseUrl = import.meta.env.BASE_URL || '/';
-        const res = await fetch(`${baseUrl}api/backup/config`, {
-          headers: { 'Authorization': `Bearer ${getApiToken()}` }
-        });
-        if (res.ok) {
-          const cfg = await res.json();
-          setBackupConfig(cfg);
-          setWebhookUrlInput(cfg.webhookUrl || '');
-        }
-      } catch (err) {
-        console.error("Yedekleme yapılandırması alınamadı:", err);
-      }
-    };
-    
-    fetchBackupConfig();
-    
-    // Dynamically load Google GSI Client Script
-    if (!document.getElementById('google-gsi-client')) {
-      const script = document.createElement('script');
-      script.id = 'google-gsi-client';
-      script.src = 'https://accounts.google.com/gsi/client';
-      script.async = true;
-      script.defer = true;
-      document.body.appendChild(script);
+  const handleSaveTelegramSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await onUpdateSettings({
+        ...settings,
+        telegramBotToken,
+        telegramChatId,
+        isTelegramEnabled
+      });
+      alert("Telegram entegrasyon ayarları başarıyla kaydedildi!");
+    } catch (err: any) {
+      alert("Ayar kaydedilirken bir hata oluştu: " + err.message);
     }
-  }, []);
+  };
 
-  const handleConnectGoogleDrive = () => {
-    setGoogleError(null);
-    if (!backupConfig.clientId) {
-      setGoogleError("Google Drive OAuth İstemci ID'si sisteme eklenmemiş. Lütfen AI Studio veya sunucu ortam ayarlarınızı kontrol edin.");
+  const handleTestTelegramBot = async () => {
+    if (!telegramBotToken || !telegramChatId) {
+      setTelegramTestStatus({ type: 'error', message: 'Lütfen hem Bot Token hem de Chat ID girin.' });
       return;
     }
-    
-    try {
-      // @ts-ignore
-      const client = window.google.accounts.oauth2.initTokenClient({
-        client_id: backupConfig.clientId,
-        scope: 'https://www.googleapis.com/auth/drive.file',
-        callback: (response: any) => {
-          if (response && response.access_token) {
-            setGoogleAccessToken(response.access_token);
-            // Immediately load backups
-            handleListGoogleBackupFiles(response.access_token);
-          } else {
-            setGoogleError("Google kimlik doğrulama işlemi tamamlanamadı.");
-          }
-        },
-        error_callback: (err: any) => {
-          setGoogleError(`GSI Bağlantı Hatası: ${err.message || 'Bilinmeyen Hata'}`);
-        }
-      });
-      client.requestAccessToken({ prompt: 'consent' });
-    } catch (err: any) {
-      setGoogleError(`GSI Yüklenemedi veya Başlatılamadı: ${err.message}`);
-    }
-  };
-
-  const handleDisconnectGoogleDrive = () => {
-    setGoogleAccessToken(null);
-    setGoogleFiles([]);
-    setGoogleError(null);
-  };
-
-  const handleListGoogleBackupFiles = async (token = googleAccessToken) => {
-    if (!token) return;
-    setGoogleLoading(true);
-    setGoogleError(null);
-    try {
-      const response = await fetch(
-        'https://www.googleapis.com/drive/v3/files?q=name contains "osgb_yedek_" and mimeType = "application/json"&orderBy=createdTime desc&fields=files(id, name, createdTime, size)',
-        {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }
-      );
-      if (!response.ok) {
-        throw new Error('Dosyalar listelenemedi.');
-      }
-      const data = await response.json();
-      setGoogleFiles(data.files || []);
-    } catch (err: any) {
-      setGoogleError(`Yedekleri listelerken hata oluştu: ${err.message}`);
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
-
-  const handleUploadBackupToGoogle = async () => {
-    if (!googleAccessToken) return;
-    setGoogleLoading(true);
-    setGoogleError(null);
+    setTelegramTestStatus({ type: 'loading', message: 'Telegram botu test ediliyor, lütfen bekleyin...' });
     try {
       const { getApiToken } = await import('../services/useServerData');
       const baseUrl = import.meta.env.BASE_URL || '/';
-      const res = await fetch(`${baseUrl}api/data`, {
-        headers: { 'Authorization': `Bearer ${getApiToken()}` }
-      });
-      if (!res.ok) throw new Error('Sunucu verisi çekilemedi.');
-      const dbData = await res.json();
-
-      const metadata = {
-        name: `osgb_yedek_${new Date().toISOString().split('T')[0]}_${Date.now()}.json`,
-        mimeType: 'application/json',
-      };
-      
-      const form = new FormData();
-      form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-      form.append('file', new Blob([JSON.stringify(dbData, null, 2)], { type: 'application/json' }));
-      
-      const uploadRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${googleAccessToken}` },
-        body: form,
-      });
-
-      if (!uploadRes.ok) {
-        throw new Error('Yedek Google Drive\'a yüklenemedi.');
-      }
-
-      alert("Mevcut veritabanı başarıyla Google Drive'a yedeklendi!");
-      handleListGoogleBackupFiles();
-    } catch (err: any) {
-      setGoogleError(`Yedek yüklenirken hata oluştu: ${err.message}`);
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
-
-  const handleRestoreFromGoogle = async (fileId: string, fileName: string) => {
-    if (!googleAccessToken) return;
-    
-    if (!window.confirm(`DİKKAT: "${fileName}" isimli yedeği Google Drive'dan geri yüklemek istediğinize emin misiniz? Bu işlem mevcut verileri silecektir.`)) {
-      return;
-    }
-
-    setGoogleLoading(true);
-    setGoogleError(null);
-    try {
-      const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
-        headers: { 'Authorization': `Bearer ${googleAccessToken}` }
-      });
-      
-      if (!response.ok) {
-        throw new Error('Yedek dosyası indirilemedi.');
-      }
-      
-      const backupData = await response.json();
-      
-      const { getApiToken } = await import('../services/useServerData');
-      const baseUrl = import.meta.env.BASE_URL || '/';
-      const resRestore = await fetch(`${baseUrl}api/backup/restore`, {
+      const res = await fetch(`${baseUrl}api/telegram/test-bot`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${getApiToken()}`
         },
-        body: JSON.stringify(backupData)
+        body: JSON.stringify({ token: telegramBotToken, chatId: telegramChatId })
       });
-      
-      if (!resRestore.ok) throw new Error('Sıfır yedek dosyası yükleme başarısız.');
-      
-      alert("Yedek Google Drive'dan başarıyla indirildi ve yüklendi! Sistem yenileniyor...");
-      window.location.reload();
+      const data = await res.json();
+      if (res.ok) {
+        setTelegramTestStatus({ type: 'success', message: data.message || 'Başarılı!' });
+      } else {
+        setTelegramTestStatus({ type: 'error', message: data.error || 'Test başarısız oldu.' });
+      }
     } catch (err: any) {
-      setGoogleError(`Yedek kurtarma başarısız: ${err.message}`);
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
-
-  const handleSaveWebhookSettings = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await onUpdateSettings({
-        ...settings,
-        webhookUrl: webhookUrlInput
-      });
-      setBackupConfig(prev => ({ ...prev, webhookUrl: webhookUrlInput }));
-      alert("Yedekleme webhook ayarları başarıyla kaydedildi!");
-    } catch (err: any) {
-      alert("Ayar kaydedilirken bir hata oluştu: " + err.message);
+      setTelegramTestStatus({ type: 'error', message: `Bağlantı hatası: ${err.message}` });
     }
   };
 
@@ -1525,232 +1378,103 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 </div>
              </div>
 
-             {/* SECTION 2: GOOGLE DRIVE BACKUP */}
+             {/* SECTION 2: TELEGRAM BOT NOTIFICATION INTEGRATION */}
              <div className="bg-slate-900/40 p-6 rounded-lg border border-slate-700">
                 <div className="flex items-center justify-between mb-4">
                    <div className="flex items-center">
-                      <div className="p-2 bg-blue-500/10 rounded mr-3">
-                         <Cloud className="w-5 h-5 text-blue-500" />
+                      <div className="p-2 bg-sky-500/10 rounded mr-3">
+                         <Send className="w-5 h-5 text-sky-400" />
                       </div>
                       <div>
                          <h3 className="text-lg font-bold text-white flex items-center">
-                            Google Drive Bulut Entegrasyonu
-                            <span className="ml-2 text-xs text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full font-normal border border-blue-500/20">Google Workspace</span>
+                            Telegram Bot Bildirim Entegrasyonu
+                            <span className="ml-2 text-xs text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded-full font-normal border border-sky-500/20">Anlık Raporlama</span>
                          </h3>
                       </div>
                    </div>
                    
-                   {googleAccessToken ? (
-                      <div className="flex items-center space-x-2">
-                         <span className="flex h-2 w-2 relative">
-                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                           <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                         </span>
-                         <span className="text-xs font-bold text-emerald-500">Bağlantı Aktif</span>
-                         <button 
-                            onClick={handleDisconnectGoogleDrive}
-                            className="text-xs text-slate-400 hover:text-red-400 font-bold transition-colors ml-2"
-                         >
-                            Bağlantıyı Kes
-                         </button>
-                      </div>
-                   ) : (
-                      <span className="text-xs font-bold text-slate-500">Bağlantı Yok</span>
-                   )}
+                   <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                         type="checkbox" 
+                         className="sr-only peer" 
+                         checked={isTelegramEnabled}
+                         onChange={(e) => setIsTelegramEnabled(e.target.checked)}
+                      />
+                      <div className="w-9 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-400 after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-sky-500 peer-checked:after:bg-white"></div>
+                      <span className="ml-2 text-xs font-semibold text-slate-300">
+                         {isTelegramEnabled ? 'Aktif' : 'Deaktif'}
+                      </span>
+                   </label>
                 </div>
 
                 <p className="text-slate-400 text-sm mb-6 leading-relaxed">
-                   OSGB veritabanınızı doğrudan kendi kişisel veya kurumsal Google Drive hesabınızda güvenli bir şekilde saklayın. Sunucu sıfırlansa bile Google Drive'daki güncel yedek listenizi görüntüleyip tek tıklamayla sistemi geri yükleyebilirsiniz.
+                   Her sevk (tetkik) işlemi yapıldığında veya güncellendiğinde tüm sevk detaylarını (çalışan, firma, sevk edilen tetkikler vb.) anında özel Telegram botunuza bildirim olarak gönderin.
                 </p>
 
-                {googleError && (
-                  <div className="mb-6 bg-red-500/10 border border-red-500/30 text-red-400 text-xs p-4 rounded-lg leading-relaxed flex items-center justify-between">
-                     <span>{googleError}</span>
-                     <button onClick={() => setGoogleError(null)} className="text-red-400 hover:text-white ml-2">Kapat</button>
-                  </div>
-                )}
-
-                {!googleAccessToken ? (
-                   <div className="flex flex-col items-center justify-center p-8 bg-slate-950/40 border border-dashed border-slate-700 rounded-lg text-center">
-                      <Cloud className="w-10 h-10 text-slate-600 mb-2" />
-                      <p className="text-slate-400 text-xs mb-4 max-w-sm">
-                         Sunucudan bağımsız, tam korumalı yedekleme sistemini başlatmak için Google Drive hesabınızla güvenli bağlantı kurun.
-                      </p>
-                      <button
-                         onClick={handleConnectGoogleDrive}
-                         className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-3 rounded-lg text-sm shadow-lg shadow-blue-900/20 transition-all transform hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
-                      >
-                         <ShieldCheck className="w-4 h-4" />
-                         <span>Google Drive ile Oturum Aç</span>
-                      </button>
-                   </div>
-                ) : (
-                   <div className="space-y-6">
-                      <div className="flex gap-4">
-                         <button
-                            disabled={googleLoading}
-                            onClick={handleUploadBackupToGoogle}
-                            className="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold px-5 py-3 rounded-lg text-sm transition-colors cursor-pointer"
-                         >
-                            {googleLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Cloud className="w-4 h-4" />}
-                            <span>Yeni Yedek Oluştur ve Drive'a Yükle</span>
-                         </button>
-                         
-                         <button
-                            disabled={googleLoading}
-                            onClick={() => handleListGoogleBackupFiles()}
-                            className="flex items-center justify-center space-x-2 bg-slate-800 hover:bg-slate-700 text-white border border-slate-600 px-4 py-3 rounded-lg text-sm font-semibold transition-colors cursor-pointer"
-                         >
-                            <RefreshCw className={`w-4 h-4 ${googleLoading ? 'animate-spin' : ''}`} />
-                            <span>Listeyi Yenile</span>
-                         </button>
-                      </div>
-
-                      <div>
-                         <h4 className="text-sm font-bold text-white mb-3 flex items-center">
-                            <Database className="w-4 h-4 text-slate-400 mr-2" />
-                            Google Drive'daki Son Yedekleriniz ({googleFiles.length})
-                         </h4>
-
-                         {googleLoading && googleFiles.length === 0 ? (
-                            <div className="flex justify-center items-center py-8 text-slate-500 text-xs">
-                               <RefreshCw className="w-5 h-5 animate-spin mr-2" />
-                               Yedek listesi taranıyor...
-                            </div>
-                          ) : googleFiles.length === 0 ? (
-                            <div className="text-center py-8 bg-slate-950/20 rounded-lg border border-slate-800/50 text-slate-500 text-xs">
-                               Google Drive'da henüz yedek dosyanız yok. İlk yedeğinizi oluşturmak için yukarıdaki düğmeyi kullanın.
-                            </div>
-                          ) : (
-                            <div className="bg-slate-950/40 rounded-lg border border-slate-800 overflow-hidden divide-y divide-slate-800/50">
-                               {googleFiles.map((f: any) => (
-                                  <div key={f.id} className="flex items-center justify-between p-4 hover:bg-slate-900/40 transition-colors">
-                                     <div className="space-y-0.5">
-                                        <span className="text-xs font-mono font-semibold text-slate-200 block truncate max-w-sm sm:max-w-md">{f.name}</span>
-                                        <div className="flex items-center space-x-2 text-[10px] text-slate-400 font-mono">
-                                           <span>{new Date(f.createdTime).toLocaleString('tr-TR')}</span>
-                                           <span>•</span>
-                                           <span>{(parseInt(f.size || '0') / 1024).toFixed(1)} KB</span>
-                                        </div>
-                                     </div>
-                                     
-                                     <button
-                                        disabled={googleLoading}
-                                        onClick={() => handleRestoreFromGoogle(f.id, f.name)}
-                                        className="text-xs bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 px-3 py-1.5 rounded font-bold transition-all cursor-pointer"
-                                     >
-                                        Sistem Kur / Geri Yükle
-                                     </button>
-                                  </div>
-                               ))}
-                            </div>
-                          )}
-                      </div>
-                   </div>
-                )}
-             </div>
-
-             {/* SECTION 3: WEBHOOK INTEGRATION */}
-             <div className="bg-slate-900/40 p-6 rounded-lg border border-slate-700">
-                <div className="flex items-center mb-4">
-                   <div className="p-2 bg-indigo-500/10 rounded mr-3">
-                      <Globe className="w-5 h-5 text-indigo-500" />
-                   </div>
-                   <h3 className="text-lg font-bold text-white">Gerçek Zamanlı Webhook Bildirimleri</h3>
-                </div>
-
-                <p className="text-slate-400 text-sm mb-6 leading-relaxed">
-                   Sistemde veri değiştiğinde (sevk kaydı ekleme, günceleme, silme vb.) veritabanı yedeğinin şifrelenmiş güvenli bir kopyasını anında başka bir harici sunucu veya özel yedekleme API'sine POST isteğiyle otomatik ulaştırın.
-                </p>
-
-                <form onSubmit={handleSaveWebhookSettings} className="space-y-4">
-                   <div className="space-y-2">
-                      <label className="text-xs font-bold text-slate-300 block">Yedekleme Webhook Hedef Adresi (URL)</label>
-                      <div className="flex gap-2">
+                <form onSubmit={handleSaveTelegramSettings} className="space-y-4">
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                         <label className="text-xs font-bold text-slate-300 block">Telegram Bot Token (API Token)</label>
                          <input
-                            type="url"
-                            placeholder="https://sunucuzuz.com/api/backup-receiver"
-                            className="flex-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all placeholder-slate-600 font-mono"
-                            value={webhookUrlInput}
-                            onChange={(e) => setWebhookUrlInput(e.target.value)}
+                            type="text"
+                            placeholder="Örn: 123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ"
+                            className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-sky-500 outline-none transition-all placeholder-slate-600 font-mono"
+                            value={telegramBotToken}
+                            onChange={(e) => setTelegramBotToken(e.target.value)}
                          />
-                         <button
-                            type="submit"
-                            className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold p-3 rounded-lg text-sm transition-colors cursor-pointer whitespace-nowrap"
-                         >
-                            Ayarları Kaydet
-                         </button>
                       </div>
+
+                      <div className="space-y-2">
+                         <label className="text-xs font-bold text-slate-300 block">Alıcı Sohbet Kimliği (Chat ID veya Grup ID)</label>
+                         <input
+                            type="text"
+                            placeholder="Örn: 987654321 veya -100123456789"
+                            className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-sky-500 outline-none transition-all placeholder-slate-600 font-mono"
+                            value={telegramChatId}
+                            onChange={(e) => setTelegramChatId(e.target.value)}
+                         />
+                      </div>
+                   </div>
+
+                   <div className="bg-slate-950/40 p-3 rounded-lg border border-slate-800/80 text-[11px] text-slate-400 space-y-1">
+                      <p className="font-semibold text-slate-300">💡 Nasıl Kurulur?</p>
+                      <p>1. Telegram'da <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline">@BotFather</a> araması yapın ve <code className="bg-slate-900 px-1 py-0.5 rounded text-sky-300 font-mono">/newbot</code> komutuyla bir bot oluşturup <b>Token</b> değerini kopyalayın.</p>
+                      <p>2. Botunuza <code className="bg-slate-900 px-1 py-0.5 rounded text-sky-300 font-mono">/start</code> deyin veya kurye bildirim botunu bir gruba ekleyin.</p>
+                      <p>3. Kendi Chat ID'nizi veya Grubun Chat ID'sini öğrenmek için <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline">@userinfobot</a> gibi bir botu kullanın.</p>
+                   </div>
+
+                   <div className="flex justify-between items-center pt-2">
+                      <button
+                         type="button"
+                         onClick={handleTestTelegramBot}
+                         className="text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sky-400 hover:text-sky-300 px-4 py-2 rounded-lg font-bold transition-all cursor-pointer flex items-center space-x-2"
+                      >
+                         <Bell className="w-4 h-4" />
+                         <span>Telegram Botu Test Et</span>
+                      </button>
+
+                      <button
+                         type="submit"
+                         className="bg-sky-600 hover:bg-sky-500 text-white font-bold px-5 py-2 rounded-lg text-sm transition-colors cursor-pointer flex items-center space-x-2"
+                      >
+                         <Save className="w-4 h-4" />
+                         <span>Telegram Ayarlarını Kaydet</span>
+                      </button>
                    </div>
                 </form>
 
-                {webhookUrlInput && (
-                   <div className="mt-4 pt-4 border-t border-slate-800 flex items-center justify-between">
-                      <span className="text-xs text-slate-400">Webhook kurulumunu test etmek için uyarı bildirimi gönderin:</span>
-                      <button
-                         type="button"
-                         onClick={handleTestWebhook}
-                         className="text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white px-3 py-1.5 rounded font-bold transition-all cursor-pointer"
-                      >
-                         Bağlantıyı Test Et
-                      </button>
-                   </div>
-                )}
-
-                {webhookTestStatus.type !== 'idle' && (
+                {telegramTestStatus.type !== 'idle' && (
                    <div className={`mt-3 p-3 rounded text-xs leading-relaxed ${
-                      webhookTestStatus.type === 'success' 
+                      telegramTestStatus.type === 'success' 
                       ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400' 
+                      : telegramTestStatus.type === 'loading'
+                      ? 'bg-sky-500/10 border border-sky-500/20 text-sky-400'
                       : 'bg-red-500/10 border border-red-500/30 text-red-400'
                    }`}>
-                      {webhookTestStatus.message}
+                      {telegramTestStatus.type === 'loading' && <RefreshCw className="inline-block w-3.5 h-3.5 animate-spin mr-2" />}
+                      {telegramTestStatus.message}
                    </div>
                 )}
-             </div>
-
-             {/* SECTION 4: SECURE RSS/JSON API FEED */}
-             <div className="bg-slate-900/40 p-6 rounded-lg border border-slate-700">
-                <div className="flex items-center mb-4">
-                   <div className="p-2 bg-violet-500/10 rounded mr-3">
-                      <Lock className="w-5 h-5 text-violet-500" />
-                   </div>
-                   <h3 className="text-lg font-bold text-white flex items-center">
-                      Güvenli Harici JSON Veri Akışı (RSS Feed)
-                      <span className="ml-2 text-xs text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded-full font-normal border border-violet-500/20">API Entegrasyonu</span>
-                   </h3>
-                </div>
-
-                <p className="text-slate-400 text-sm mb-6 leading-relaxed">
-                   Harici otomatik yedekleyici programlar veya entegrasyon botları kullanıyorsanız aşağıdaki size özel gizli URL'ye HTTP GET isteği göndererek verileri her zaman güncel olarak anında çekebilirsiniz. Token veya şifre girmenize gerek yoktur.
-                </p>
-
-                <div className="space-y-4">
-                   <div className="space-y-1">
-                      <span className="text-[11px] font-bold text-slate-400 block uppercase tracking-wider">Benzersiz Güvenli Akış URL'niz:</span>
-                      <div className="flex bg-slate-950 border border-slate-800 rounded-lg p-3 font-mono text-xs text-violet-300 break-all select-all items-center justify-between">
-                         <span className="truncate pr-4">
-                            {`${window.location.origin}${import.meta.env.BASE_URL || '/'}api/backup/feed?key=${backupConfig.backupApiKey || '...'}`}
-                         </span>
-                         <button
-                            onClick={() => {
-                               navigator.clipboard.writeText(`${window.location.origin}${import.meta.env.BASE_URL || '/'}api/backup/feed?key=${backupConfig.backupApiKey || ''}`);
-                               alert("Yedek Akış URL'si panoya kopyalandı!");
-                            }}
-                            className="ml-4 p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white transition-colors"
-                            title="URL'yi Kopyala"
-                         >
-                            <Copy className="w-4 h-4" />
-                         </button>
-                      </div>
-                   </div>
-
-                   <div className="text-[11px] text-slate-500 flex items-start space-x-1.5 leading-relaxed">
-                      <ShieldCheck className="w-3.5 h-3.5 mt-0.5 shrink-0 text-slate-500" />
-                      <span>
-                         Güvenlik Notu: Bu URL'deki anahtar (API parametresi) doğrudan sisteme girmek için kullanılan şifreyi barındırmaz ve şifrenin sızmasını engeller. Bu akış, sadece veritabanı yedeğinin okunmasına izin verir.
-                      </span>
-                   </div>
-                </div>
              </div>
           </div>
         )}

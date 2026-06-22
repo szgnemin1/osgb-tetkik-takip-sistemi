@@ -113,6 +113,9 @@ export interface AppSettings {
   appPassword?: string; // Uygulama giriş şifresi
   webhookUrl?: string; // Webhook sync target URL
   backupApiKey?: string; // API key for external sync RSS feed
+  telegramBotToken?: string;
+  telegramChatId?: string;
+  isTelegramEnabled?: boolean;
 }
 
 /**
