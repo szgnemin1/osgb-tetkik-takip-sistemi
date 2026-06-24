@@ -8,7 +8,7 @@
  */
 import React, { useState, useRef, useEffect } from 'react';
 import { Company, ExamDefinition, HazardClass, MedicalInstitution, AppSettings, turkishIncludes } from '../types';
-import { Trash2, Plus, Building2, Save, Check, Receipt, Upload, FileDown, MapPin, Sliders, CheckSquare, Square, Image as ImageIcon, Edit2, XCircle, Database, Download, RefreshCw, AlertTriangle, CreditCard, Banknote, Search, Cloud, Globe, Lock, ShieldCheck, Activity, Link, Eye, Copy, Send, Bell } from 'lucide-react';
+import { Trash2, Plus, Building2, Save, Check, Receipt, Upload, FileDown, MapPin, Sliders, CheckSquare, Square, Image as ImageIcon, Edit2, XCircle, Database, Download, RefreshCw, AlertTriangle, CreditCard, Banknote, Search, Cloud, Globe, Lock, ShieldCheck, Activity, Link, Eye, Copy, Send, Bell, FileSpreadsheet, Clock } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 interface SettingsViewProps {
@@ -66,6 +66,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [telegramChatId, setTelegramChatId] = useState(settings.telegramChatId || '');
   const [isTelegramEnabled, setIsTelegramEnabled] = useState(settings.isTelegramEnabled || false);
   const [telegramTestStatus, setTelegramTestStatus] = useState<{ type: 'idle' | 'loading' | 'success' | 'error'; message: string }>({ type: 'idle', message: '' });
+  const [telegramReportPeriod, setTelegramReportPeriod] = useState<'none' | 'daily' | 'weekly' | 'monthly_custom'>(settings.telegramReportPeriod || 'none');
+  const [telegramCustomReportDay, setTelegramCustomReportDay] = useState<number>(settings.telegramCustomReportDay || 20);
+  const [telegramSendStatus, setTelegramSendStatus] = useState<{ type: 'idle' | 'loading' | 'success' | 'error'; message: string }>({ type: 'idle', message: '' });
 
   // Company Form State
   const [editingCompanyId, setEditingCompanyId] = useState<string | null>(null);
@@ -122,7 +125,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         ...settings,
         telegramBotToken,
         telegramChatId,
-        isTelegramEnabled
+        isTelegramEnabled,
+        telegramReportPeriod,
+        telegramCustomReportDay
       });
       alert("Telegram entegrasyon ayarları başarıyla kaydedildi!");
     } catch (err: any) {
@@ -158,28 +163,31 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
   };
 
-  const handleTestWebhook = async () => {
-    setWebhookTestStatus({ type: 'idle', message: 'Bağlantı test ediliyor, lütfen bekleyen...' });
+  const handleSendTelegramReportNow = async (period: 'daily' | 'weekly' | 'all' | 'monthly_custom') => {
+    if (!telegramBotToken || !telegramChatId) {
+      setTelegramSendStatus({ type: 'error', message: 'Lütfen hem Bot Token hem de Chat ID girin.' });
+      return;
+    }
+    setTelegramSendStatus({ type: 'loading', message: 'Excel raporu oluşturuluyor ve gönderiliyor...' });
     try {
       const { getApiToken } = await import('../services/useServerData');
       const baseUrl = import.meta.env.BASE_URL || '/';
-      const res = await fetch(`${baseUrl}api/backup/test-webhook`, {
+      const res = await fetch(`${baseUrl}api/telegram/send-now`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${getApiToken()}`
         },
-        body: JSON.stringify({ url: webhookUrlInput })
+        body: JSON.stringify({ period })
       });
-      
       const data = await res.json();
       if (res.ok) {
-        setWebhookTestStatus({ type: 'success', message: `Başarılı! ${data.message || ''}` });
+        setTelegramSendStatus({ type: 'success', message: data.message || 'Excel raporu başarıyla Telegram botunuza gönderildi!' });
       } else {
-        setWebhookTestStatus({ type: 'error', message: `Hata: ${data.error || 'Test bağlantısı başarısız oldu'}` });
+        setTelegramSendStatus({ type: 'error', message: data.error || 'Rapor gönderilemedi.' });
       }
     } catch (err: any) {
-      setWebhookTestStatus({ type: 'error', message: `Bağlantı hatası: ${err.message || 'Sunucuyla iletişim kurulamadı'}` });
+      setTelegramSendStatus({ type: 'error', message: `Bağlantı hatası: ${err.message}` });
     }
   };
 
@@ -1436,6 +1444,60 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       </div>
                    </div>
 
+                   <div className="space-y-2 border-t border-slate-800/60 pt-4">
+                      <label className="text-xs font-bold text-slate-300 block flex items-center">
+                         <Clock className="w-3.5 h-3.5 text-sky-400 mr-1.5" />
+                         Otomatik Excel Raporlama Periyodu
+                      </label>
+                      <select
+                         className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-sky-500 outline-none transition-all cursor-pointer"
+                         value={telegramReportPeriod}
+                         onChange={(e) => setTelegramReportPeriod(e.target.value as 'none' | 'daily' | 'weekly' | 'monthly_custom')}
+                      >
+                         <option value="none">Otomatik Rapor Gönderme (Devre Dışı)</option>
+                         <option value="daily">Günlük Excel Raporu Gönder (Her akşam saat 21:00'den sonra)</option>
+                         <option value="weekly">Haftalık Excel Raporu Gönder (Her Pazar akşamı saat 21:00'den sonra)</option>
+                          <option value="monthly_custom">Özel Aylık Periyot Raporu Gönder (Belirli Günler Arası)</option>
+                      </select>
+                      <p className="text-slate-500 text-[10px] leading-relaxed">
+                         * Otomatik raporlama aktif edildiğinde, sistem o güne veya o haftaya ait sevk kayıtlarını ve kasa hareketlerini özetleyen detaylı bir Excel (.xlsx) belgesini Telegram botu üzerinden otomatik olarak gönderir.
+                       </p>
+                    </div>
+
+                    {telegramReportPeriod === 'monthly_custom' && (
+                       <div className="space-y-2 border-t border-slate-800/60 pt-4">
+                          <label className="text-xs font-bold text-slate-300 block flex items-center">
+                             <Clock className="w-3.5 h-3.5 text-sky-400 mr-1.5" />
+                             Rapor Başlangıç/Bitiş Günü (Örn: 20)
+                          </label>
+                          <div className="flex items-center space-x-2">
+                             <input
+                                type="number"
+                                min={1}
+                                max={28}
+                                className="w-full max-w-[100px] bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-sky-500 outline-none transition-all font-mono"
+                                value={telegramCustomReportDay}
+                                onChange={(e) => {
+                                   let val = parseInt(e.target.value, 10);
+                                   if (isNaN(val)) val = 20;
+                                   if (val < 1) val = 1;
+                                   if (val > 28) val = 28;
+                                   setTelegramCustomReportDay(val);
+                                }}
+                             />
+                             <span className="text-slate-400 text-xs">. günü (Her ayın {telegramCustomReportDay}'si)</span>
+                          </div>
+                          <p className="text-[10px] text-slate-400 leading-relaxed">
+                             Bu ayar ile her ayın <b>{telegramCustomReportDay}.</b> gününde otomatik olarak bir önceki ayın <b>{telegramCustomReportDay}.</b> günü ile bu ayın <b>{telegramCustomReportDay}.</b> günü arasındaki tüm kayıtları kapsayan aylık Excel raporu otomatik olarak gönderilecektir. (Örn: her ayın {telegramCustomReportDay}'sinden diğer ayın {telegramCustomReportDay}'sine).
+                          </p>
+                       </div>
+                    )}
+
+                    <div className="hidden">
+                       <p>
+                      </p>
+                   </div>
+
                    <div className="bg-slate-950/40 p-3 rounded-lg border border-slate-800/80 text-[11px] text-slate-400 space-y-1">
                       <p className="font-semibold text-slate-300">💡 Nasıl Kurulur?</p>
                       <p>1. Telegram'da <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline">@BotFather</a> araması yapın ve <code className="bg-slate-900 px-1 py-0.5 rounded text-sky-300 font-mono">/newbot</code> komutuyla bir bot oluşturup <b>Token</b> değerini kopyalayın.</p>
@@ -1475,6 +1537,72 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       {telegramTestStatus.message}
                    </div>
                 )}
+
+                {/* SECTION: INSTANT EXCEL REPORT SENDING */}
+                <div className="mt-6 pt-6 border-t border-slate-800 space-y-4">
+                   <div className="flex items-center space-x-2">
+                      <FileSpreadsheet className="w-5 h-5 text-emerald-400" />
+                      <h4 className="text-sm font-bold text-white">Anlık Excel Raporu Gönder (Şimdi Raporla)</h4>
+                   </div>
+                   <p className="text-slate-400 text-xs leading-relaxed">
+                      Sistemdeki tüm sevk hareketleri, tetkik ücretleri ve kasa durumunu anlık olarak derleyip bir Excel belgesi (.xlsx) olarak Telegram botunuza gönderin:
+                   </p>
+
+                   <div className="flex flex-wrap gap-2">
+                      <button
+                         type="button"
+                         onClick={() => handleSendTelegramReportNow('daily')}
+                         disabled={telegramSendStatus.type === 'loading'}
+                         className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 disabled:opacity-50"
+                      >
+                         <FileSpreadsheet className="w-3.5 h-3.5" />
+                         <span>Günlük Raporu Gönder</span>
+                      </button>
+
+                      <button
+                         type="button"
+                         onClick={() => handleSendTelegramReportNow('weekly')}
+                         disabled={telegramSendStatus.type === 'loading'}
+                         className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 disabled:opacity-50"
+                      >
+                         <FileSpreadsheet className="w-3.5 h-3.5" />
+                         <span>Haftalık Raporu Gönder</span>
+                      </button>
+
+                      <button
+                         type="button"
+                         onClick={() => handleSendTelegramReportNow('monthly_custom')}
+                          disabled={telegramSendStatus.type === 'loading'}
+                          className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 disabled:opacity-50"
+                       >
+                          <FileSpreadsheet className="w-3.5 h-3.5" />
+                          <span>Özel Aylık Raporu Gönder ({telegramCustomReportDay}'den {telegramCustomReportDay}'ye)</span>
+                       </button>
+
+                       <button
+                          type="button"
+                          onClick={() => handleSendTelegramReportNow('all')}
+                         disabled={telegramSendStatus.type === 'loading'}
+                         className="bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 disabled:opacity-50"
+                      >
+                         <FileSpreadsheet className="w-3.5 h-3.5" />
+                         <span>Tüm Zamanlar Raporunu Gönder</span>
+                      </button>
+                   </div>
+
+                   {telegramSendStatus.type !== 'idle' && (
+                      <div className={`p-3 rounded text-xs leading-relaxed ${
+                         telegramSendStatus.type === 'success' 
+                         ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400' 
+                         : telegramSendStatus.type === 'loading'
+                         ? 'bg-sky-500/10 border border-sky-500/20 text-sky-400'
+                         : 'bg-red-500/10 border border-red-500/30 text-red-400'
+                      }`}>
+                         {telegramSendStatus.type === 'loading' && <RefreshCw className="inline-block w-3.5 h-3.5 animate-spin mr-2" />}
+                         {telegramSendStatus.message}
+                      </div>
+                   )}
+                </div>
              </div>
           </div>
         )}

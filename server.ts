@@ -15,6 +15,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
+import * as XLSX from "xlsx";
 
 const JWT_SECRET = process.env.JWT_SECRET || "osgb-secure-super-secret-key!2024";
 const DATA_FILE = path.join(process.cwd(), "global_data.json");
@@ -189,6 +190,245 @@ function notifyTelegramReferral(item: any, db: any) {
   sendTelegramNotification(message, db.appSettings);
 }
 
+function getCustomMonthlyRange(customDay: number, today: Date = new Date()) {
+  const year = today.getFullYear();
+  const month = today.getMonth(); // 0-11
+  const currentDay = today.getDate();
+
+  let startDate: Date;
+  let endDate: Date;
+
+  if (currentDay < customDay) {
+    startDate = new Date(year, month - 1, customDay, 0, 0, 0, 0);
+    endDate = new Date(today);
+  } else {
+    startDate = new Date(year, month, customDay, 0, 0, 0, 0);
+    endDate = new Date(today);
+  }
+  
+  return { startDate, endDate };
+}
+
+function generateExcelReport(db: any, dateRange?: number | { startDate: Date; endDate: Date }) {
+  let referrals = db.referrals || [];
+  let transactions = db.transactions || [];
+
+  if (dateRange) {
+    let start: Date;
+    let end: Date = new Date();
+
+    if (typeof dateRange === 'number') {
+      if (dateRange > 0) {
+        start = new Date();
+        start.setDate(start.getDate() - dateRange);
+      } else {
+        start = new Date(0);
+      }
+    } else {
+      start = dateRange.startDate;
+      end = dateRange.endDate;
+    }
+
+    referrals = referrals.filter((item: any) => {
+      if (!item.referralDate) return false;
+      const d = new Date(item.referralDate);
+      return d >= start && d <= end;
+    });
+
+    transactions = transactions.filter((item: any) => {
+      if (!item.date) return false;
+      const d = new Date(item.date);
+      return d >= start && d <= end;
+    });
+  }
+
+  // Create worksheets
+  const referralData = referrals.map((item: any) => {
+    let statusText = item.status || "Bekliyor";
+    if (statusText === "PENDING") statusText = "Bekliyor (Gitmedi)";
+    else if (statusText === "AT_HOSPITAL") statusText = "Hastanede / Tetkikte";
+    else if (statusText === "AWAITING_RESULT") statusText = "Sonuç Bekleniyor";
+    else if (statusText === "COMPLETED") statusText = "Tamamlandı";
+    else if (statusText === "CANCELLED") statusText = "İptal Edildi";
+
+    let paymentText = item.paymentMethod || "-";
+    if (paymentText === "CASH") paymentText = "Nakit";
+    else if (paymentText === "POS") paymentText = "POS";
+    else if (paymentText === "INVOICE") paymentText = "Cari / Fatura";
+
+    const examsList = (item.exams || []).map((examId: string) => {
+      const examDef = db.exams?.find((e: any) => e.id === examId);
+      return examDef ? `${examDef.name} (${examDef.code || ''})` : examId;
+    }).join(", ");
+
+    return {
+      "Sevk Tarihi": item.referralDate ? new Date(item.referralDate).toLocaleDateString("tr-TR") : "-",
+      "Çalışan Adı Soyadı": item.employee?.fullName || "-",
+      "TC Kimlik No": item.employee?.tcNo || "-",
+      "Firma / Şirket": item.employee?.company || "-",
+      "Kurum / Hastane": db.institutions?.find((ins: any) => ins.id === item.institutionId)?.name || item.institutionId || "-",
+      "Sevk Edilen Tetkikler": examsList || "-",
+      "Toplam Ücret (TL)": item.totalPrice !== undefined ? item.totalPrice : 0,
+      "Toplam Maliyet (TL)": item.totalCost !== undefined ? item.totalCost : 0,
+      "Kâr (TL)": (item.totalPrice !== undefined && item.totalCost !== undefined) ? (item.totalPrice - item.totalCost) : 0,
+      "Ödeme Tipi": paymentText,
+      "Sevk Durumu": statusText,
+      "Notlar": item.notes || "-"
+    };
+  });
+
+  const transactionData = transactions.map((item: any) => {
+    return {
+      "Tarih": item.date ? new Date(item.date).toLocaleDateString("tr-TR") : "-",
+      "Hareket Türü": item.type === "INCOME" ? "Gelir (+)" : "Gider (-)",
+      "Açıklama": item.description || "-",
+      "Tutar (TL)": item.amount || 0,
+      "Kategori": item.category || "-",
+      "Ödeme Yöntemi": item.paymentMethod === "CASH" ? "Nakit" : item.paymentMethod === "POS" ? "POS" : item.paymentMethod === "INVOICE" ? "Cari / Fatura" : "-"
+    };
+  });
+
+  const wb = XLSX.utils.book_new();
+  
+  const wsReferrals = XLSX.utils.json_to_sheet(referralData);
+  const wsTransactions = XLSX.utils.json_to_sheet(transactionData);
+
+  XLSX.utils.book_append_sheet(wb, wsReferrals, "Sevk Raporu");
+  XLSX.utils.book_append_sheet(wb, wsTransactions, "Kasa Raporu");
+
+  const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+  return buf;
+}
+
+async function sendTelegramReport(db: any, dateRange?: number | { startDate: Date; endDate: Date }, caption?: string) {
+  const settings = db.appSettings;
+  if (!settings?.isTelegramEnabled || !settings?.telegramBotToken || !settings?.telegramChatId) {
+    console.warn("[Telegram Report] Entegrasyon aktif değil veya ayarlar eksik.");
+    return false;
+  }
+
+  try {
+    const excelBuffer = generateExcelReport(db, dateRange);
+    let fileName = `OSGB_Sistem_Raporu_${new Date().toISOString().split('T')[0]}.xlsx`;
+    if (typeof dateRange === 'number') {
+      if (dateRange === 1) fileName = `OSGB_Gunluk_Rapor_${new Date().toISOString().split('T')[0]}.xlsx`;
+      else if (dateRange === 7) fileName = `OSGB_Haftalik_Rapor_${new Date().toISOString().split('T')[0]}.xlsx`;
+    } else if (dateRange && typeof dateRange === 'object') {
+      fileName = `OSGB_Ozel_Aylik_Rapor_${new Date().toISOString().split('T')[0]}.xlsx`;
+    }
+
+    const token = settings.telegramBotToken;
+    const chatId = settings.telegramChatId;
+    const url = `https://api.telegram.org/bot${token}/sendDocument`;
+
+    const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+
+    const formData = new FormData();
+    formData.append("chat_id", chatId);
+    formData.append("document", blob, fileName);
+    if (caption) {
+      formData.append("caption", caption);
+      formData.append("parse_mode", "HTML");
+    }
+
+    const res = await fetch(url, {
+      method: "POST",
+      body: formData,
+      signal: AbortSignal.timeout(20000)
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error(`[Telegram Report] Telegram returned error: ${res.status} - ${errText}`);
+      return false;
+    }
+
+    console.log(`[Telegram Report] Excel report sent successfully to Telegram!`);
+    return true;
+  } catch (err) {
+    console.error("[Telegram Report] Error sending report:", err);
+    return false;
+  }
+}
+
+function startTelegramScheduler() {
+  console.log("[Telegram Scheduler] Periodic report scheduler started.");
+  
+  // Run check every 30 minutes
+  setInterval(() => {
+    try {
+      const db = readData();
+      const settings = db.appSettings;
+      
+      if (!settings?.isTelegramEnabled || !settings?.telegramBotToken || !settings?.telegramChatId) {
+        return;
+      }
+
+      const period = settings.telegramReportPeriod || 'none';
+      if (period === 'none') return;
+
+      const now = new Date();
+      // Trigger report sending at the end of the day (e.g., after 21:00 / 9:00 PM)
+      const currentHour = now.getHours();
+      if (currentHour < 21) return;
+
+      const todayStr = now.toISOString().split('T')[0]; // e.g. "2026-06-22"
+      
+      if (settings.telegramLastReportSent === todayStr) {
+        return;
+      }
+
+      if (period === 'daily') {
+        const caption = `<b>📊 GÜNLÜK TETKİK & KASA RAPORU</b>\n` +
+          `📅 Tarih: ${now.toLocaleDateString("tr-TR")}\n\n` +
+          `Sisteminiz tarafından otomatik olarak oluşturulan günlük detaylı Excel raporu ektedir.`;
+
+        sendTelegramReport(db, 1, caption).then(success => {
+          if (success) {
+            db.appSettings.telegramLastReportSent = todayStr;
+            writeData(db, false);
+          }
+        });
+      } else if (period === 'weekly') {
+        // Only run on Sunday
+        const dayOfWeek = now.getDay(); // 0 is Sunday
+        if (dayOfWeek !== 0) return;
+
+        const caption = `<b>📊 HAFTALIK TETKİK & KASA RAPORU</b>\n` +
+          `📅 Tarih: ${now.toLocaleDateString("tr-TR")}\n\n` +
+          `Sisteminiz tarafından otomatik olarak oluşturulan haftalık detaylı Excel raporu ektedir.`;
+
+        sendTelegramReport(db, 7, caption).then(success => {
+          if (success) {
+            db.appSettings.telegramLastReportSent = todayStr;
+            writeData(db, false);
+          }
+        });
+      } else if (period === 'monthly_custom') {
+        const customDay = settings.telegramCustomReportDay || 20;
+        const currentDay = now.getDate();
+        if (currentDay !== customDay) return;
+
+        const startDate = new Date(now.getFullYear(), now.getMonth() - 1, customDay, 0, 0, 0, 0);
+        const endDate = new Date(now);
+
+        const caption = `<b>📊 AYLIK TETKİK & KASA RAPORU (ÖZEL PERİYOT)</b>\n` +
+          `📅 Dönem: ${startDate.toLocaleDateString("tr-TR")} - ${endDate.toLocaleDateString("tr-TR")}\n\n` +
+          `Sisteminiz tarafından belirlenen özel periyot (${customDay} - ${customDay}) uyarınca otomatik oluşturulan aylık detaylı Excel raporu ektedir.`;
+
+        sendTelegramReport(db, { startDate, endDate }, caption).then(success => {
+          if (success) {
+            db.appSettings.telegramLastReportSent = todayStr;
+            writeData(db, false);
+          }
+        });
+      }
+    } catch (err) {
+      console.error("[Telegram Scheduler] Error in periodic check:", err);
+    }
+  }, 1000 * 60 * 30); // check every 30 minutes
+}
+
 function writeData(data: any, triggerSync: boolean = true) {
   try {
     fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), "utf8");
@@ -360,6 +600,40 @@ async function startServer() {
     });
   });
 
+  // Send Excel report now to Telegram Bot
+  app.post("/api/telegram/send-now", authMiddleware, async (req, res) => {
+    const { period } = req.body;
+    const db = readData();
+    const settings = db.appSettings;
+    const customDay = settings?.telegramCustomReportDay || 20;
+
+    let dateRange: number | { startDate: Date; endDate: Date } = 0;
+    let periodText = 'Tüm Zamanlar';
+
+    if (period === 'daily') {
+      dateRange = 1;
+      periodText = 'Günlük';
+    } else if (period === 'weekly') {
+      dateRange = 7;
+      periodText = 'Haftalık';
+    } else if (period === 'monthly_custom') {
+      const range = getCustomMonthlyRange(customDay);
+      dateRange = range;
+      periodText = `Özel Aylık (${range.startDate.toLocaleDateString("tr-TR")} - ${range.endDate.toLocaleDateString("tr-TR")})`;
+    }
+
+    const caption = `<b>📊 OSGB TETKİK & KASA RAPORU (${periodText})</b>\n` +
+      `📅 İstek Tarihi: ${new Date().toLocaleString("tr-TR")}\n\n` +
+      `Seçtiğiniz periyoda ait anlık oluşturulan detaylı Excel raporu ektedir.`;
+
+    const success = await sendTelegramReport(db, dateRange, caption);
+    if (success) {
+      res.json({ success: true, message: `${periodText} Excel raporu başarıyla Telegram botunuza gönderildi!` });
+    } else {
+      res.status(500).json({ error: "Rapor gönderilemedi. Lütfen Telegram Bot Token ve Chat ID bilgilerinizi, ayrıca botun gruba/sohbete mesaj atma yetkisini kontrol edin." });
+    }
+  });
+
   // Secure External Backup/RSS JSON Feed (No JWT header required, authenticated via unique query parameter)
   app.get("/api/backup/feed", (req, res) => {
     const { key } = req.query;
@@ -376,6 +650,8 @@ async function startServer() {
       secureBackup.appSettings = { ...secureBackup.appSettings };
       delete secureBackup.appSettings.passwordHash;
       delete secureBackup.appSettings.appPassword;
+      delete secureBackup.appSettings.telegramBotToken;
+      delete secureBackup.appSettings.telegramChatId;
     }
 
     res.json(secureBackup);
@@ -541,6 +817,8 @@ async function startServer() {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
+
+  startTelegramScheduler();
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);

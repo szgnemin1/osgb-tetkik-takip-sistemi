@@ -116,6 +116,9 @@ export interface AppSettings {
   telegramBotToken?: string;
   telegramChatId?: string;
   isTelegramEnabled?: boolean;
+  telegramReportPeriod?: 'none' | 'daily' | 'weekly' | 'monthly_custom';
+  telegramCustomReportDay?: number;
+  telegramLastReportSent?: string;
 }
 
 /**
