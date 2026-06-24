@@ -472,23 +472,6 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
                   <option value="POS">Kredi Kartı / POS</option>
                 </select>
              </div>
-
-             {/* Default Status Selector */}
-             <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
-                   Kayıt Sevk Statüsü
-                </label>
-                <select
-                  disabled={isProcessing}
-                  value={defaultStatus}
-                  onChange={(e) => setDefaultStatus(e.target.value as Status)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-blue-500 text-sm outline-none cursor-pointer"
-                >
-                  <option value={Status.PENDING}>Bekliyor (Gitmedi)</option>
-                  <option value={Status.AT_HOSPITAL}>Hastanede / Tetkikte</option>
-                  <option value={Status.AWAITING_RESULT}>Sonuç Bekleniyor</option>
-                </select>
-             </div>
           </div>
 
           {/* Text Area Input */}

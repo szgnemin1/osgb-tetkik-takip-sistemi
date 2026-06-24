@@ -177,11 +177,10 @@ function notifyTelegramReferral(item: any, db: any) {
   const price = item.totalPrice !== undefined ? `${item.totalPrice} TL` : "-";
   const cost = item.totalCost !== undefined ? `${item.totalCost} TL` : "-";
 
-  const message = `<b>🔔 TETKİK DURUM GÜNCELLEMESİ</b>\n\n` +
+  const message = `<b>🔔 YENİ SEVK KAYDI</b>\n\n` +
     `<b>👤 Çalışan:</b> ${employeeName} (TC: ${tcNo})\n` +
     `<b>🏢 Firma:</b> ${companyName}\n` +
     `<b>📅 Tarih:</b> ${date}\n` +
-    `<b>📋 Durum:</b> ${statusText}\n` +
     `<b>💳 Ödeme Tipi:</b> ${paymentText}\n\n` +
     `<b>🧪 Yapılan Tetkikler:</b>\n${examsList || 'Belirtilmemiş'}\n\n` +
     `<b>💰 Ücret:</b> ${price} / <b>Maliyet:</b> ${cost}\n` +
@@ -272,7 +271,6 @@ function generateExcelReport(db: any, dateRange?: number | { startDate: Date; en
       "Toplam Maliyet (TL)": item.totalCost !== undefined ? item.totalCost : 0,
       "Kâr (TL)": (item.totalPrice !== undefined && item.totalCost !== undefined) ? (item.totalPrice - item.totalCost) : 0,
       "Ödeme Tipi": paymentText,
-      "Sevk Durumu": statusText,
       "Notlar": item.notes || "-"
     };
   });
