@@ -7,8 +7,9 @@
  * the Free Software Foundation, either version 3 of the License.
  */
 import React, { useState, useRef, useEffect } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import { Company, ExamDefinition, HazardClass, MedicalInstitution, AppSettings, turkishIncludes } from '../types';
-import { Trash2, Plus, Building2, Save, Check, Receipt, Upload, FileDown, MapPin, Sliders, CheckSquare, Square, Image as ImageIcon, Edit2, XCircle, Database, Download, RefreshCw, AlertTriangle, CreditCard, Banknote, Search, Cloud, Globe, Lock, ShieldCheck, Activity, Link, Eye, Copy, Send, Bell, FileSpreadsheet, Clock } from 'lucide-react';
+import { Trash2, Plus, Building2, Save, Check, Receipt, Upload, FileDown, MapPin, Sliders, CheckSquare, Square, Image as ImageIcon, Edit2, XCircle, Database, Download, RefreshCw, AlertTriangle, CreditCard, Banknote, Search, Cloud, Globe, Lock, ShieldCheck, Activity, Link, Eye, Copy, Send, Bell, FileSpreadsheet, Clock, MessageSquare, Smartphone } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 interface SettingsViewProps {
@@ -68,7 +69,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [telegramTestStatus, setTelegramTestStatus] = useState<{ type: 'idle' | 'loading' | 'success' | 'error'; message: string }>({ type: 'idle', message: '' });
   const [telegramReportPeriod, setTelegramReportPeriod] = useState<'none' | 'daily' | 'weekly' | 'monthly_custom'>(settings.telegramReportPeriod || 'none');
   const [telegramCustomReportDay, setTelegramCustomReportDay] = useState<number>(settings.telegramCustomReportDay || 20);
+  const [telegramReportPeriod2, setTelegramReportPeriod2] = useState<'none' | 'daily' | 'weekly' | 'monthly_custom'>(settings.telegramReportPeriod2 || 'none');
+  const [telegramCustomReportDay2, setTelegramCustomReportDay2] = useState<number>(settings.telegramCustomReportDay2 || 20);
   const [telegramSendStatus, setTelegramSendStatus] = useState<{ type: 'idle' | 'loading' | 'success' | 'error'; message: string }>({ type: 'idle', message: '' });
+
 
   // Company Form State
   const [editingCompanyId, setEditingCompanyId] = useState<string | null>(null);
@@ -127,7 +131,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         telegramChatId,
         isTelegramEnabled,
         telegramReportPeriod,
-        telegramCustomReportDay
+        telegramCustomReportDay,
+        telegramReportPeriod2,
+        telegramCustomReportDay2
       });
       alert("Telegram entegrasyon ayarları başarıyla kaydedildi!");
     } catch (err: any) {
@@ -1447,7 +1453,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                    <div className="space-y-2 border-t border-slate-800/60 pt-4">
                       <label className="text-xs font-bold text-slate-300 block flex items-center">
                          <Clock className="w-3.5 h-3.5 text-sky-400 mr-1.5" />
-                         Otomatik Excel Raporlama Periyodu
+                         Otomatik Excel Raporlama Periyodu - 1
                       </label>
                       <select
                          className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-sky-500 outline-none transition-all cursor-pointer"
@@ -1493,10 +1499,54 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                        </div>
                     )}
 
-                    <div className="hidden">
-                       <p>
-                      </p>
-                   </div>
+                    <div className="space-y-2 border-t border-slate-800/60 pt-4">
+                       <label className="text-xs font-bold text-slate-300 block flex items-center">
+                          <Clock className="w-3.5 h-3.5 text-sky-400 mr-1.5" />
+                          Otomatik Excel Raporlama Periyodu - 2
+                       </label>
+                       <select
+                          className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-sky-500 outline-none transition-all cursor-pointer"
+                          value={telegramReportPeriod2}
+                          onChange={(e) => setTelegramReportPeriod2(e.target.value as 'none' | 'daily' | 'weekly' | 'monthly_custom')}
+                       >
+                          <option value="none">Otomatik Rapor Gönderme (Devre Dışı)</option>
+                          <option value="daily">Günlük Excel Raporu Gönder (Her akşam saat 21:00'den sonra)</option>
+                          <option value="weekly">Haftalık Excel Raporu Gönder (Her Pazar akşamı saat 21:00'den sonra)</option>
+                          <option value="monthly_custom">Özel Aylık Periyot Raporu Gönder (Belirli Günler Arası)</option>
+                       </select>
+                       <p className="text-slate-500 text-[10px] leading-relaxed">
+                          * İkinci bir bağımsız raporlama periyodu tanımlayarak (örneğin hem haftalık hem aylık) aynı anda iki farklı periyotta rapor alabilirsiniz.
+                       </p>
+                    </div>
+
+                    {telegramReportPeriod2 === 'monthly_custom' && (
+                       <div className="space-y-2 border-t border-slate-800/60 pt-4">
+                          <label className="text-xs font-bold text-slate-300 block flex items-center">
+                             <Clock className="w-3.5 h-3.5 text-sky-400 mr-1.5" />
+                             Rapor Başlangıç/Bitiş Günü (Örn: 20)
+                          </label>
+                          <div className="flex items-center space-x-2">
+                             <input
+                                type="number"
+                                min={1}
+                                max={28}
+                                className="w-full max-w-[100px] bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-sky-500 outline-none transition-all font-mono"
+                                value={telegramCustomReportDay2}
+                                onChange={(e) => {
+                                   let val = parseInt(e.target.value, 10);
+                                   if (isNaN(val)) val = 20;
+                                   if (val < 1) val = 1;
+                                   if (val > 28) val = 28;
+                                   setTelegramCustomReportDay2(val);
+                                }}
+                             />
+                             <span className="text-slate-400 text-xs">. günü (Her ayın {telegramCustomReportDay2}'si)</span>
+                          </div>
+                          <p className="text-[10px] text-slate-400 leading-relaxed">
+                             Bu ayar ile her ayın <b>{telegramCustomReportDay2}.</b> gününde otomatik olarak bir önceki ayın <b>{telegramCustomReportDay2}.</b> günü ile bu ayın <b>{telegramCustomReportDay2}.</b> günü arasındaki tüm kayıtları kapsayan aylık Excel raporu otomatik olarak gönderilecektir.
+                          </p>
+                       </div>
+                    )}
 
                    <div className="bg-slate-950/40 p-3 rounded-lg border border-slate-800/80 text-[11px] text-slate-400 space-y-1">
                       <p className="font-semibold text-slate-300">💡 Nasıl Kurulur?</p>
@@ -1604,6 +1654,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                    )}
                 </div>
              </div>
+
+
           </div>
         )}
 

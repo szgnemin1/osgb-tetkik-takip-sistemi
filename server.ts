@@ -17,6 +17,7 @@ import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import * as XLSX from "xlsx";
 
+
 const JWT_SECRET = process.env.JWT_SECRET || "osgb-secure-super-secret-key!2024";
 const DATA_FILE = path.join(process.cwd(), "global_data.json");
 
@@ -188,6 +189,8 @@ function notifyTelegramReferral(item: any, db: any) {
 
   sendTelegramNotification(message, db.appSettings);
 }
+
+
 
 function getCustomMonthlyRange(customDay: number, today: Date = new Date()) {
   const year = today.getFullYear();
@@ -363,7 +366,8 @@ function startTelegramScheduler() {
       }
 
       const period = settings.telegramReportPeriod || 'none';
-      if (period === 'none') return;
+      const period2 = settings.telegramReportPeriod2 || 'none';
+      if (period === 'none' && period2 === 'none') return;
 
       const now = new Date();
       // Trigger report sending at the end of the day (e.g., after 21:00 / 9:00 PM)
@@ -372,54 +376,108 @@ function startTelegramScheduler() {
 
       const todayStr = now.toISOString().split('T')[0]; // e.g. "2026-06-22"
       
-      if (settings.telegramLastReportSent === todayStr) {
-        return;
+      // Check Period 1
+      if (period !== 'none' && settings.telegramLastReportSent !== todayStr) {
+        if (period === 'daily') {
+          const caption = `<b>📊 GÜNLÜK TETKİK & KASA RAPORU (1. Periyot)</b>\n` +
+            `📅 Tarih: ${now.toLocaleDateString("tr-TR")}\n\n` +
+            `Sisteminiz tarafından otomatik olarak oluşturulan günlük detaylı Excel raporu ektedir.`;
+
+          sendTelegramReport(db, 1, caption).then(success => {
+            if (success) {
+              const updatedDb = readData();
+              updatedDb.appSettings.telegramLastReportSent = todayStr;
+              writeData(updatedDb, false);
+            }
+          });
+        } else if (period === 'weekly') {
+          // Only run on Sunday
+          const dayOfWeek = now.getDay(); // 0 is Sunday
+          if (dayOfWeek === 0) {
+            const caption = `<b>📊 HAFTALIK TETKİK & KASA RAPORU (1. Periyot)</b>\n` +
+              `📅 Tarih: ${now.toLocaleDateString("tr-TR")}\n\n` +
+              `Sisteminiz tarafından otomatik olarak oluşturulan haftalık detaylı Excel raporu ektedir.`;
+
+            sendTelegramReport(db, 7, caption).then(success => {
+              if (success) {
+                const updatedDb = readData();
+                updatedDb.appSettings.telegramLastReportSent = todayStr;
+                writeData(updatedDb, false);
+              }
+            });
+          }
+        } else if (period === 'monthly_custom') {
+          const customDay = settings.telegramCustomReportDay || 20;
+          const currentDay = now.getDate();
+          if (currentDay === customDay) {
+            const startDate = new Date(now.getFullYear(), now.getMonth() - 1, customDay, 0, 0, 0, 0);
+            const endDate = new Date(now);
+
+            const caption = `<b>📊 AYLIK TETKİK & KASA RAPORU (ÖZEL PERİYOT) (1. Periyot)</b>\n` +
+              `📅 Dönem: ${startDate.toLocaleDateString("tr-TR")} - ${endDate.toLocaleDateString("tr-TR")}\n\n` +
+              `Sisteminiz tarafından belirlenen özel periyot (${customDay} - ${customDay}) uyarınca otomatik oluşturulan aylık detaylı Excel raporu ektedir.`;
+
+            sendTelegramReport(db, { startDate, endDate }, caption).then(success => {
+              if (success) {
+                const updatedDb = readData();
+                updatedDb.appSettings.telegramLastReportSent = todayStr;
+                writeData(updatedDb, false);
+              }
+            });
+          }
+        }
       }
 
-      if (period === 'daily') {
-        const caption = `<b>📊 GÜNLÜK TETKİK & KASA RAPORU</b>\n` +
-          `📅 Tarih: ${now.toLocaleDateString("tr-TR")}\n\n` +
-          `Sisteminiz tarafından otomatik olarak oluşturulan günlük detaylı Excel raporu ektedir.`;
+      // Check Period 2
+      if (period2 !== 'none' && settings.telegramLastReportSent2 !== todayStr) {
+        if (period2 === 'daily') {
+          const caption = `<b>📊 GÜNLÜK TETKİK & KASA RAPORU (2. Periyot)</b>\n` +
+            `📅 Tarih: ${now.toLocaleDateString("tr-TR")}\n\n` +
+            `Sisteminiz tarafından otomatik olarak oluşturulan günlük detaylı Excel raporu ektedir.`;
 
-        sendTelegramReport(db, 1, caption).then(success => {
-          if (success) {
-            db.appSettings.telegramLastReportSent = todayStr;
-            writeData(db, false);
+          sendTelegramReport(db, 1, caption).then(success => {
+            if (success) {
+              const updatedDb = readData();
+              updatedDb.appSettings.telegramLastReportSent2 = todayStr;
+              writeData(updatedDb, false);
+            }
+          });
+        } else if (period2 === 'weekly') {
+          // Only run on Sunday
+          const dayOfWeek = now.getDay(); // 0 is Sunday
+          if (dayOfWeek === 0) {
+            const caption = `<b>📊 HAFTALIK TETKİK & KASA RAPORU (2. Periyot)</b>\n` +
+              `📅 Tarih: ${now.toLocaleDateString("tr-TR")}\n\n` +
+              `Sisteminiz tarafından otomatik olarak oluşturulan haftalık detaylı Excel raporu ektedir.`;
+
+            sendTelegramReport(db, 7, caption).then(success => {
+              if (success) {
+                const updatedDb = readData();
+                updatedDb.appSettings.telegramLastReportSent2 = todayStr;
+                writeData(updatedDb, false);
+              }
+            });
           }
-        });
-      } else if (period === 'weekly') {
-        // Only run on Sunday
-        const dayOfWeek = now.getDay(); // 0 is Sunday
-        if (dayOfWeek !== 0) return;
+        } else if (period2 === 'monthly_custom') {
+          const customDay2 = settings.telegramCustomReportDay2 || 20;
+          const currentDay = now.getDate();
+          if (currentDay === customDay2) {
+            const startDate = new Date(now.getFullYear(), now.getMonth() - 1, customDay2, 0, 0, 0, 0);
+            const endDate = new Date(now);
 
-        const caption = `<b>📊 HAFTALIK TETKİK & KASA RAPORU</b>\n` +
-          `📅 Tarih: ${now.toLocaleDateString("tr-TR")}\n\n` +
-          `Sisteminiz tarafından otomatik olarak oluşturulan haftalık detaylı Excel raporu ektedir.`;
+            const caption = `<b>📊 AYLIK TETKİK & KASA RAPORU (ÖZEL PERİYOT) (2. Periyot)</b>\n` +
+              `📅 Dönem: ${startDate.toLocaleDateString("tr-TR")} - ${endDate.toLocaleDateString("tr-TR")}\n\n` +
+              `Sisteminiz tarafından belirlenen özel periyot (${customDay2} - ${customDay2}) uyarınca otomatik oluşturulan aylık detaylı Excel raporu ektedir.`;
 
-        sendTelegramReport(db, 7, caption).then(success => {
-          if (success) {
-            db.appSettings.telegramLastReportSent = todayStr;
-            writeData(db, false);
+            sendTelegramReport(db, { startDate, endDate }, caption).then(success => {
+              if (success) {
+                const updatedDb = readData();
+                updatedDb.appSettings.telegramLastReportSent2 = todayStr;
+                writeData(updatedDb, false);
+              }
+            });
           }
-        });
-      } else if (period === 'monthly_custom') {
-        const customDay = settings.telegramCustomReportDay || 20;
-        const currentDay = now.getDate();
-        if (currentDay !== customDay) return;
-
-        const startDate = new Date(now.getFullYear(), now.getMonth() - 1, customDay, 0, 0, 0, 0);
-        const endDate = new Date(now);
-
-        const caption = `<b>📊 AYLIK TETKİK & KASA RAPORU (ÖZEL PERİYOT)</b>\n` +
-          `📅 Dönem: ${startDate.toLocaleDateString("tr-TR")} - ${endDate.toLocaleDateString("tr-TR")}\n\n` +
-          `Sisteminiz tarafından belirlenen özel periyot (${customDay} - ${customDay}) uyarınca otomatik oluşturulan aylık detaylı Excel raporu ektedir.`;
-
-        sendTelegramReport(db, { startDate, endDate }, caption).then(success => {
-          if (success) {
-            db.appSettings.telegramLastReportSent = todayStr;
-            writeData(db, false);
-          }
-        });
+        }
       }
     } catch (err) {
       console.error("[Telegram Scheduler] Error in periodic check:", err);
@@ -446,7 +504,7 @@ function getAppPasswordHash() {
 async function startServer() {
   const app = express();
   app.set('trust proxy', 1);
-  const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+  const PORT = 3000;
 
   // Rewrite for subpath deployments (e.g. YunoHost)
   // This allows the app to respond correctly whether Nginx strips the path or not.
@@ -496,8 +554,8 @@ async function startServer() {
     const { password } = req.body;
     const currentHash = getAppPasswordHash();
     
-    // Allow either the hashed password or "123456" as a master password in development / preview
-    if (bcrypt.compareSync(password, currentHash) || password === "123456") {
+    // Verify the password against the stored password hash
+    if (bcrypt.compareSync(password, currentHash)) {
       // Generate secure 12-hour token
       const token = jwt.sign({ role: "admin" }, JWT_SECRET, { expiresIn: '12h' });
       res.json({ token });
@@ -597,6 +655,8 @@ async function startServer() {
       res.status(500).json({ error: `Telegram ile bağlantı kurulamadı: ${err.message}` });
     });
   });
+
+
 
   // Send Excel report now to Telegram Bot
   app.post("/api/telegram/send-now", authMiddleware, async (req, res) => {
@@ -777,14 +837,15 @@ async function startServer() {
 
     if (action === 'save') {
       const idx = db[collection].findIndex((x: any) => x.id === item.id);
+      const isNew = idx < 0;
       if (idx >= 0) {
         db[collection][idx] = { ...db[collection][idx], ...item };
       } else {
         db[collection].push(item);
       }
 
-      // If collection is referrals, trigger telegram notification
-      if (collection === 'referrals') {
+      // If collection is referrals, trigger telegram notification only for newly created items
+      if (collection === 'referrals' && isNew) {
         try {
           notifyTelegramReferral(item, db);
         } catch (tgErr) {

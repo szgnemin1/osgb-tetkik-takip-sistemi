@@ -1,0 +1,171 @@
+[2026-07-10T07:20:29.651Z] [WhatsApp] Initializing WhatsApp Web...
+[2026-07-10T07:20:29.748Z] [WhatsApp] Connection state: connecting...
+[2026-07-10T07:20:30.421Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:20:39.799Z] [WhatsApp] Initializing WhatsApp Web...
+[2026-07-10T07:20:39.902Z] [WhatsApp] Connection state: connecting...
+[2026-07-10T07:20:40.607Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:21:11.854Z] [WhatsApp] Initializing WhatsApp Web...
+[2026-07-10T07:21:11.965Z] [WhatsApp] Connection state: connecting...
+[2026-07-10T07:21:12.642Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:21:30.421Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:21:50.423Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:22:10.424Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:22:12.642Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:22:30.425Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:22:32.645Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:22:50.427Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:22:52.645Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:23:10.729Z] [WhatsApp] Connection closed. Status Code: 408 | Reason: QR refs attempts ended | Should reconnect: true
+[2026-07-10T07:23:12.648Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:23:15.730Z] [WhatsApp] Initializing WhatsApp Web...
+[2026-07-10T07:23:15.766Z] [WhatsApp] Connection state: connecting...
+[2026-07-10T07:23:16.160Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:23:32.649Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:23:52.970Z] [WhatsApp] Connection closed. Status Code: 408 | Reason: QR refs attempts ended | Should reconnect: true
+[2026-07-10T07:23:57.970Z] [WhatsApp] Initializing WhatsApp Web...
+[2026-07-10T07:23:57.987Z] [WhatsApp] Connection state: connecting...
+[2026-07-10T07:23:58.237Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:24:16.161Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:24:36.163Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:24:56.163Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:24:58.238Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:25:16.164Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:25:18.240Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:25:36.166Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:25:38.241Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:25:56.353Z] [WhatsApp] Connection closed. Status Code: 408 | Reason: QR refs attempts ended | Should reconnect: true
+[2026-07-10T07:25:58.241Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:26:01.354Z] [WhatsApp] Initializing WhatsApp Web...
+[2026-07-10T07:26:01.372Z] [WhatsApp] Connection state: connecting...
+[2026-07-10T07:26:01.597Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:26:18.244Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:26:38.409Z] [WhatsApp] Connection closed. Status Code: 408 | Reason: QR refs attempts ended | Should reconnect: true
+[2026-07-10T07:26:43.409Z] [WhatsApp] Initializing WhatsApp Web...
+[2026-07-10T07:26:43.427Z] [WhatsApp] Connection state: connecting...
+[2026-07-10T07:26:43.701Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:27:01.599Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:27:21.601Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:27:41.603Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:27:43.702Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:28:01.605Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:28:03.704Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:28:21.606Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:28:23.705Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:28:41.760Z] [WhatsApp] Connection closed. Status Code: 408 | Reason: QR refs attempts ended | Should reconnect: true
+[2026-07-10T07:28:43.706Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:28:46.762Z] [WhatsApp] Initializing WhatsApp Web...
+[2026-07-10T07:28:46.777Z] [WhatsApp] Connection state: connecting...
+[2026-07-10T07:28:47.396Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:29:03.706Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:29:23.881Z] [WhatsApp] Connection closed. Status Code: 408 | Reason: QR refs attempts ended | Should reconnect: true
+[2026-07-10T07:29:28.884Z] [WhatsApp] Initializing WhatsApp Web...
+[2026-07-10T07:29:28.900Z] [WhatsApp] Connection state: connecting...
+[2026-07-10T07:29:29.488Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:29:47.397Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:30:07.399Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:30:27.400Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:30:29.490Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:30:47.401Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:30:49.494Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:31:07.403Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:31:09.495Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:31:27.709Z] [WhatsApp] Connection closed. Status Code: 408 | Reason: QR refs attempts ended | Should reconnect: true
+[2026-07-10T07:31:29.496Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:31:32.711Z] [WhatsApp] Initializing WhatsApp Web...
+[2026-07-10T07:31:32.727Z] [WhatsApp] Connection state: connecting...
+[2026-07-10T07:31:33.520Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:31:49.498Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:32:09.779Z] [WhatsApp] Connection closed. Status Code: 408 | Reason: QR refs attempts ended | Should reconnect: true
+[2026-07-10T07:32:14.779Z] [WhatsApp] Initializing WhatsApp Web...
+[2026-07-10T07:32:14.795Z] [WhatsApp] Connection state: connecting...
+[2026-07-10T07:32:15.255Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:32:33.520Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:32:53.522Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:33:13.523Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:33:15.257Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:33:33.525Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:33:35.259Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:33:53.525Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:33:55.261Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:34:13.806Z] [WhatsApp] Connection closed. Status Code: 408 | Reason: QR refs attempts ended | Should reconnect: true
+[2026-07-10T07:34:15.263Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:34:18.807Z] [WhatsApp] Initializing WhatsApp Web...
+[2026-07-10T07:34:18.825Z] [WhatsApp] Connection state: connecting...
+[2026-07-10T07:34:19.280Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:34:35.265Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:34:55.477Z] [WhatsApp] Connection closed. Status Code: 408 | Reason: QR refs attempts ended | Should reconnect: true
+[2026-07-10T07:35:00.478Z] [WhatsApp] Initializing WhatsApp Web...
+[2026-07-10T07:35:00.494Z] [WhatsApp] Connection state: connecting...
+[2026-07-10T07:35:00.719Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:35:19.280Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:35:39.282Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:35:59.283Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:36:00.721Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:36:19.285Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:36:20.722Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:36:39.288Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:36:40.723Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:36:59.493Z] [WhatsApp] Connection closed. Status Code: 408 | Reason: QR refs attempts ended | Should reconnect: true
+[2026-07-10T07:37:00.724Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:37:04.494Z] [WhatsApp] Initializing WhatsApp Web...
+[2026-07-10T07:37:04.509Z] [WhatsApp] Connection state: connecting...
+[2026-07-10T07:37:04.954Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:37:20.724Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:37:40.881Z] [WhatsApp] Connection closed. Status Code: 408 | Reason: QR refs attempts ended | Should reconnect: true
+[2026-07-10T07:37:45.882Z] [WhatsApp] Initializing WhatsApp Web...
+[2026-07-10T07:37:45.902Z] [WhatsApp] Connection state: connecting...
+[2026-07-10T07:37:46.526Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:38:04.954Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:38:24.956Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:38:44.957Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:38:46.527Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:39:04.959Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:39:06.527Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:39:24.959Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:39:26.528Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:39:45.177Z] [WhatsApp] Connection closed. Status Code: 408 | Reason: QR refs attempts ended | Should reconnect: true
+[2026-07-10T07:39:46.529Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:39:50.179Z] [WhatsApp] Initializing WhatsApp Web...
+[2026-07-10T07:39:50.194Z] [WhatsApp] Connection state: connecting...
+[2026-07-10T07:39:50.586Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:40:06.530Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:40:26.833Z] [WhatsApp] Connection closed. Status Code: 408 | Reason: QR refs attempts ended | Should reconnect: true
+[2026-07-10T07:40:31.835Z] [WhatsApp] Initializing WhatsApp Web...
+[2026-07-10T07:40:31.849Z] [WhatsApp] Connection state: connecting...
+[2026-07-10T07:40:32.398Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:40:50.587Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:41:10.589Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:41:30.590Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:41:32.399Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:41:50.592Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:41:52.401Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:42:10.592Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:42:12.402Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:42:30.785Z] [WhatsApp] Connection closed. Status Code: 408 | Reason: QR refs attempts ended | Should reconnect: true
+[2026-07-10T07:42:32.403Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:42:35.785Z] [WhatsApp] Initializing WhatsApp Web...
+[2026-07-10T07:42:35.801Z] [WhatsApp] Connection state: connecting...
+[2026-07-10T07:42:36.261Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:42:52.405Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:43:12.679Z] [WhatsApp] Connection closed. Status Code: 408 | Reason: QR refs attempts ended | Should reconnect: true
+[2026-07-10T07:43:17.681Z] [WhatsApp] Initializing WhatsApp Web...
+[2026-07-10T07:43:17.697Z] [WhatsApp] Connection state: connecting...
+[2026-07-10T07:43:18.143Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:43:36.261Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:43:56.263Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:44:16.264Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:44:18.143Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:44:36.264Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:44:38.143Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:44:56.265Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:44:58.144Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:45:16.490Z] [WhatsApp] Connection closed. Status Code: 408 | Reason: QR refs attempts ended | Should reconnect: true
+[2026-07-10T07:45:18.145Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:45:21.492Z] [WhatsApp] Initializing WhatsApp Web...
+[2026-07-10T07:45:21.509Z] [WhatsApp] Connection state: connecting...
+[2026-07-10T07:45:21.918Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:45:38.146Z] [WhatsApp] New QR code generated.
+[2026-07-10T07:45:58.361Z] [WhatsApp] Connection closed. Status Code: 408 | Reason: QR refs attempts ended | Should reconnect: true
+[2026-07-10T07:46:03.363Z] [WhatsApp] Initializing WhatsApp Web...
+[2026-07-10T07:46:03.380Z] [WhatsApp] Connection state: connecting...
+[2026-07-10T07:46:04.008Z] [WhatsApp] New QR code generated.

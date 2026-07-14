@@ -65,6 +65,7 @@ export interface Employee {
   fullName: string;
   tcNo: string;
   birthDate?: string; // New field added
+  phone?: string; // Added for WhatsApp integration
   company: string;
   department?: string;
 }
@@ -119,6 +120,10 @@ export interface AppSettings {
   telegramReportPeriod?: 'none' | 'daily' | 'weekly' | 'monthly_custom';
   telegramCustomReportDay?: number;
   telegramLastReportSent?: string;
+  telegramReportPeriod2?: 'none' | 'daily' | 'weekly' | 'monthly_custom';
+  telegramCustomReportDay2?: number;
+  telegramLastReportSent2?: string;
+
 }
 
 /**

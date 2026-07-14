@@ -27,6 +27,7 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
   const [fullName, setFullName] = useState('');
   const [tcNo, setTcNo] = useState('');
   const [birthDate, setBirthDate] = useState('');
+  const [phone, setPhone] = useState('');
 
   
   // Company Search State
@@ -61,6 +62,7 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
         setFullName(initialData.employee.fullName);
         setTcNo(initialData.employee.tcNo);
         setBirthDate(initialData.employee.birthDate || '');
+        setPhone(initialData.employee.phone || '');
         
         // Firma Bilgileri (İsimden objeyi bul)
         const foundCompany = companies.find(c => c.name === initialData.employee.company);
@@ -240,6 +242,7 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
         fullName,
         tcNo,
         birthDate,
+        phone,
         company: selectedCompanyData ? selectedCompanyData.name : companySearchTerm, // Firma silinmişse text olarak al
       },
       exams: selectedExamIds,
@@ -404,6 +407,11 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
                                     )}
                                 </div>
                             </div>
+                        </div>
+
+                        <div>
+                            <label className="text-[10px] uppercase font-bold text-slate-500 mb-1 block ml-1 font-sans">Telefon Numarası (WhatsApp)</label>
+                            <input type="text" value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g,''))} className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-sm focus:border-emerald-500 outline-none placeholder-slate-600 font-mono" placeholder="Örn: 905xxxxxxxxx" />
                         </div>
                     </div>
                 </div>
