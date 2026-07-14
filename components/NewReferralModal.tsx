@@ -45,6 +45,8 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
   const [estimatedPrice, setEstimatedPrice] = useState(0);
   const [estimatedCost, setEstimatedCost] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'POS' | 'INVOICE'>('INVOICE');
+  const [showPaymentReminder, setShowPaymentReminder] = useState(false);
+  const [pendingPrint, setPendingPrint] = useState(false);
   const [pendingRemoveExam, setPendingRemoveExam] = useState<string | null>(null);
 
   // Keep track of which referral is currently initialized in state to prevent overwriting user typing when background updates happen
@@ -227,10 +229,7 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
     );
   };
 
-  const handleSubmit = (e: React.FormEvent, shouldPrint: boolean = false) => {
-    e.preventDefault();
-    if (!isFormValid) return;
-
+  const executeSubmit = (selectedMethod: 'CASH' | 'POS' | 'INVOICE', shouldPrint: boolean) => {
     // ID'yi koru (düzenleme) veya yeni oluştur
     const referralId = initialData ? initialData.id : Math.random().toString(36).substr(2, 9);
     const employeeId = initialData ? initialData.employee.id : Math.random().toString(36).substr(2, 9);
@@ -253,10 +252,23 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
       specialistName: selectedCompanyData?.assignedSpecialist || initialData?.specialistName,
       totalPrice: estimatedPrice,
       totalCost: estimatedCost,
-      paymentMethod: paymentMethod,
+      paymentMethod: selectedMethod,
       targetInstitutionId: selectedInstitutionId || undefined,
     };
     onSubmit(newReferral, shouldPrint);
+    setShowPaymentReminder(false);
+  };
+
+  const handleSubmit = (e: React.FormEvent, shouldPrint: boolean = false) => {
+    e.preventDefault();
+    if (!isFormValid) return;
+
+    if (paymentMethod !== 'INVOICE') {
+      setPendingPrint(shouldPrint);
+      setShowPaymentReminder(true);
+    } else {
+      executeSubmit('INVOICE', shouldPrint);
+    }
   };
 
   const getHazardBadge = (hazard: HazardClass) => {
@@ -407,11 +419,6 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
                                     )}
                                 </div>
                             </div>
-                        </div>
-
-                        <div>
-                            <label className="text-[10px] uppercase font-bold text-slate-500 mb-1 block ml-1 font-sans">Telefon Numarası (WhatsApp)</label>
-                            <input type="text" value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g,''))} className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-sm focus:border-emerald-500 outline-none placeholder-slate-600 font-mono" placeholder="Örn: 905xxxxxxxxx" />
                         </div>
                     </div>
                 </div>
@@ -604,6 +611,74 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
             </div>
         </div>
       </div>
+
+      {/* Ödeme Tipi Hatırlatma / Onay Pop-up'ı */}
+      {showPaymentReminder && (
+        <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative overflow-hidden animate-in fade-in zoom-in duration-200">
+            {/* Background Accent Deco */}
+            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-500 to-purple-500" />
+            
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="p-2.5 bg-sky-500/10 rounded-xl text-sky-400">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">Ödeme Tipi Hatırlatması</h3>
+                <p className="text-xs text-slate-400">Seçilen ödeme yöntemi fatura değildir.</p>
+              </div>
+            </div>
+
+            <p className="text-slate-300 text-sm mb-6 leading-relaxed">
+              Ödeme yöntemi olarak fatura harici bir tip belirlediniz. 
+              Lütfen ödemenin tahsilat şeklini onaylayın: <strong className="text-white">Nakit mi, POS mu?</strong>
+            </p>
+
+            {/* Seçim Seçenekleri */}
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              <button
+                type="button"
+                onClick={() => executeSubmit('CASH', pendingPrint)}
+                className="flex flex-col items-center justify-center p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 transition-all cursor-pointer group active:scale-95"
+              >
+                <Banknote className="w-8 h-8 mb-2 text-emerald-400 group-hover:scale-110 transition-transform" />
+                <span className="text-sm font-bold">ELDEN (Nakit)</span>
+                <span className="text-[10px] text-slate-400 mt-1">Nakit olarak tahsil edildi</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => executeSubmit('POS', pendingPrint)}
+                className="flex flex-col items-center justify-center p-4 rounded-xl border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 transition-all cursor-pointer group active:scale-95"
+              >
+                <CreditCard className="w-8 h-8 mb-2 text-purple-400 group-hover:scale-110 transition-transform" />
+                <span className="text-sm font-bold">ELDEN (Pos)</span>
+                <span className="text-[10px] text-slate-400 mt-1">Kredi kartı / POS tahsilatı</span>
+              </button>
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                type="button"
+                onClick={() => {
+                  executeSubmit(paymentMethod, pendingPrint);
+                }}
+                className="flex-1 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors active:scale-95"
+              >
+                Mevcutla Devam Et ({paymentMethod === 'CASH' ? 'Nakit' : 'POS'})
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => setShowPaymentReminder(false)}
+                className="px-4 py-2.5 rounded-lg bg-slate-950 border border-slate-800 hover:bg-slate-900 text-slate-400 text-xs font-semibold transition-colors active:scale-95"
+              >
+                Vazgeç
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
