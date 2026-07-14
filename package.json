@@ -10,7 +10,6 @@
     "start": "node dist/server.cjs"
   },
   "dependencies": {
-    "@whiskeysockets/baileys": "^7.0.0-rc13",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "express": "^5.2.1",
@@ -18,7 +17,6 @@
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^0.562.0",
-    "pino": "^10.3.1",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
