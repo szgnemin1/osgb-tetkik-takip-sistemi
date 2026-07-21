@@ -7,7 +7,7 @@
  * the Free Software Foundation, either version 3 of the License.
  */
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { ArrowLeft, Building2, User, Stethoscope, ShieldCheck, Receipt, Save, Search, Check, ChevronDown, X, MapPin, AlertCircle, CreditCard, Banknote, Trash2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Building2, User, Stethoscope, ShieldCheck, Receipt, Save, Search, Check, ChevronDown, X, MapPin, AlertCircle, CreditCard, Banknote, Trash2 } from 'lucide-react';
 import { Referral, Status, Company, HazardClass, ExamDefinition, MedicalInstitution, AppSettings, turkishIncludes } from '../types';
 
 interface NewReferralViewProps {
@@ -22,6 +22,17 @@ interface NewReferralViewProps {
 
 export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSubmit, companies, exams, institutions, settings, initialData }) => {
   // --- STATE MANAGEMENT ---
+  const [currentStep, setCurrentStep] = useState(1);
+  const [isMobileView, setIsMobileView] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobileView(window.innerWidth < 1024);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   // Personel State
   const [fullName, setFullName] = useState('');
@@ -89,13 +100,24 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
   // --- LOGIC & EFFECTS ---
 
   // Validation
-  const isFormValid = 
-    fullName.length >= 3 && 
-    tcNo.length === 11 && 
-    birthDate !== '' && 
-    (selectedCompanyData !== null || (initialData && companySearchTerm !== '')) && // Düzenleme modunda firma silinmiş olsa bile geç
-    selectedExamIds.length > 0 &&
-    selectedInstitutionId !== ''; 
+  const isStep1Valid = useMemo(() => {
+    return (
+      fullName.trim().length >= 3 &&
+      tcNo.trim().length === 11 &&
+      birthDate !== '' &&
+      (selectedCompanyData !== null || (initialData !== null && initialData !== undefined && companySearchTerm.trim() !== ''))
+    );
+  }, [fullName, tcNo, birthDate, selectedCompanyData, initialData, companySearchTerm]);
+
+  const isStep2Valid = useMemo(() => {
+    return selectedExamIds.length > 0;
+  }, [selectedExamIds]);
+
+  const isStep3Valid = useMemo(() => {
+    return selectedInstitutionId !== '';
+  }, [selectedInstitutionId]);
+
+  const isFormValid = isStep1Valid && isStep2Valid && isStep3Valid;
 
   // Age Calculation
   const patientAge = useMemo(() => {
@@ -288,16 +310,16 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
     <div className="h-full flex flex-col bg-slate-950 relative overflow-hidden">
       
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 bg-slate-900 shrink-0 h-16">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 bg-slate-900 shrink-0 min-h-[4rem] h-auto">
         <div className="flex items-center space-x-3">
-          <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors">
+          <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors shrink-0">
               <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-              <h1 className="text-lg font-bold text-white tracking-tight">
+              <h1 className="text-base md:text-lg font-bold text-white tracking-tight leading-tight">
                   {initialData ? 'Sevk Kaydını Düzenle' : 'Yeni Sevk Girişi'}
               </h1>
-              <p className="text-xs text-slate-400">
+              <p className="text-[10px] md:text-xs text-slate-400 truncate max-w-[180px] sm:max-w-[320px] md:max-w-none">
                   {initialData ? 'Mevcut personel ve tetkik bilgilerini güncelleyin' : 'Tek ekranda hızlı sevk oluşturma modülü'}
               </p>
           </div>
@@ -310,307 +332,731 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
         </div>
       </div>
 
-      {/* Main Grid Content */}
-      <div className="flex-1 p-4 overflow-hidden min-h-0">
-        <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-4">
-            
-            {/* COLUMN 1: KİM? (Personel ve Firma) - %30 */}
-            <div className="lg:col-span-4 flex flex-col space-y-4 overflow-y-auto custom-scrollbar pr-1 min-h-0">
-                
-                {/* 1. Firma Seçimi Kartı */}
-                <div className={`bg-slate-900 border rounded-xl p-4 shadow-sm shrink-0 transition-colors ${!selectedCompanyData && companySearchTerm === '' ? 'border-orange-500/50' : 'border-slate-800'}`}>
+      {isMobileView ? (
+        // Mobile Step-by-Step Flow
+        <>
+          {/* Step Progress Indicator */}
+          <div className="bg-slate-900 border-b border-slate-800 px-4 py-3 shrink-0">
+            <div className="max-w-md mx-auto flex items-center justify-between">
+              <button 
+                type="button"
+                onClick={() => setCurrentStep(1)}
+                className="flex flex-col items-center space-y-1 focus:outline-none group"
+              >
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
+                  currentStep === 1 
+                    ? 'bg-blue-600 text-white ring-4 ring-blue-900/30' 
+                    : isStep1Valid 
+                      ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/50 font-bold' 
+                      : 'bg-slate-800 text-slate-400 border border-slate-700'
+                }`}>
+                  {isStep1Valid && currentStep !== 1 ? <Check className="w-4 h-4" /> : '1'}
+                </div>
+                <span className={`text-[10px] font-semibold transition-colors ${currentStep === 1 ? 'text-blue-400 font-bold' : 'text-slate-400'}`}>
+                  Firma & Personel
+                </span>
+              </button>
+
+              <div className={`flex-1 h-0.5 mx-2 transition-all ${isStep1Valid ? 'bg-emerald-500/30' : 'bg-slate-800'}`} />
+
+              <button 
+                type="button"
+                onClick={() => isStep1Valid && setCurrentStep(2)}
+                disabled={!isStep1Valid}
+                className={`flex flex-col items-center space-y-1 focus:outline-none group ${!isStep1Valid ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
+                  currentStep === 2 
+                    ? 'bg-blue-600 text-white ring-4 ring-blue-900/30' 
+                    : isStep2Valid 
+                      ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/50 font-bold' 
+                      : 'bg-slate-800 text-slate-400 border border-slate-700'
+                }`}>
+                  {isStep2Valid && currentStep !== 2 ? <Check className="w-4 h-4" /> : '2'}
+                </div>
+                <span className={`text-[10px] font-semibold transition-colors ${currentStep === 2 ? 'text-blue-400 font-bold' : 'text-slate-400'}`}>
+                  Tetkikler
+                </span>
+              </button>
+
+              <div className={`flex-1 h-0.5 mx-2 transition-all ${isStep2Valid ? 'bg-emerald-500/30' : 'bg-slate-800'}`} />
+
+              <button 
+                type="button"
+                onClick={() => isStep1Valid && isStep2Valid && setCurrentStep(3)}
+                disabled={!isStep1Valid || !isStep2Valid}
+                className={`flex flex-col items-center space-y-1 focus:outline-none group ${(!isStep1Valid || !isStep2Valid) ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
+                  currentStep === 3 
+                    ? 'bg-blue-600 text-white ring-4 ring-blue-900/30' 
+                    : isFormValid 
+                      ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/50 font-bold' 
+                      : 'bg-slate-800 text-slate-400 border border-slate-700'
+                }`}>
+                  {isFormValid && currentStep !== 3 ? <Check className="w-4 h-4" /> : '3'}
+                </div>
+                <span className={`text-[10px] font-semibold transition-colors ${currentStep === 3 ? 'text-blue-400 font-bold' : 'text-slate-400'}`}>
+                  Kurum & Onay
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* Main Container */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 pb-24 min-h-0 bg-slate-950">
+            <div className="max-w-2xl mx-auto space-y-6">
+
+              {/* STEP 1: Firma ve Personel Bilgileri */}
+              {currentStep === 1 && (
+                <div className="space-y-4 animate-in fade-in duration-200">
+                  {/* Firma Seçimi Kartı */}
+                  <div className={`bg-slate-900 border rounded-xl p-4 shadow-sm transition-colors ${!selectedCompanyData && companySearchTerm === '' ? 'border-orange-500/50' : 'border-slate-800'}`}>
                     <div className="flex items-center mb-3">
-                        <div className="p-1.5 bg-blue-500/10 rounded-lg mr-2">
-                            <Building2 className="w-4 h-4 text-blue-500" />
-                        </div>
-                        <h3 className="font-bold text-slate-200 text-sm">Firma Bilgisi <span className="text-red-500">*</span></h3>
+                      <div className="p-1.5 bg-blue-500/10 rounded-lg mr-2">
+                        <Building2 className="w-4 h-4 text-blue-500" />
+                      </div>
+                      <h3 className="font-bold text-slate-200 text-sm">Firma Bilgisi <span className="text-red-500 ml-1">*</span></h3>
                     </div>
 
                     <div className="relative" ref={dropdownRef}>
-                        <div className="relative">
-                            <input
-                                autoFocus={!initialData}
-                                type="text"
-                                value={companySearchTerm}
-                                onChange={(e) => {
-                                    setCompanySearchTerm(e.target.value);
-                                    setIsCompanyDropdownOpen(true);
-                                    if(selectedCompanyData && e.target.value !== selectedCompanyData.name) setSelectedCompanyData(null);
-                                }}
-                                onClick={() => setIsCompanyDropdownOpen(true)}
-                                placeholder="Firma adı yazın..."
-                                className={`w-full pl-3 pr-8 py-2.5 bg-slate-950 border text-white text-sm rounded-lg focus:ring-2 focus:ring-blue-600 outline-none transition-all font-medium ${selectedCompanyData || initialData ? 'border-blue-500/50' : 'border-slate-700'}`}
-                            />
-                            {(selectedCompanyData || companySearchTerm) ? (
-                                <button onClick={handleClearCompany} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-400"><X className="w-3.5 h-3.5" /></button>
-                            ) : (
-                                <Search className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-600 pointer-events-none" />
-                            )}
-                        </div>
-
-                        {/* Dropdown */}
-                        {isCompanyDropdownOpen && (
-                            <div className="absolute top-full left-0 right-0 mt-1 max-h-56 overflow-y-auto bg-slate-800 border border-slate-700 rounded-lg shadow-2xl z-50 custom-scrollbar">
-                                {filteredCompanies.length > 0 ? (
-                                    filteredCompanies.map(c => (
-                                        <div key={c.id} onClick={() => handleSelectCompany(c)} className="px-3 py-2.5 hover:bg-slate-700 cursor-pointer border-b border-slate-700/50 last:border-0 group">
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-sm text-slate-200 font-bold group-hover:text-white truncate max-w-[180px]">{c.name}</span>
-                                                {getHazardBadge(c.hazardClass)}
-                                            </div>
-                                        </div>
-                                    ))
-                                ) : <div className="p-3 text-xs text-slate-500 text-center">Sonuç bulunamadı.</div>}
-                            </div>
+                      <div className="relative">
+                        <input
+                          autoFocus={!initialData}
+                          type="text"
+                          value={companySearchTerm}
+                          onChange={(e) => {
+                            setCompanySearchTerm(e.target.value);
+                            setIsCompanyDropdownOpen(true);
+                            if(selectedCompanyData && e.target.value !== selectedCompanyData.name) setSelectedCompanyData(null);
+                          }}
+                          onClick={() => setIsCompanyDropdownOpen(true)}
+                          placeholder="Firma adı yazın..."
+                          className={`w-full pl-3 pr-8 py-2.5 bg-slate-950 border text-white text-base rounded-lg focus:ring-2 focus:ring-blue-600 outline-none transition-all font-medium ${selectedCompanyData || initialData ? 'border-blue-500/50' : 'border-slate-700'}`}
+                        />
+                        {(selectedCompanyData || companySearchTerm) ? (
+                          <button onClick={handleClearCompany} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-400"><X className="w-3.5 h-3.5" /></button>
+                        ) : (
+                          <Search className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-600 pointer-events-none" />
                         )}
+                      </div>
+
+                      {/* Dropdown */}
+                      {isCompanyDropdownOpen && (
+                        <div className="absolute top-full left-0 right-0 mt-1 max-h-56 overflow-y-auto bg-slate-800 border border-slate-700 rounded-lg shadow-2xl z-50 custom-scrollbar">
+                          {filteredCompanies.length > 0 ? (
+                            filteredCompanies.map(c => (
+                              <div key={c.id} onClick={() => handleSelectCompany(c)} className="px-3 py-2.5 hover:bg-slate-700 cursor-pointer border-b border-slate-700/50 last:border-0 group">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-sm text-slate-200 font-bold group-hover:text-white truncate max-w-[180px]">{c.name}</span>
+                                  {getHazardBadge(c.hazardClass)}
+                                </div>
+                              </div>
+                            ))
+                          ) : <div className="p-3 text-xs text-slate-500 text-center">Sonuç bulunamadı.</div>}
+                        </div>
+                      )}
                     </div>
 
                     {/* Atalı Uzman ve Hekim Bilgisi */}
                     {(selectedCompanyData || initialData) && (
-                        <div className="mt-3 pt-3 border-t border-slate-800 space-y-2">
-                            <div className="flex items-center text-xs">
-                                <Stethoscope className="w-3.5 h-3.5 text-blue-400 mr-2 shrink-0" />
-                                <span className="text-slate-400 w-20">İşyeri Hekimi:</span>
-                                <span className="text-slate-200 font-medium truncate">
-                                    {selectedCompanyData?.assignedDoctor || initialData?.doctorName || '-'}
-                                </span>
-                            </div>
-                            <div className="flex items-center text-xs">
-                                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 mr-2 shrink-0" />
-                                <span className="text-slate-400 w-20">İSG Uzmanı:</span>
-                                <span className="text-slate-200 font-medium truncate">
-                                    {selectedCompanyData?.assignedSpecialist || initialData?.specialistName || '-'}
-                                </span>
-                            </div>
+                      <div className="mt-3 pt-3 border-t border-slate-800 space-y-2">
+                        <div className="flex items-center text-xs">
+                          <Stethoscope className="w-3.5 h-3.5 text-blue-400 mr-2 shrink-0" />
+                          <span className="text-slate-400 w-20">İşyeri Hekimi:</span>
+                          <span className="text-slate-200 font-medium truncate">
+                            {selectedCompanyData?.assignedDoctor || initialData?.doctorName || '-'}
+                          </span>
                         </div>
+                        <div className="flex items-center text-xs">
+                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 mr-2 shrink-0" />
+                          <span className="text-slate-400 w-20">İSG Uzmanı:</span>
+                          <span className="text-slate-200 font-medium truncate">
+                            {selectedCompanyData?.assignedSpecialist || initialData?.specialistName || '-'}
+                          </span>
+                        </div>
+                      </div>
                     )}
-                </div>
+                  </div>
 
-                {/* 2. Personel Bilgisi Kartı */}
-                <div className={`bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm transition-all duration-300 shrink-0 ${!selectedCompanyData && !initialData ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
+                  {/* Personel Bilgisi Kartı */}
+                  <div className={`bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm transition-all duration-300 ${!selectedCompanyData && !initialData ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
                     <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center">
-                            <div className="p-1.5 bg-emerald-500/10 rounded-lg mr-2">
-                                <User className="w-4 h-4 text-emerald-500" />
-                            </div>
-                            <h3 className="font-bold text-slate-200 text-sm">Personel Bilgisi</h3>
+                      <div className="flex items-center">
+                        <div className="p-1.5 bg-emerald-500/10 rounded-lg mr-2">
+                          <User className="w-4 h-4 text-emerald-500" />
                         </div>
+                        <h3 className="font-bold text-slate-200 text-sm">Personel Bilgisi</h3>
+                      </div>
                     </div>
 
                     <div className="space-y-3">
+                      <div>
+                        <label className="text-[10px] uppercase font-bold text-slate-500 mb-1 block ml-1">Ad Soyad <span className="text-red-500">*</span></label>
+                        <input type="text" value={fullName} onChange={e => setFullName(e.target.value)} className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-base focus:border-emerald-500 outline-none placeholder-slate-600" placeholder="Örn: Ahmet Yılmaz" />
+                      </div>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                            <label className="text-[10px] uppercase font-bold text-slate-500 mb-1 block ml-1">Ad Soyad <span className="text-red-500">*</span></label>
-                            <input type="text" value={fullName} onChange={e => setFullName(e.target.value)} className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-sm focus:border-emerald-500 outline-none placeholder-slate-600" placeholder="Örn: Ahmet Yılmaz" />
+                          <label className="text-[10px] uppercase font-bold text-slate-500 mb-1 block ml-1">TC Kimlik <span className="text-red-500">*</span></label>
+                          <input maxLength={11} value={tcNo} onChange={e => setTcNo(e.target.value.replace(/\D/g,''))} className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-base focus:border-emerald-500 outline-none placeholder-slate-600" placeholder="11 Haneli" />
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <label className="text-[10px] uppercase font-bold text-slate-500 mb-1 block ml-1">TC Kimlik <span className="text-red-500">*</span></label>
-                                <input maxLength={11} value={tcNo} onChange={e => setTcNo(e.target.value.replace(/\D/g,''))} className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-sm focus:border-emerald-500 outline-none placeholder-slate-600" placeholder="11 Haneli" />
-                            </div>
-                            <div>
-                                <label className="text-[10px] uppercase font-bold text-slate-500 mb-1 block ml-1">Doğum Tarihi <span className="text-red-500">*</span></label>
-                                <div className="relative">
-                                    <input type="date" value={birthDate} onChange={e => setBirthDate(e.target.value)} className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-sm focus:border-emerald-500 outline-none" />
-                                    {isEkgRecommended && (
-                                        <div className="absolute -bottom-4 right-0 text-[9px] text-indigo-400 font-bold flex items-center">
-                                            <AlertCircle className="w-2.5 h-2.5 mr-1" />
-                                            {patientAge} Yaş (EKG Önerildi)
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
+                        <div>
+                          <label className="text-[10px] uppercase font-bold text-slate-500 mb-1 block ml-1">Doğum Tarihi <span className="text-red-500">*</span></label>
+                          <div className="relative">
+                            <input type="date" value={birthDate} onChange={e => setBirthDate(e.target.value)} className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-base focus:border-emerald-500 outline-none" />
+                            {isEkgRecommended && (
+                              <div className="absolute -bottom-4 right-0 text-[9px] text-indigo-400 font-bold flex items-center">
+                                <AlertCircle className="w-2.5 h-2.5 mr-1" />
+                                {patientAge} Yaş (EKG Önerildi)
+                              </div>
+                            )}
+                          </div>
                         </div>
+                      </div>
                     </div>
+                  </div>
                 </div>
-            </div>
+              )}
 
-            {/* COLUMN 2: NE? (Tetkikler) - %45 */}
-            <div className={`lg:col-span-5 flex flex-col transition-all duration-300 min-h-0 ${!selectedCompanyData && !initialData ? 'opacity-40 pointer-events-none' : ''}`}>
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-1 h-full flex flex-col shadow-sm overflow-hidden">
-                    <div className="p-3 border-b border-slate-800 flex justify-between items-center shrink-0">
-                        <h3 className="font-bold text-slate-200 flex items-center text-sm">
-                            <span className="w-2 h-2 rounded-full bg-indigo-500 mr-2"></span>
-                            İstenen Tetkikler <span className="text-red-500 ml-1">*</span>
-                        </h3>
-                        <div className="text-[10px] text-slate-500 bg-slate-800 px-2 py-0.5 rounded">
-                            {selectedExamIds.length} seçildi
-                        </div>
+              {/* STEP 2: İstenen Tetkikler */}
+              {currentStep === 2 && (
+                <div className="space-y-4 animate-in fade-in duration-200">
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col shadow-sm">
+                    <div className="flex justify-between items-center pb-3 border-b border-slate-800 mb-4">
+                      <h3 className="font-bold text-slate-200 flex items-center text-sm">
+                        <span className="w-2 h-2 rounded-full bg-indigo-500 mr-2"></span>
+                        İstenen Tetkikler <span className="text-red-500 ml-1">*</span>
+                      </h3>
+                      <div className="text-[10px] text-slate-500 bg-slate-800 px-2.5 py-1 rounded font-bold">
+                        {selectedExamIds.length} tetkik seçildi
+                      </div>
                     </div>
                     
-                    <div className="p-3 flex-1 overflow-y-auto custom-scrollbar">
-                        <div className="grid grid-cols-2 gap-2">
-                            {sortedExams.map(exam => {
-                                const isSelected = selectedExamIds.includes(exam.name);
-                                const isDefault = selectedCompanyData?.defaultExams.includes(exam.name);
-                                const isEkgAndMandatory = !initialData && isEkgRecommended && exam.name === 'EKG';
-                                
-                                return (
-                                    <button
-                                        key={exam.id}
-                                        type="button"
-                                        onClick={() => toggleExam(exam.name)}
-                                        className={`relative group p-3 rounded-lg border text-left transition-all duration-150 flex flex-col justify-between min-h-[70px] ${
-                                            isSelected 
-                                            ? 'bg-blue-600 border-blue-500 shadow-lg shadow-blue-900/40 transform scale-[1.01]' 
-                                            : 'bg-slate-950 border-slate-800 hover:border-slate-600 hover:bg-slate-900'
-                                        } overflow-hidden`}
-                                    >
-                                        <div className={`flex justify-between items-start w-full ${pendingRemoveExam === exam.name ? 'opacity-20' : ''} transition-opacity`}>
-                                            <span className={`text-xs font-bold leading-tight pr-3 ${isSelected ? 'text-white' : 'text-slate-300 group-hover:text-white'}`}>
-                                                {exam.name}
-                                            </span>
-                                            {isSelected && (
-                                                <div className="bg-white/20 p-0.5 rounded-full shrink-0">
-                                                    <Check className="w-2.5 h-2.5 text-white" />
-                                                </div>
-                                            )}
-                                        </div>
-                                        
-                                        <div className={`mt-1 flex items-end justify-between w-full ${pendingRemoveExam === exam.name ? 'opacity-20' : ''} transition-opacity`}>
-                                            <span className={`text-[9px] font-mono px-1 py-0.5 rounded ${isSelected ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-500'}`}>
-                                                {exam.code}
-                                            </span>
-                                            <span className={`text-xs font-bold ${isSelected ? 'text-blue-100' : 'text-slate-500'}`}>
-                                                ₺{exam.price}
-                                            </span>
-                                        </div>
-
-                                        {pendingRemoveExam === exam.name && (
-                                            <div className="absolute inset-0 flex items-center justify-center bg-red-600/90 backdrop-blur-sm">
-                                                <span className="text-[10px] font-bold text-white text-center leading-tight p-2 flex items-center">
-                                                    <Trash2 className="w-3 h-3 mr-1" />
-                                                    Kaldırmak için tekrar<br/>tıklayın
-                                                </span>
-                                            </div>
-                                        )}
-
-                                        {isEkgAndMandatory && !isDefault && (
-                                            <div className="absolute -top-1.5 -right-1.5 bg-indigo-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow border-2 border-slate-900 flex items-center z-10">
-                                                <AlertCircle className="w-2 h-2 mr-1" />
-                                                Önerildi
-                                            </div>
-                                        )}
-                                        {isDefault && (
-                                            <div className="absolute -top-1.5 -right-1.5 bg-blue-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow border-2 border-slate-900 flex items-center z-10">
-                                                Zorunlu
-                                            </div>
-                                        )}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* COLUMN 3: NEREYE & ONAY - %25 */}
-            <div className={`lg:col-span-3 flex flex-col h-full transition-all duration-300 min-h-0 ${!selectedCompanyData && !initialData ? 'opacity-40 pointer-events-none' : ''}`}>
-                
-                {/* Scrollable Upper Section */}
-                <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 space-y-4 mb-4">
-                    {/* 1. Kurum Seçimi */}
-                    <div className={`bg-slate-900 border rounded-xl p-4 shadow-sm transition-colors ${!selectedInstitutionId ? 'border-purple-500/50 shadow-purple-900/20' : 'border-slate-800'}`}>
-                        <div className="flex items-center mb-3">
-                            <div className="p-1.5 bg-purple-500/10 rounded-lg mr-2">
-                                <MapPin className="w-4 h-4 text-purple-500" />
-                            </div>
-                            <h3 className="font-bold text-slate-200 text-sm">Sevk Kurumu <span className="text-red-500 ml-1">*</span></h3>
-                        </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {sortedExams.map(exam => {
+                        const isSelected = selectedExamIds.includes(exam.name);
+                        const isDefault = selectedCompanyData?.defaultExams.includes(exam.name);
+                        const isEkgAndMandatory = !initialData && isEkgRecommended && exam.name === 'EKG';
                         
-                        <div className="relative">
-                            <select 
-                                value={selectedInstitutionId} 
-                                onChange={e => setSelectedInstitutionId(e.target.value)}
-                                className={`w-full px-3 py-2.5 bg-slate-950 border rounded-lg text-xs text-white outline-none appearance-none transition-colors truncate pr-8 ${!selectedInstitutionId ? 'border-purple-500/50 text-slate-400' : 'border-slate-700 focus:border-purple-500'}`}
-                            >
-                                <option value="">Kurum Seçiniz (Zorunlu)</option>
-                                {institutions.map(inst => <option key={inst.id} value={inst.id}>{inst.name}</option>)}
-                            </select>
-                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 pointer-events-none" />
-                        </div>
-                    </div>
-
-                    {/* 2. Not */}
-                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm">
-                        <label className="text-[10px] uppercase font-bold text-slate-500 mb-2 block ml-1">Sevk Notu (Opsiyonel)</label>
-                        <textarea 
-                            value={notes}
-                            onChange={e => setNotes(e.target.value)}
-                            placeholder="Özel bir not ekleyin..."
-                            rows={3}
-                            className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:border-slate-500 outline-none resize-none"
-                        />
-                    </div>
-                </div>
-
-                {/* Sticky Bottom Section (Price & Save) */}
-                <div className="mt-auto shrink-0">
-                    <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 shadow-lg relative overflow-hidden">
-                        
-                        {/* Ödeme Yöntemi */}
-                        <div className="mb-3 relative z-10">
-                            <span className="text-[10px] text-slate-400 font-medium uppercase mb-1 block">Ödeme Tipi</span>
-                            <div className="flex flex-col gap-1.5">
-                                <button
-                                    onClick={() => setPaymentMethod('INVOICE')}
-                                    className={`w-full flex items-center px-2 py-1.5 rounded border transition-all ${paymentMethod === 'INVOICE' ? 'bg-blue-600/20 border-blue-500 text-blue-200' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:border-slate-600'}`}
-                                >
-                                    <Receipt className="w-3.5 h-3.5 mr-2" />
-                                    <span className="text-xs font-bold">FATURA</span>
-                                    {paymentMethod === 'INVOICE' && <Check className="w-3.5 h-3.5 ml-auto text-blue-400" />}
-                                </button>
-                                
-                                <div className="grid grid-cols-2 gap-1.5">
-                                    <button
-                                        onClick={() => setPaymentMethod('CASH')}
-                                        className={`flex items-center justify-center px-2 py-1.5 rounded border transition-all ${paymentMethod === 'CASH' ? 'bg-emerald-600/20 border-emerald-500 text-emerald-200' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:border-slate-600'}`}
-                                    >
-                                        <Banknote className="w-3.5 h-3.5 mr-1.5" />
-                                        <span className="text-[10px] font-bold">ELDEN (Nakit)</span>
-                                    </button>
-                                    <button
-                                        onClick={() => setPaymentMethod('POS')}
-                                        className={`flex items-center justify-center px-2 py-1.5 rounded border transition-all ${paymentMethod === 'POS' ? 'bg-purple-600/20 border-purple-500 text-purple-200' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:border-slate-600'}`}
-                                    >
-                                        <CreditCard className="w-3.5 h-3.5 mr-1.5" />
-                                        <span className="text-[10px] font-bold">ELDEN (Pos)</span>
-                                    </button>
+                        return (
+                          <button
+                            key={exam.id}
+                            type="button"
+                            onClick={() => toggleExam(exam.name)}
+                            className={`relative group p-4 rounded-xl border text-left transition-all duration-150 flex flex-col justify-between min-h-[80px] ${
+                              isSelected 
+                                ? 'bg-blue-600 border-blue-500 shadow-lg shadow-blue-900/40 transform scale-[1.01]' 
+                                : 'bg-slate-950 border-slate-800 hover:border-slate-600 hover:bg-slate-900'
+                            } overflow-hidden`}
+                          >
+                            <div className={`flex justify-between items-start w-full ${pendingRemoveExam === exam.name ? 'opacity-20' : ''} transition-opacity`}>
+                              <span className={`text-xs font-bold leading-tight pr-3 ${isSelected ? 'text-white' : 'text-slate-300 group-hover:text-white'}`}>
+                                {exam.name}
+                              </span>
+                              {isSelected && (
+                                <div className="bg-white/20 p-0.5 rounded-full shrink-0">
+                                  <Check className="w-3 h-3 text-white" />
                                 </div>
+                              )}
                             </div>
-                        </div>
-
-                        {/* Tutar */}
-                        <div className="mb-4 relative z-10 pt-2 border-t border-slate-700/50">
-                            <div className="text-2xl font-bold text-white tracking-tight">₺{estimatedPrice.toLocaleString('tr-TR')}</div>
-                            <div className="text-[10px] text-slate-500 mt-0.5">
-                                Maliyet: <span className="text-slate-400">₺{estimatedCost}</span>
+                            
+                            <div className={`mt-2 flex items-end justify-between w-full ${pendingRemoveExam === exam.name ? 'opacity-20' : ''} transition-opacity`}>
+                              <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded ${isSelected ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-500'}`}>
+                                {exam.code}
+                              </span>
+                              <span className={`text-sm font-bold ${isSelected ? 'text-blue-100' : 'text-slate-400'}`}>
+                                ₺{exam.price}
+                              </span>
                             </div>
-                        </div>
 
-                        {/* Buton */}
-                        <div className="flex flex-col gap-3 relative z-10">
-                            <button 
-                                onClick={(e) => handleSubmit(e, !initialData ? settings.autoPrintReferral : false)}
-                                disabled={!isFormValid}
-                                className={`w-full py-3.5 rounded-lg font-bold text-white shadow-lg flex items-center justify-center space-x-2 transition-all active:scale-95 ${
-                                    !isFormValid ? 'bg-slate-700 text-slate-500 cursor-not-allowed' :
-                                    paymentMethod === 'CASH' ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/30' : 
-                                    paymentMethod === 'POS' ? 'bg-purple-600 hover:bg-purple-500 shadow-purple-900/30' :
-                                    'bg-blue-600 hover:bg-blue-500 shadow-blue-900/30'
-                                }`}
-                            >
-                                <Save className="w-5 h-5" />
-                                <span className="text-sm">
-                                    {!isFormValid && selectedInstitutionId === '' ? 'KURUM SEÇİNİZ' : (initialData ? 'GÜNCELLE' : 'KAYDI OLUŞTUR')}
+                            {pendingRemoveExam === exam.name && (
+                              <div className="absolute inset-0 flex items-center justify-center bg-red-600/95 backdrop-blur-sm">
+                                <span className="text-xs font-bold text-white text-center leading-tight p-2 flex items-center">
+                                  <Trash2 className="w-4 h-4 mr-1" />
+                                  Kaldırmak için tekrar tıklayın
                                 </span>
-                            </button>
-                        </div>
+                              </div>
+                            )}
+
+                            {isEkgAndMandatory && !isDefault && (
+                              <div className="absolute -top-1.5 -right-1.5 bg-indigo-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow border-2 border-slate-900 flex items-center z-10">
+                                <AlertCircle className="w-2.5 h-2.5 mr-1" />
+                                Önerildi
+                              </div>
+                            )}
+                            {isDefault && (
+                              <div className="absolute -top-1.5 -right-1.5 bg-blue-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow border-2 border-slate-900 flex items-center z-10">
+                                Zorunlu
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
+                  </div>
                 </div>
+              )}
+
+              {/* STEP 3: Kurum ve Onay */}
+              {currentStep === 3 && (
+                <div className="space-y-4 animate-in fade-in duration-200">
+                  {/* Kurum Seçimi */}
+                  <div className={`bg-slate-900 border rounded-xl p-4 shadow-sm transition-colors ${!selectedInstitutionId ? 'border-purple-500/50 shadow-purple-900/20' : 'border-slate-800'}`}>
+                    <div className="flex items-center mb-3">
+                      <div className="p-1.5 bg-purple-500/10 rounded-lg mr-2">
+                        <MapPin className="w-4 h-4 text-purple-500" />
+                      </div>
+                      <h3 className="font-bold text-slate-200 text-sm">Sevk Kurumu <span className="text-red-500 ml-1">*</span></h3>
+                    </div>
+                    
+                    <div className="relative">
+                      <select 
+                        value={selectedInstitutionId} 
+                        onChange={e => setSelectedInstitutionId(e.target.value)}
+                        className={`w-full px-3 py-3 bg-slate-950 border rounded-lg text-base text-white outline-none appearance-none transition-colors truncate pr-8 ${!selectedInstitutionId ? 'border-purple-500/50 text-slate-400' : 'border-slate-700 focus:border-purple-500'}`}
+                      >
+                        <option value="">Kurum Seçiniz (Zorunlu)</option>
+                        {institutions.map(inst => <option key={inst.id} value={inst.id}>{inst.name}</option>)}
+                      </select>
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+                    </div>
+                  </div>
+
+                  {/* Sevk Notu */}
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm">
+                    <label className="text-[10px] uppercase font-bold text-slate-500 mb-2 block ml-1">Sevk Notu (Opsiyonel)</label>
+                    <textarea 
+                      value={notes}
+                      onChange={e => setNotes(e.target.value)}
+                      placeholder="Özel bir not ekleyin..."
+                      rows={3}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-base text-white focus:border-slate-500 outline-none resize-none"
+                    />
+                  </div>
+
+                  {/* Özet ve Finansal Detay Kartı */}
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg space-y-4">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 pb-2 border-b border-slate-800">ÖDEME VE ONAY</h4>
+                    
+                    {/* Ödeme Yöntemi Seçimi */}
+                    <div>
+                      <span className="text-[10px] text-slate-500 font-bold uppercase mb-2 block">Ödeme Tipi</span>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setPaymentMethod('INVOICE')}
+                          className={`flex-1 flex items-center justify-center py-2.5 px-3 rounded-lg border transition-all ${paymentMethod === 'INVOICE' ? 'bg-blue-600/20 border-blue-500 text-blue-200 font-bold' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'}`}
+                        >
+                          <Receipt className="w-4 h-4 mr-2" />
+                          <span className="text-xs">FATURA (Cari)</span>
+                        </button>
+                        
+                        <button
+                          type="button"
+                          onClick={() => setPaymentMethod('CASH')}
+                          className={`flex-1 flex items-center justify-center py-2.5 px-3 rounded-lg border transition-all ${paymentMethod === 'CASH' ? 'bg-emerald-600/20 border-emerald-500 text-emerald-200 font-bold' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'}`}
+                        >
+                          <Banknote className="w-4 h-4 mr-2" />
+                          <span className="text-xs">ELDEN (Nakit)</span>
+                        </button>
+                        
+                        <button
+                          type="button"
+                          onClick={() => setPaymentMethod('POS')}
+                          className={`flex-1 flex items-center justify-center py-2.5 px-3 rounded-lg border transition-all ${paymentMethod === 'POS' ? 'bg-purple-600/20 border-purple-500 text-purple-200 font-bold' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'}`}
+                        >
+                          <CreditCard className="w-4 h-4 mr-2" />
+                          <span className="text-xs">ELDEN (Pos)</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Tutar Özeti */}
+                    <div className="bg-slate-950 rounded-lg p-4 flex justify-between items-center border border-slate-800/80">
+                      <div>
+                        <span className="text-[10px] text-slate-500 uppercase font-bold">Toplam Sevk Bedeli</span>
+                        <div className="text-2xl font-black text-white tracking-tight mt-0.5">₺{estimatedPrice.toLocaleString('tr-TR')}</div>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[10px] text-slate-500 uppercase font-bold">Öngörülen Maliyet</span>
+                        <div className="text-sm font-bold text-slate-400 mt-1">₺{estimatedCost.toLocaleString('tr-TR')}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
             </div>
+          </div>
+
+          {/* Persistent Navigation Footer */}
+          <div className="border-t border-slate-800 bg-slate-900/95 backdrop-blur px-4 py-4 shrink-0 sticky bottom-0 z-40">
+            <div className="max-w-2xl mx-auto flex items-center justify-between gap-3">
+              {currentStep > 1 ? (
+                <button 
+                  type="button"
+                  onClick={() => setCurrentStep(prev => prev - 1)}
+                  className="px-5 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm transition-all active:scale-95 flex items-center space-x-2"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Geri</span>
+                </button>
+              ) : (
+                <button 
+                  type="button"
+                  onClick={onClose}
+                  className="px-5 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white font-bold text-sm transition-all active:scale-95"
+                >
+                  Vazgeç
+                </button>
+              )}
+
+              {currentStep < 3 ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (currentStep === 1 && isStep1Valid) setCurrentStep(2);
+                    else if (currentStep === 2 && isStep2Valid) setCurrentStep(3);
+                  }}
+                  disabled={currentStep === 1 ? !isStep1Valid : !isStep2Valid}
+                  className={`flex-1 sm:flex-initial px-6 py-3 rounded-xl font-bold text-white shadow-lg flex items-center justify-center space-x-2 transition-all active:scale-95 ${
+                    (currentStep === 1 ? !isStep1Valid : !isStep2Valid) 
+                      ? 'bg-slate-800 text-slate-500 cursor-not-allowed' 
+                      : 'bg-blue-600 hover:bg-blue-500 shadow-blue-900/20'
+                  }`}
+                >
+                  <span>Devam Et</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={(e) => handleSubmit(e, !initialData ? settings.autoPrintReferral : false)}
+                  disabled={!isFormValid}
+                  className={`flex-1 sm:flex-initial px-8 py-3 rounded-xl font-bold text-white shadow-lg flex items-center justify-center space-x-2 transition-all active:scale-95 ${
+                    !isFormValid 
+                      ? 'bg-slate-700 text-slate-500 cursor-not-allowed' 
+                      : paymentMethod === 'CASH' ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/30' : 
+                        paymentMethod === 'POS' ? 'bg-purple-600 hover:bg-purple-500 shadow-purple-900/30' :
+                        'bg-blue-600 hover:bg-blue-500 shadow-blue-900/30'
+                  }`}
+                >
+                  <Save className="w-4 h-4" />
+                  <span>
+                    {initialData ? 'GÜNCELLE' : 'KAYDI OLUŞTUR'}
+                  </span>
+                </button>
+              )}
+            </div>
+          </div>
+        </>
+      ) : (
+        // Desktop Multi-column Grid Layout (Eski tasarım)
+        <div className="flex-1 p-6 overflow-hidden min-h-0 bg-slate-950">
+          <div className="h-full grid grid-cols-12 gap-6 overflow-y-auto lg:overflow-hidden">
+            
+            {/* COLUMN 1: KİM? (Personel ve Firma) - lg:col-span-4 */}
+            <div className="col-span-12 lg:col-span-4 flex flex-col space-y-4 lg:overflow-y-auto custom-scrollbar pr-1 lg:min-h-0 min-h-fit">
+              
+              {/* Firma Seçimi Kartı */}
+              <div className={`bg-slate-900 border rounded-xl p-4 shadow-sm shrink-0 transition-colors ${!selectedCompanyData && companySearchTerm === '' ? 'border-orange-500/50' : 'border-slate-800'}`}>
+                <div className="flex items-center mb-3">
+                  <div className="p-1.5 bg-blue-500/10 rounded-lg mr-2">
+                    <Building2 className="w-4 h-4 text-blue-500" />
+                  </div>
+                  <h3 className="font-bold text-slate-200 text-sm">Firma Bilgisi <span className="text-red-500 ml-1">*</span></h3>
+                </div>
+
+                <div className="relative" ref={dropdownRef}>
+                  <div className="relative">
+                    <input
+                      autoFocus={!initialData}
+                      type="text"
+                      value={companySearchTerm}
+                      onChange={(e) => {
+                        setCompanySearchTerm(e.target.value);
+                        setIsCompanyDropdownOpen(true);
+                        if(selectedCompanyData && e.target.value !== selectedCompanyData.name) setSelectedCompanyData(null);
+                      }}
+                      onClick={() => setIsCompanyDropdownOpen(true)}
+                      placeholder="Firma adı yazın..."
+                      className={`w-full pl-3 pr-8 py-2.5 bg-slate-950 border text-white text-sm rounded-lg focus:ring-2 focus:ring-blue-600 outline-none transition-all font-medium ${selectedCompanyData || initialData ? 'border-blue-500/50' : 'border-slate-700'}`}
+                    />
+                    {(selectedCompanyData || companySearchTerm) ? (
+                      <button onClick={handleClearCompany} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-400"><X className="w-3.5 h-3.5" /></button>
+                    ) : (
+                      <Search className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-600 pointer-events-none" />
+                    )}
+                  </div>
+
+                  {/* Dropdown */}
+                  {isCompanyDropdownOpen && (
+                    <div className="absolute top-full left-0 right-0 mt-1 max-h-56 overflow-y-auto bg-slate-800 border border-slate-700 rounded-lg shadow-2xl z-50 custom-scrollbar">
+                      {filteredCompanies.length > 0 ? (
+                        filteredCompanies.map(c => (
+                          <div key={c.id} onClick={() => handleSelectCompany(c)} className="px-3 py-2.5 hover:bg-slate-700 cursor-pointer border-b border-slate-700/50 last:border-0 group">
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-slate-200 font-bold group-hover:text-white truncate max-w-[180px]">{c.name}</span>
+                              {getHazardBadge(c.hazardClass)}
+                            </div>
+                          </div>
+                        ))
+                      ) : <div className="p-3 text-xs text-slate-500 text-center">Sonuç bulunamadı.</div>}
+                    </div>
+                  )}
+                </div>
+
+                {/* Atalı Uzman ve Hekim Bilgisi */}
+                {(selectedCompanyData || initialData) && (
+                  <div className="mt-3 pt-3 border-t border-slate-800 space-y-2">
+                    <div className="flex items-center text-xs">
+                      <Stethoscope className="w-3.5 h-3.5 text-blue-400 mr-2 shrink-0" />
+                      <span className="text-slate-400 w-20">İşyeri Hekimi:</span>
+                      <span className="text-slate-200 font-medium truncate">
+                        {selectedCompanyData?.assignedDoctor || initialData?.doctorName || '-'}
+                      </span>
+                    </div>
+                    <div className="flex items-center text-xs">
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 mr-2 shrink-0" />
+                      <span className="text-slate-400 w-20">İSG Uzmanı:</span>
+                      <span className="text-slate-200 font-medium truncate">
+                        {selectedCompanyData?.assignedSpecialist || initialData?.specialistName || '-'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Personel Bilgisi Kartı */}
+              <div className={`bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm transition-all duration-300 shrink-0 ${!selectedCompanyData && !initialData ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center">
+                    <div className="p-1.5 bg-emerald-500/10 rounded-lg mr-2">
+                      <User className="w-4 h-4 text-emerald-500" />
+                    </div>
+                    <h3 className="font-bold text-slate-200 text-sm">Personel Bilgisi</h3>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-[10px] uppercase font-bold text-slate-500 mb-1 block ml-1">Ad Soyad <span className="text-red-500">*</span></label>
+                    <input type="text" value={fullName} onChange={e => setFullName(e.target.value)} className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-sm focus:border-emerald-500 outline-none placeholder-slate-600" placeholder="Örn: Ahmet Yılmaz" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] uppercase font-bold text-slate-500 mb-1 block ml-1">TC Kimlik <span className="text-red-500">*</span></label>
+                      <input maxLength={11} value={tcNo} onChange={e => setTcNo(e.target.value.replace(/\D/g,''))} className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-sm focus:border-emerald-500 outline-none placeholder-slate-600" placeholder="11 Haneli" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] uppercase font-bold text-slate-500 mb-1 block ml-1">Doğum Tarihi <span className="text-red-500">*</span></label>
+                      <div className="relative">
+                        <input type="date" value={birthDate} onChange={e => setBirthDate(e.target.value)} className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-sm focus:border-emerald-500 outline-none" />
+                        {isEkgRecommended && (
+                          <div className="absolute -bottom-4 right-0 text-[9px] text-indigo-400 font-bold flex items-center">
+                            <AlertCircle className="w-2.5 h-2.5 mr-1" />
+                            {patientAge} Yaş (EKG Önerildi)
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* COLUMN 2: NE? (Tetkikler) - lg:col-span-5 */}
+            <div className={`col-span-12 lg:col-span-5 flex flex-col transition-all duration-300 lg:min-h-0 min-h-fit ${!selectedCompanyData && !initialData ? 'opacity-40 pointer-events-none' : ''}`}>
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-1 lg:h-full h-auto flex flex-col shadow-sm overflow-hidden">
+                <div className="p-3 border-b border-slate-800 flex justify-between items-center shrink-0">
+                  <h3 className="font-bold text-slate-200 flex items-center text-sm">
+                    <span className="w-2 h-2 rounded-full bg-indigo-500 mr-2"></span>
+                    İstenen Tetkikler <span className="text-red-500 ml-1">*</span>
+                  </h3>
+                  <div className="text-[10px] text-slate-400 bg-slate-800 px-2 py-0.5 rounded">
+                    {selectedExamIds.length} seçildi
+                  </div>
+                </div>
+                
+                <div className="p-3 flex-1 lg:overflow-y-auto overflow-visible custom-scrollbar">
+                  <div className="grid grid-cols-2 gap-2">
+                    {sortedExams.map(exam => {
+                      const isSelected = selectedExamIds.includes(exam.name);
+                      const isDefault = selectedCompanyData?.defaultExams.includes(exam.name);
+                      const isEkgAndMandatory = !initialData && isEkgRecommended && exam.name === 'EKG';
+                      
+                      return (
+                        <button
+                          key={exam.id}
+                          type="button"
+                          onClick={() => toggleExam(exam.name)}
+                          className={`relative group p-3 rounded-lg border text-left transition-all duration-150 flex flex-col justify-between min-h-[70px] ${
+                            isSelected 
+                              ? 'bg-blue-600 border-blue-500 shadow-lg shadow-blue-900/40 transform scale-[1.01]' 
+                              : 'bg-slate-950 border-slate-800 hover:border-slate-600 hover:bg-slate-900'
+                          } overflow-hidden`}
+                        >
+                          <div className={`flex justify-between items-start w-full ${pendingRemoveExam === exam.name ? 'opacity-20' : ''} transition-opacity`}>
+                            <span className={`text-xs font-bold leading-tight pr-3 ${isSelected ? 'text-white' : 'text-slate-300 group-hover:text-white'}`}>
+                              {exam.name}
+                            </span>
+                            {isSelected && (
+                              <div className="bg-white/20 p-0.5 rounded-full shrink-0">
+                                <Check className="w-2.5 h-2.5 text-white" />
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className={`mt-1 flex items-end justify-between w-full ${pendingRemoveExam === exam.name ? 'opacity-20' : ''} transition-opacity`}>
+                            <span className={`text-[9px] font-mono px-1 py-0.5 rounded ${isSelected ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-500'}`}>
+                              {exam.code}
+                            </span>
+                            <span className={`text-xs font-bold ${isSelected ? 'text-blue-100' : 'text-slate-500'}`}>
+                              ₺{exam.price}
+                            </span>
+                          </div>
+
+                          {pendingRemoveExam === exam.name && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-red-600/90 backdrop-blur-sm">
+                              <span className="text-[10px] font-bold text-white text-center leading-tight p-2 flex items-center">
+                                <Trash2 className="w-3 h-3 mr-1" />
+                                Kaldırmak için tekrar<br/>tıklayın
+                              </span>
+                            </div>
+                          )}
+
+                          {isEkgAndMandatory && !isDefault && (
+                            <div className="absolute -top-1.5 -right-1.5 bg-indigo-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow border-2 border-slate-900 flex items-center z-10">
+                              <AlertCircle className="w-2 h-2 mr-1" />
+                              Önerildi
+                            </div>
+                          )}
+                          {isDefault && (
+                            <div className="absolute -top-1.5 -right-1.5 bg-blue-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow border-2 border-slate-900 flex items-center z-10">
+                              Zorunlu
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* COLUMN 3: NEREYE & ONAY - lg:col-span-3 */}
+            <div className={`col-span-12 lg:col-span-3 flex flex-col lg:h-full h-auto transition-all duration-300 lg:min-h-0 min-h-fit ${!selectedCompanyData && !initialData ? 'opacity-40 pointer-events-none' : ''}`}>
+              
+              {/* Scrollable Upper Section */}
+              <div className="flex-1 lg:overflow-y-auto overflow-visible custom-scrollbar pr-1 space-y-4 mb-4">
+                
+                {/* Kurum Seçimi */}
+                <div className={`bg-slate-900 border rounded-xl p-4 shadow-sm transition-colors ${!selectedInstitutionId ? 'border-purple-500/50 shadow-purple-900/20' : 'border-slate-800'}`}>
+                  <div className="flex items-center mb-3">
+                    <div className="p-1.5 bg-purple-500/10 rounded-lg mr-2">
+                      <MapPin className="w-4 h-4 text-purple-500" />
+                    </div>
+                    <h3 className="font-bold text-slate-200 text-sm">Sevk Kurumu <span className="text-red-500 ml-1">*</span></h3>
+                  </div>
+                  
+                  <div className="relative">
+                    <select 
+                      value={selectedInstitutionId} 
+                      onChange={e => setSelectedInstitutionId(e.target.value)}
+                      className={`w-full px-3 py-2.5 bg-slate-950 border rounded-lg text-xs text-white outline-none appearance-none transition-colors truncate pr-8 ${!selectedInstitutionId ? 'border-purple-500/50 text-slate-400' : 'border-slate-700 focus:border-purple-500'}`}
+                    >
+                      <option value="">Kurum Seçiniz (Zorunlu)</option>
+                      {institutions.map(inst => <option key={inst.id} value={inst.id}>{inst.name}</option>)}
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 pointer-events-none" />
+                  </div>
+                </div>
+
+                {/* Sevk Notu */}
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm">
+                  <label className="text-[10px] uppercase font-bold text-slate-500 mb-2 block ml-1">Sevk Notu (Opsiyonel)</label>
+                  <textarea 
+                    value={notes}
+                    onChange={e => setNotes(e.target.value)}
+                    placeholder="Özel bir not ekleyin..."
+                    rows={3}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:border-slate-500 outline-none resize-none"
+                  />
+                </div>
+              </div>
+
+              {/* Sticky Bottom Section (Price & Save) */}
+              <div className="mt-auto shrink-0 bg-slate-800 rounded-xl p-4 border border-slate-700 shadow-lg relative overflow-hidden">
+                
+                {/* Ödeme Yöntemi */}
+                <div className="mb-3">
+                  <span className="text-[10px] text-slate-400 font-medium uppercase mb-1 block">Ödeme Tipi</span>
+                  <div className="flex flex-col gap-1.5">
+                    <button
+                      onClick={() => setPaymentMethod('INVOICE')}
+                      className={`w-full flex items-center px-2 py-1.5 rounded border transition-all ${paymentMethod === 'INVOICE' ? 'bg-blue-600/20 border-blue-500 text-blue-200' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:border-slate-600'}`}
+                    >
+                      <Receipt className="w-3.5 h-3.5 mr-2" />
+                      <span className="text-xs font-bold">FATURA (Cari)</span>
+                      {paymentMethod === 'INVOICE' && <Check className="w-3.5 h-3.5 ml-auto text-blue-400" />}
+                    </button>
+                    
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <button
+                        onClick={() => setPaymentMethod('CASH')}
+                        className={`flex items-center justify-center px-2 py-1.5 rounded border transition-all ${paymentMethod === 'CASH' ? 'bg-emerald-600/20 border-emerald-500 text-emerald-200' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:border-slate-600'}`}
+                      >
+                        <Banknote className="w-3.5 h-3.5 mr-1.5" />
+                        <span className="text-[10px] font-bold">ELDEN (Nakit)</span>
+                      </button>
+                      <button
+                        onClick={() => setPaymentMethod('POS')}
+                        className={`flex items-center justify-center px-2 py-1.5 rounded border transition-all ${paymentMethod === 'POS' ? 'bg-purple-600/20 border-purple-500 text-purple-200' : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:border-slate-600'}`}
+                      >
+                        <CreditCard className="w-3.5 h-3.5 mr-1.5" />
+                        <span className="text-[10px] font-bold">ELDEN (Pos)</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tutar */}
+                <div className="mb-4 pt-2 border-t border-slate-700/50 flex justify-between items-center">
+                  <div>
+                    <div className="text-lg font-black text-white tracking-tight">₺{estimatedPrice.toLocaleString('tr-TR')}</div>
+                    <div className="text-[9px] text-slate-500">Maliyet: ₺{estimatedCost.toLocaleString('tr-TR')}</div>
+                  </div>
+                  <button 
+                    onClick={() => onClose()}
+                    className="text-xs font-bold text-slate-400 hover:text-white px-3 py-1.5 rounded hover:bg-slate-900 transition-colors"
+                  >
+                    Vazgeç
+                  </button>
+                </div>
+
+                {/* Buton */}
+                <button 
+                  onClick={(e) => handleSubmit(e, !initialData ? settings.autoPrintReferral : false)}
+                  disabled={!isFormValid}
+                  className={`w-full py-3 rounded-lg font-bold text-white shadow-lg flex items-center justify-center space-x-2 transition-all active:scale-95 ${
+                    !isFormValid ? 'bg-slate-700 text-slate-500 cursor-not-allowed' :
+                    paymentMethod === 'CASH' ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/30' : 
+                    paymentMethod === 'POS' ? 'bg-purple-600 hover:bg-purple-500 shadow-purple-900/30' :
+                    'bg-blue-600 hover:bg-blue-500 shadow-blue-900/30'
+                  }`}
+                >
+                  <Save className="w-4 h-4" />
+                  <span className="text-sm">
+                    {!isFormValid && selectedInstitutionId === '' ? 'KURUM SEÇİNİZ' : (initialData ? 'GÜNCELLE' : 'KAYDI OLUŞTUR')}
+                  </span>
+                </button>
+              </div>
+
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Ödeme Tipi Hatırlatma / Onay Pop-up'ı */}
       {showPaymentReminder && (

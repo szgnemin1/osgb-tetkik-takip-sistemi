@@ -397,50 +397,47 @@ const App: React.FC = () => {
       </aside>
 
       <main className={`flex-1 flex flex-col h-full overflow-hidden relative bg-slate-950 ${printingReferral ? 'print:hidden' : ''}`}>
-        <header className="h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 md:px-8 shadow-sm z-10 print:hidden shrink-0">
-          <div className="flex items-center">
-              <button 
-                onClick={() => setIsMobileMenuOpen(true)}
-                className="mr-4 md:hidden text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
-              >
-                  <Menu className="w-6 h-6" />
-              </button>
-              <h2 className="text-lg md:text-xl font-semibold text-white truncate">
-                {activeTab === 'dashboard' ? 'Kontrol Paneli' : 
-                 activeTab === 'referrals' ? 'Tetkik & Sevk Listesi' : 
-                 activeTab === 'create_referral' ? (editingReferral ? 'Sevk Kaydını Düzenle' : 'Yeni Sevk Girişi') :
-                 activeTab === 'finance' ? 'Kasa Yönetimi' : 'Ayarlar'}
-              </h2>
-          </div>
-
-          <div className="flex items-center space-x-4">
-            {activeTab !== 'create_referral' && (
-              <>
-                <div className="relative hidden md:block">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
-                  <input 
-                    type="text"
-                    placeholder="Personel, Firma, TC No..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 text-white rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64 transition-all placeholder-slate-500"
-                  />
-                </div>
+        {activeTab !== 'create_referral' && (
+          <header className="h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 md:px-8 shadow-sm z-10 print:hidden shrink-0">
+            <div className="flex items-center">
                 <button 
-                  onClick={() => {
-                      setEditingReferral(null);
-                      setActiveTab('create_referral');
-                  }}
-                  className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 md:px-4 md:py-2 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-blue-900/20 active:transform active:scale-95 whitespace-nowrap"
+                  onClick={() => setIsMobileMenuOpen(true)}
+                  className="mr-4 md:hidden text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
                 >
-                  <Plus className="w-4 h-4" />
-                  <span className="hidden md:inline">Yeni Sevk Oluştur</span>
-                  <span className="md:hidden">Yeni Sevk</span>
+                    <Menu className="w-6 h-6" />
                 </button>
-              </>
-            )}
-          </div>
-        </header>
+                <h2 className="text-lg md:text-xl font-semibold text-white truncate">
+                  {activeTab === 'dashboard' ? 'Kontrol Paneli' : 
+                   activeTab === 'referrals' ? 'Tetkik & Sevk Listesi' : 
+                   activeTab === 'finance' ? 'Kasa Yönetimi' : 'Ayarlar'}
+                </h2>
+            </div>
+
+            <div className="flex items-center space-x-4">
+              <div className="relative hidden md:block">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                <input 
+                  type="text"
+                  placeholder="Personel, Firma, TC No..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 text-white rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64 transition-all placeholder-slate-500"
+                />
+              </div>
+              <button 
+                onClick={() => {
+                    setEditingReferral(null);
+                    setActiveTab('create_referral');
+                }}
+                className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 md:px-4 md:py-2 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-blue-900/20 active:transform active:scale-95 whitespace-nowrap"
+              >
+                <Plus className="w-4 h-4" />
+                <span className="hidden md:inline">Yeni Sevk Oluştur</span>
+                <span className="md:hidden">Yeni Sevk</span>
+              </button>
+            </div>
+          </header>
+        )}
 
         <div className={`flex-1 ${activeTab === 'create_referral' ? 'overflow-hidden p-0' : 'overflow-auto p-4 md:p-8 custom-scrollbar'} print:p-0 print:overflow-visible`}>
           <Suspense fallback={<PageLoader />}>

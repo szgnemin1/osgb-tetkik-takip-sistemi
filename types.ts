@@ -119,9 +119,15 @@ export interface AppSettings {
   isTelegramEnabled?: boolean;
   telegramReportPeriod?: 'none' | 'daily' | 'weekly' | 'monthly_custom';
   telegramCustomReportDay?: number;
+  telegramCustomReportStartDay?: number;
+  telegramCustomReportEndDay?: number;
+  telegramReportHour?: number;
   telegramLastReportSent?: string;
   telegramReportPeriod2?: 'none' | 'daily' | 'weekly' | 'monthly_custom';
   telegramCustomReportDay2?: number;
+  telegramCustomReportStartDay2?: number;
+  telegramCustomReportEndDay2?: number;
+  telegramReportHour2?: number;
   telegramLastReportSent2?: string;
 
 }

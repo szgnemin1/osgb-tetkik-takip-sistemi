@@ -7,7 +7,7 @@
  * the Free Software Foundation, either version 3 of the License.
  */
 import React, { useMemo, useState } from 'react';
-import { X, FileSpreadsheet, Wallet, Building2, TrendingUp, CreditCard, Banknote, Receipt, Users, MapPin, Calculator, Calendar } from 'lucide-react';
+import { X, FileSpreadsheet, Wallet, Building2, TrendingUp, CreditCard, Banknote, Receipt, Users, MapPin, Calculator, Calendar, Send, RefreshCw } from 'lucide-react';
 import { Referral, SafeTransaction, AppSettings, MedicalInstitution, Company } from '../types';
 import * as XLSX from 'xlsx';
 
@@ -53,6 +53,9 @@ export const EndOfDayReportModal: React.FC<EndOfDayReportModalProps> = ({ onClos
   // Custom Date Range State
   const [customStart, setCustomStart] = useState(new Date().toISOString().split('T')[0]);
   const [customEnd, setCustomEnd] = useState(new Date().toISOString().split('T')[0]);
+  
+  // Telegram status state
+  const [telegramStatus, setTelegramStatus] = useState<{ type: 'idle' | 'loading' | 'success' | 'error'; message: string }>({ type: 'idle', message: '' });
 
   // Calculate Date Range based on Period
   const dateRange = useMemo(() => {
@@ -250,6 +253,46 @@ export const EndOfDayReportModal: React.FC<EndOfDayReportModalProps> = ({ onClos
     XLSX.writeFile(wb, `OSGB_Finans_Raporu_${dateStr}.xlsx`);
   };
 
+  const handleSendTelegram = async () => {
+    setTelegramStatus({ type: 'loading', message: 'Rapor oluşturuluyor ve Telegram\'a gönderiliyor...' });
+    try {
+      const { getApiToken } = await import('../services/useServerData');
+      const baseUrl = import.meta.env.BASE_URL || '/';
+
+      const body: any = {
+        company: selectedCompany === 'ALL' ? undefined : selectedCompany,
+        period: period,
+      };
+
+      if (period === 'custom') {
+        body.startDate = dateRange.start.toISOString();
+        body.endDate = dateRange.end.toISOString();
+      } else {
+        body.startDate = dateRange.start.toISOString();
+        body.endDate = dateRange.end.toISOString();
+      }
+
+      const res = await fetch(`${baseUrl}api/telegram/send-now`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getApiToken()}`
+        },
+        body: JSON.stringify(body)
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setTelegramStatus({ type: 'success', message: data.message || 'Rapor Telegram\'a başarıyla gönderildi!' });
+        setTimeout(() => setTelegramStatus({ type: 'idle', message: '' }), 5000);
+      } else {
+        setTelegramStatus({ type: 'error', message: data.error || 'Rapor gönderilemedi.' });
+      }
+    } catch (err: any) {
+      setTelegramStatus({ type: 'error', message: `Hata: ${err.message}` });
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-slate-950/90 z-50 overflow-hidden flex flex-col">
       
@@ -323,11 +366,23 @@ export const EndOfDayReportModal: React.FC<EndOfDayReportModalProps> = ({ onClos
 
         <div className="flex items-center space-x-3 w-full lg:w-auto justify-end">
            <button 
-             onClick={handleDownloadExcel}
+             onClick={handleDownloadExcel} /* test */
              className="flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-lg text-sm font-bold shadow-lg shadow-emerald-900/20 transition-all active:scale-95 border border-emerald-500/50 whitespace-nowrap"
            >
              <FileSpreadsheet className="w-5 h-5" />
              <span>Excel İndir</span>
+            </button>
+            <button 
+              onClick={handleSendTelegram}
+              disabled={telegramStatus.type === 'loading'}
+              className="flex items-center space-x-2 bg-sky-600 hover:bg-sky-500 text-white px-5 py-2.5 rounded-lg text-sm font-bold shadow-lg shadow-sky-900/20 transition-all active:scale-95 border border-sky-500/50 whitespace-nowrap disabled:opacity-50"
+            >
+              {telegramStatus.type === 'loading' ? (
+                <RefreshCw className="w-5 h-5 animate-spin" />
+              ) : (
+                <Send className="w-5 h-5" />
+              )}
+              <span>Telegram'a Gönder</span>
            </button>
            <button 
              onClick={onClose}
@@ -335,7 +390,18 @@ export const EndOfDayReportModal: React.FC<EndOfDayReportModalProps> = ({ onClos
            >
              <X className="w-5 h-5" />
              <span>Kapat</span>
-           </button>
+            </button>
+            {telegramStatus.type !== 'idle' && (
+               <div className={`p-2 px-3 rounded-lg text-xs font-semibold shrink-0 ${
+                  telegramStatus.type === 'success' 
+                  ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20' 
+                  : telegramStatus.type === 'loading'
+                  ? 'text-sky-400 bg-sky-500/10 border border-sky-500/20'
+                  : 'text-red-400 bg-red-500/10 border border-red-500/20'
+               }`}>
+                  {telegramStatus.message}
+               </div>
+             )}
         </div>
       </div>
 

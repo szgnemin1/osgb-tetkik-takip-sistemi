@@ -69,8 +69,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [telegramTestStatus, setTelegramTestStatus] = useState<{ type: 'idle' | 'loading' | 'success' | 'error'; message: string }>({ type: 'idle', message: '' });
   const [telegramReportPeriod, setTelegramReportPeriod] = useState<'none' | 'daily' | 'weekly' | 'monthly_custom'>(settings.telegramReportPeriod || 'none');
   const [telegramCustomReportDay, setTelegramCustomReportDay] = useState<number>(settings.telegramCustomReportDay || 20);
+  const [telegramCustomReportStartDay, setTelegramCustomReportStartDay] = useState<number>(settings.telegramCustomReportStartDay || 20);
+  const [telegramCustomReportEndDay, setTelegramCustomReportEndDay] = useState<number>(settings.telegramCustomReportEndDay || 19);
+  const [telegramReportHour, setTelegramReportHour] = useState<number>(settings.telegramReportHour !== undefined ? settings.telegramReportHour : 21);
   const [telegramReportPeriod2, setTelegramReportPeriod2] = useState<'none' | 'daily' | 'weekly' | 'monthly_custom'>(settings.telegramReportPeriod2 || 'none');
   const [telegramCustomReportDay2, setTelegramCustomReportDay2] = useState<number>(settings.telegramCustomReportDay2 || 20);
+  const [telegramCustomReportStartDay2, setTelegramCustomReportStartDay2] = useState<number>(settings.telegramCustomReportStartDay2 || 20);
+  const [telegramCustomReportEndDay2, setTelegramCustomReportEndDay2] = useState<number>(settings.telegramCustomReportEndDay2 || 19);
+  const [telegramReportHour2, setTelegramReportHour2] = useState<number>(settings.telegramReportHour2 !== undefined ? settings.telegramReportHour2 : 21);
   const [telegramSendStatus, setTelegramSendStatus] = useState<{ type: 'idle' | 'loading' | 'success' | 'error'; message: string }>({ type: 'idle', message: '' });
 
 
@@ -132,8 +138,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         isTelegramEnabled,
         telegramReportPeriod,
         telegramCustomReportDay,
+        telegramCustomReportStartDay,
+        telegramCustomReportEndDay,
+        telegramReportHour,
         telegramReportPeriod2,
-        telegramCustomReportDay2
+        telegramCustomReportDay2,
+        telegramCustomReportStartDay2,
+        telegramCustomReportEndDay2,
+        telegramReportHour2
       });
       alert("Telegram entegrasyon ayarları başarıyla kaydedildi!");
     } catch (err: any) {
@@ -1450,100 +1462,186 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       </div>
                    </div>
 
-                   <div className="space-y-2 border-t border-slate-800/60 pt-4">
-                      <label className="text-xs font-bold text-slate-300 block flex items-center">
-                         <Clock className="w-3.5 h-3.5 text-sky-400 mr-1.5" />
-                         Otomatik Excel Raporlama Periyodu - 1
-                      </label>
-                      <select
-                         className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-sky-500 outline-none transition-all cursor-pointer"
-                         value={telegramReportPeriod}
-                         onChange={(e) => setTelegramReportPeriod(e.target.value as 'none' | 'daily' | 'weekly' | 'monthly_custom')}
-                      >
-                         <option value="none">Otomatik Rapor Gönderme (Devre Dışı)</option>
-                         <option value="daily">Günlük Excel Raporu Gönder (Her akşam saat 21:00'den sonra)</option>
-                         <option value="weekly">Haftalık Excel Raporu Gönder (Her Pazar akşamı saat 21:00'den sonra)</option>
-                          <option value="monthly_custom">Özel Aylık Periyot Raporu Gönder (Belirli Günler Arası)</option>
-                      </select>
-                      <p className="text-slate-500 text-[10px] leading-relaxed">
-                         * Otomatik raporlama aktif edildiğinde, sistem o güne veya o haftaya ait sevk kayıtlarını ve kasa hareketlerini özetleyen detaylı bir Excel (.xlsx) belgesini Telegram botu üzerinden otomatik olarak gönderir.
-                       </p>
-                    </div>
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-800/60 pt-4">
+                      <div className="space-y-2">
+                         <label className="text-xs font-bold text-slate-300 block flex items-center">
+                            <Clock className="w-3.5 h-3.5 text-sky-400 mr-1.5" />
+                            Otomatik Raporlama Periyodu - 1
+                         </label>
+                         <select
+                            className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-sky-500 outline-none transition-all cursor-pointer"
+                            value={telegramReportPeriod}
+                            onChange={(e) => setTelegramReportPeriod(e.target.value as 'none' | 'daily' | 'weekly' | 'monthly_custom')}
+                         >
+                            <option value="none">Otomatik Rapor Gönderme (Devre Dışı)</option>
+                            <option value="daily">Günlük Excel Raporu Gönder</option>
+                            <option value="weekly">Haftalık Excel Raporu Gönder (Her Pazar)</option>
+                            <option value="monthly_custom">Özel Aylık Periyot Raporu Gönder (Belirli Günler Arası)</option>
+                         </select>
+                      </div>
+
+                      {telegramReportPeriod !== 'none' && (
+                         <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-300 block flex items-center">
+                               <Clock className="w-3.5 h-3.5 text-sky-400 mr-1.5" />
+                               Rapor Gönderim Saati - 1
+                            </label>
+                            <select
+                               className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-sky-500 outline-none transition-all cursor-pointer font-mono"
+                               value={telegramReportHour}
+                               onChange={(e) => setTelegramReportHour(parseInt(e.target.value, 10))}
+                            >
+                               {Array.from({ length: 24 }).map((_, i) => (
+                                  <option key={i} value={i}>{String(i).padStart(2, '0')}:00</option>
+                               ))}
+                            </select>
+                         </div>
+                      )}
+                   </div>
+                   <p className="text-slate-500 text-[10px] leading-relaxed mt-1 block">
+                      * Otomatik raporlama aktif edildiğinde, sistem o döneme ait sevk kayıtlarını ve kasa hareketlerini özetleyen detaylı bir Excel (.xlsx) belgesini Telegram botu üzerinden otomatik olarak gönderir.
+                   </p>
 
                     {telegramReportPeriod === 'monthly_custom' && (
-                       <div className="space-y-2 border-t border-slate-800/60 pt-4">
-                          <label className="text-xs font-bold text-slate-300 block flex items-center">
-                             <Clock className="w-3.5 h-3.5 text-sky-400 mr-1.5" />
-                             Rapor Başlangıç/Bitiş Günü (Örn: 20)
-                          </label>
-                          <div className="flex items-center space-x-2">
-                             <input
-                                type="number"
-                                min={1}
-                                max={28}
-                                className="w-full max-w-[100px] bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-sky-500 outline-none transition-all font-mono"
-                                value={telegramCustomReportDay}
-                                onChange={(e) => {
-                                   let val = parseInt(e.target.value, 10);
-                                   if (isNaN(val)) val = 20;
-                                   if (val < 1) val = 1;
-                                   if (val > 28) val = 28;
-                                   setTelegramCustomReportDay(val);
-                                }}
-                             />
-                             <span className="text-slate-400 text-xs">. günü (Her ayın {telegramCustomReportDay}'si)</span>
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-800/60 pt-4">
+                          <div className="space-y-2">
+                             <label className="text-xs font-bold text-slate-300 block">
+                                Dönem Başlangıç Günü (Her Ayın Günü)
+                             </label>
+                             <div className="flex items-center space-x-2">
+                                <input
+                                   type="number"
+                                   min={1}
+                                   max={28}
+                                   className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-sky-500 outline-none transition-all font-mono"
+                                   value={telegramCustomReportStartDay}
+                                   onChange={(e) => {
+                                      let val = parseInt(e.target.value, 10);
+                                      if (isNaN(val)) val = 20;
+                                      if (val < 1) val = 1;
+                                      if (val > 28) val = 28;
+                                      setTelegramCustomReportStartDay(val);
+                                   }}
+                                />
+                                <span className="text-slate-400 text-xs shrink-0">. Günü</span>
+                             </div>
                           </div>
-                          <p className="text-[10px] text-slate-400 leading-relaxed">
-                             Bu ayar ile her ayın <b>{telegramCustomReportDay}.</b> gününde otomatik olarak bir önceki ayın <b>{telegramCustomReportDay}.</b> günü ile bu ayın <b>{telegramCustomReportDay}.</b> günü arasındaki tüm kayıtları kapsayan aylık Excel raporu otomatik olarak gönderilecektir. (Örn: her ayın {telegramCustomReportDay}'sinden diğer ayın {telegramCustomReportDay}'sine).
+                          <div className="space-y-2">
+                             <label className="text-xs font-bold text-slate-300 block">
+                                Dönem Bitiş Günü (Her Ayın Günü)
+                             </label>
+                             <div className="flex items-center space-x-2">
+                                <input
+                                   type="number"
+                                   min={1}
+                                   max={28}
+                                   className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-sky-500 outline-none transition-all font-mono"
+                                   value={telegramCustomReportEndDay}
+                                   onChange={(e) => {
+                                      let val = parseInt(e.target.value, 10);
+                                      if (isNaN(val)) val = 19;
+                                      if (val < 1) val = 1;
+                                      if (val > 28) val = 28;
+                                      setTelegramCustomReportEndDay(val);
+                                   }}
+                                />
+                                <span className="text-slate-400 text-xs shrink-0">. Günü</span>
+                             </div>
+                          </div>
+                          <p className="col-span-1 md:col-span-2 text-[10px] text-slate-400 leading-relaxed">
+                             Bu ayar ile her ayın belirtilen günlerinde otomatik olarak, bir önceki ayın <b>{telegramCustomReportStartDay}.</b> günü ile bu ayın <b>{telegramCustomReportEndDay}.</b> günü arasındaki tüm kayıtları kapsayan Excel raporu gönderilecektir. (Örn: her ayın {telegramCustomReportStartDay}'sinden diğer ayın {telegramCustomReportEndDay}'sine).
                           </p>
                        </div>
                     )}
 
-                    <div className="space-y-2 border-t border-slate-800/60 pt-4">
-                       <label className="text-xs font-bold text-slate-300 block flex items-center">
-                          <Clock className="w-3.5 h-3.5 text-sky-400 mr-1.5" />
-                          Otomatik Excel Raporlama Periyodu - 2
-                       </label>
-                       <select
-                          className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-sky-500 outline-none transition-all cursor-pointer"
-                          value={telegramReportPeriod2}
-                          onChange={(e) => setTelegramReportPeriod2(e.target.value as 'none' | 'daily' | 'weekly' | 'monthly_custom')}
-                       >
-                          <option value="none">Otomatik Rapor Gönderme (Devre Dışı)</option>
-                          <option value="daily">Günlük Excel Raporu Gönder (Her akşam saat 21:00'den sonra)</option>
-                          <option value="weekly">Haftalık Excel Raporu Gönder (Her Pazar akşamı saat 21:00'den sonra)</option>
-                          <option value="monthly_custom">Özel Aylık Periyot Raporu Gönder (Belirli Günler Arası)</option>
-                       </select>
-                       <p className="text-slate-500 text-[10px] leading-relaxed">
-                          * İkinci bir bağımsız raporlama periyodu tanımlayarak (örneğin hem haftalık hem aylık) aynı anda iki farklı periyotta rapor alabilirsiniz.
-                       </p>
-                    </div>
-
-                    {telegramReportPeriod2 === 'monthly_custom' && (
-                       <div className="space-y-2 border-t border-slate-800/60 pt-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-800/60 pt-4">
+                       <div className="space-y-2">
                           <label className="text-xs font-bold text-slate-300 block flex items-center">
                              <Clock className="w-3.5 h-3.5 text-sky-400 mr-1.5" />
-                             Rapor Başlangıç/Bitiş Günü (Örn: 20)
+                             Otomatik Excel Raporlama Periyodu - 2
                           </label>
-                          <div className="flex items-center space-x-2">
-                             <input
-                                type="number"
-                                min={1}
-                                max={28}
-                                className="w-full max-w-[100px] bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-sky-500 outline-none transition-all font-mono"
-                                value={telegramCustomReportDay2}
-                                onChange={(e) => {
-                                   let val = parseInt(e.target.value, 10);
-                                   if (isNaN(val)) val = 20;
-                                   if (val < 1) val = 1;
-                                   if (val > 28) val = 28;
-                                   setTelegramCustomReportDay2(val);
-                                }}
-                             />
-                             <span className="text-slate-400 text-xs">. günü (Her ayın {telegramCustomReportDay2}'si)</span>
+                          <select
+                             className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-sky-500 outline-none transition-all cursor-pointer"
+                             value={telegramReportPeriod2}
+                             onChange={(e) => setTelegramReportPeriod2(e.target.value as 'none' | 'daily' | 'weekly' | 'monthly_custom')}
+                          >
+                             <option value="none">Otomatik Rapor Gönderme (Devre Dışı)</option>
+                             <option value="daily">Günlük Excel Raporu Gönder</option>
+                             <option value="weekly">Haftalık Excel Raporu Gönder (Her Pazar)</option>
+                             <option value="monthly_custom">Özel Aylık Periyot Raporu Gönder (Belirli Günler Arası)</option>
+                          </select>
+                       </div>
+
+                       {telegramReportPeriod2 !== 'none' && (
+                          <div className="space-y-2">
+                             <label className="text-xs font-bold text-slate-300 block flex items-center">
+                                <Clock className="w-3.5 h-3.5 text-sky-400 mr-1.5" />
+                                Rapor Gönderim Saati - 2
+                             </label>
+                             <select
+                                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-sky-500 outline-none transition-all cursor-pointer font-mono"
+                                value={telegramReportHour2}
+                                onChange={(e) => setTelegramReportHour2(parseInt(e.target.value, 10))}
+                             >
+                                {Array.from({ length: 24 }).map((_, i) => (
+                                   <option key={i} value={i}>{String(i).padStart(2, '0')}:00</option>
+                                ))}
+                             </select>
                           </div>
-                          <p className="text-[10px] text-slate-400 leading-relaxed">
-                             Bu ayar ile her ayın <b>{telegramCustomReportDay2}.</b> gününde otomatik olarak bir önceki ayın <b>{telegramCustomReportDay2}.</b> günü ile bu ayın <b>{telegramCustomReportDay2}.</b> günü arasındaki tüm kayıtları kapsayan aylık Excel raporu otomatik olarak gönderilecektir.
+                       )}
+                    </div>
+                    <p className="text-slate-500 text-[10px] leading-relaxed mt-1 block">
+                       * İkinci bir bağımsız raporlama periyodu tanımlayarak (örneğin hem haftalık hem aylık) aynı anda iki farklı periyotta rapor alabilirsiniz.
+                    </p>
+
+                    {telegramReportPeriod2 === 'monthly_custom' && (
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-800/60 pt-4">
+                          <div className="space-y-2">
+                             <label className="text-xs font-bold text-slate-300 block">
+                                Dönem Başlangıç Günü - 2 (Her Ayın Günü)
+                             </label>
+                             <div className="flex items-center space-x-2">
+                                <input
+                                   type="number"
+                                   min={1}
+                                   max={28}
+                                   className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-sky-500 outline-none transition-all font-mono"
+                                   value={telegramCustomReportStartDay2}
+                                   onChange={(e) => {
+                                      let val = parseInt(e.target.value, 10);
+                                      if (isNaN(val)) val = 20;
+                                      if (val < 1) val = 1;
+                                      if (val > 28) val = 28;
+                                      setTelegramCustomReportStartDay2(val);
+                                   }}
+                                />
+                                <span className="text-slate-400 text-xs shrink-0">. Günü</span>
+                             </div>
+                          </div>
+                          <div className="space-y-2">
+                             <label className="text-xs font-bold text-slate-300 block">
+                                Dönem Bitiş Günü - 2 (Her Ayın Günü)
+                             </label>
+                             <div className="flex items-center space-x-2">
+                                <input
+                                   type="number"
+                                   min={1}
+                                   max={28}
+                                   className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-sky-500 outline-none transition-all font-mono"
+                                   value={telegramCustomReportEndDay2}
+                                   onChange={(e) => {
+                                      let val = parseInt(e.target.value, 10);
+                                      if (isNaN(val)) val = 19;
+                                      if (val < 1) val = 1;
+                                      if (val > 28) val = 28;
+                                      setTelegramCustomReportEndDay2(val);
+                                   }}
+                                />
+                                <span className="text-slate-400 text-xs shrink-0">. Günü</span>
+                             </div>
+                          </div>
+                          <p className="col-span-1 md:col-span-2 text-[10px] text-slate-400 leading-relaxed">
+                             Bu ayar ile her ayın belirtilen günlerinde otomatik olarak, bir önceki ayın <b>{telegramCustomReportStartDay2}.</b> günü ile bu ayın <b>{telegramCustomReportEndDay2}.</b> günü arasındaki tüm kayıtları kapsayan Excel raporu gönderilecektir. (Örn: her ayın {telegramCustomReportStartDay2}'sinden diğer ayın {telegramCustomReportEndDay2}'sine).
                           </p>
                        </div>
                     )}
