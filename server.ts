@@ -711,7 +711,8 @@ function getAppPasswordHash() {
 async function startServer() {
   const app = express();
   app.set('trust proxy', 1);
-  const PORT = 3000;
+  const dbForPort = readData();
+  const PORT = process.env.PORT || dbForPort.appSettings?.serverPort || 3031;
 
   // Rewrite for subpath deployments (e.g. YunoHost)
   // This allows the app to respond correctly whether Nginx strips the path or not.

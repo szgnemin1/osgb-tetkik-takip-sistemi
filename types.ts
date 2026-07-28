@@ -136,6 +136,7 @@ export interface AppSettings {
   healthSyncCronEnabled?: boolean;
   healthSyncLastSync?: string;
   healthSyncLastCronSent?: string;
+  serverPort?: number;
 }
 
 /**
