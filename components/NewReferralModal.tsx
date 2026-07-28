@@ -51,6 +51,7 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
   const [selectedInstitutionId, setSelectedInstitutionId] = useState<string>('');
   const [selectedExamIds, setSelectedExamIds] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
+  const [notesShow, setNotesShow] = useState(true);
   
   // Financial State
   const [estimatedPrice, setEstimatedPrice] = useState(0);
@@ -91,6 +92,7 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
         setSelectedExamIds(initialData.exams);
         setSelectedInstitutionId(initialData.targetInstitutionId || '');
         setNotes(initialData.notes || '');
+        setNotesShow(initialData.notesShow !== false);
         setPaymentMethod(initialData.paymentMethod);
     } else {
         hasInitializedIdRef.current = null;
@@ -270,6 +272,7 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
       status: initialData ? initialData.status : Status.PENDING, // Statüyü koru
       referralDate: initialData ? initialData.referralDate : new Date().toISOString(), // Tarihi koru
       notes,
+      notesShow,
       doctorName: selectedCompanyData?.assignedDoctor || initialData?.doctorName,
       specialistName: selectedCompanyData?.assignedSpecialist || initialData?.specialistName,
       totalPrice: estimatedPrice,
@@ -624,15 +627,28 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
                   </div>
 
                   {/* Sevk Notu */}
-                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm">
-                    <label className="text-[10px] uppercase font-bold text-slate-500 mb-2 block ml-1">Sevk Notu (Opsiyonel)</label>
-                    <textarea 
-                      value={notes}
-                      onChange={e => setNotes(e.target.value)}
-                      placeholder="Özel bir not ekleyin..."
-                      rows={3}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-base text-white focus:border-slate-500 outline-none resize-none"
-                    />
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm space-y-3">
+                    <div>
+                      <label className="text-[10px] uppercase font-bold text-slate-500 mb-2 block ml-1">Sevk Notu (Opsiyonel)</label>
+                      <textarea 
+                        value={notes}
+                        onChange={e => setNotes(e.target.value)}
+                        placeholder="Özel bir not ekleyin..."
+                        rows={3}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-base text-white focus:border-slate-500 outline-none resize-none"
+                      />
+                    </div>
+                    {notes && (
+                      <label className="flex items-center space-x-2.5 cursor-pointer bg-slate-950/40 p-2 rounded-lg border border-slate-800 hover:bg-slate-950/80 transition-all select-none">
+                        <input 
+                          type="checkbox" 
+                          checked={notesShow} 
+                          onChange={e => setNotesShow(e.target.checked)}
+                          className="w-4 h-4 rounded border-slate-700 text-blue-600 bg-slate-950 focus:ring-blue-500 focus:ring-offset-slate-900"
+                        />
+                        <span className="text-xs font-medium text-slate-300">Özel Not Kağıtta/Belgede Görünsün</span>
+                      </label>
+                    )}
                   </div>
 
                   {/* Özet ve Finansal Detay Kartı */}
@@ -974,15 +990,28 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
                 </div>
 
                 {/* Sevk Notu */}
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm">
-                  <label className="text-[10px] uppercase font-bold text-slate-500 mb-2 block ml-1">Sevk Notu (Opsiyonel)</label>
-                  <textarea 
-                    value={notes}
-                    onChange={e => setNotes(e.target.value)}
-                    placeholder="Özel bir not ekleyin..."
-                    rows={3}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:border-slate-500 outline-none resize-none"
-                  />
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm space-y-3">
+                  <div>
+                    <label className="text-[10px] uppercase font-bold text-slate-500 mb-2 block ml-1">Sevk Notu (Opsiyonel)</label>
+                    <textarea 
+                      value={notes}
+                      onChange={e => setNotes(e.target.value)}
+                      placeholder="Özel bir not ekleyin..."
+                      rows={3}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:border-slate-500 outline-none resize-none"
+                    />
+                  </div>
+                  {notes && (
+                    <label className="flex items-center space-x-2 cursor-pointer bg-slate-950/40 p-2 rounded-lg border border-slate-800 hover:bg-slate-950/80 transition-all select-none">
+                      <input 
+                        type="checkbox" 
+                        checked={notesShow} 
+                        onChange={e => setNotesShow(e.target.checked)}
+                        className="w-3.5 h-3.5 rounded border-slate-700 text-blue-600 bg-slate-950 focus:ring-blue-500 focus:ring-offset-slate-900"
+                      />
+                      <span className="text-[11px] font-medium text-slate-300">Özel Not Kağıtta/Belgede Görünsün</span>
+                    </label>
+                  )}
                 </div>
               </div>
 

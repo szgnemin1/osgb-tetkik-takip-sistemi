@@ -7,7 +7,7 @@
  * the Free Software Foundation, either version 3 of the License.
  */
 import React, { useState, useMemo } from 'react';
-import { Wallet, TrendingUp, TrendingDown, Plus, Minus, FileText, Trash2 } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, Plus, Minus, FileText, Trash2, Send, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
 import { SafeTransaction } from '../types';
 
 interface FinanceViewProps {
@@ -22,6 +22,30 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ transactions, onAddTra
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'POS' | 'INVOICE'>('CASH');
+
+  // Health Sync Feed State
+  const [isFetchingFeed, setIsFetchingFeed] = useState(false);
+  const [feedData, setFeedData] = useState<any | null>(null);
+  const [showFeedModal, setShowFeedModal] = useState(false);
+
+  const handleFetchFeedData = async () => {
+    setIsFetchingFeed(true);
+    try {
+      const baseUrl = import.meta.env.BASE_URL || '/';
+      const res = await fetch(`${baseUrl}api/health-sync/latest`, {
+        headers: {
+          'Authorization': 'Bearer vps_secure_secret_2026'
+        }
+      });
+      const data = await res.json();
+      setFeedData(data);
+      setShowFeedModal(true);
+    } catch (err: any) {
+      alert(`Canlı fatura akışı alınamadı: ${err.message}`);
+    } finally {
+      setIsFetchingFeed(false);
+    }
+  };
 
   const balance = useMemo(() => {
     return transactions.reduce((acc, curr) => {
@@ -99,7 +123,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ transactions, onAddTra
       </div>
 
       {/* Actions */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3">
         {onResetSafe && (
             <button 
                 onClick={() => onResetSafe()}
@@ -110,23 +134,86 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ transactions, onAddTra
                 <span>Kasayı Sıfırla</span>
             </button>
         )}
-        <div className="flex space-x-3 ml-auto">
+        <div className="flex flex-wrap items-center space-x-3 ml-auto">
             <button 
-            onClick={() => { setTxType('EXPENSE'); setIsModalOpen(true); }}
-            className="flex items-center space-x-2 bg-red-600/10 hover:bg-red-600/20 text-red-400 px-4 py-2 rounded-lg border border-red-600/20 transition-all"
+              onClick={handleFetchFeedData}
+              disabled={isFetchingFeed}
+              className="flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg shadow-lg shadow-indigo-900/20 transition-all font-semibold text-sm disabled:opacity-50"
+              title="GET /api/health-sync/latest canlı JSON/RSS feed servisini test eder."
             >
-            <Minus className="w-4 h-4" />
-            <span>Para Çıkışı Ekle</span>
+              {isFetchingFeed ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <FileText className="w-4 h-4" />
+              )}
+              <span>Canlı Fatura Akışı (JSON Feed)</span>
             </button>
+
             <button 
-            onClick={() => { setTxType('INCOME'); setIsModalOpen(true); }}
-            className="flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg shadow-lg shadow-emerald-900/20 transition-all"
+              onClick={() => { setTxType('EXPENSE'); setIsModalOpen(true); }}
+              className="flex items-center space-x-2 bg-red-600/10 hover:bg-red-600/20 text-red-400 px-4 py-2 rounded-lg border border-red-600/20 transition-all text-sm font-medium"
             >
-            <Plus className="w-4 h-4" />
-            <span>Tahsilat Ekle</span>
+              <Minus className="w-4 h-4" />
+              <span>Para Çıkışı Ekle</span>
+            </button>
+
+            <button 
+              onClick={() => { setTxType('INCOME'); setIsModalOpen(true); }}
+              className="flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg shadow-lg shadow-emerald-900/20 transition-all text-sm font-bold"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Tahsilat Ekle</span>
             </button>
         </div>
       </div>
+
+      {/* Feed Preview Modal */}
+      {showFeedModal && feedData && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-800 rounded-xl border border-slate-700 shadow-2xl max-w-2xl w-full p-6 space-y-4">
+            <div className="flex justify-between items-center border-b border-slate-700 pb-3">
+              <h3 className="text-lg font-bold text-white flex items-center space-x-2">
+                <FileText className="w-5 h-5 text-indigo-400" />
+                <span>Anlık Fatura & RSS Akış Yanıtı</span>
+              </h3>
+              <button 
+                onClick={() => setShowFeedModal(false)}
+                className="text-slate-400 hover:text-white text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="grid grid-cols-3 gap-2 p-3 bg-slate-900 rounded-lg border border-slate-700 text-slate-300">
+                <div>Firma Sayısı: <strong className="text-indigo-300 block text-sm">{feedData.uniqueFirmsCount}</strong></div>
+                <div>Toplam Sevk: <strong className="text-emerald-300 block text-sm">{feedData.totalReferralsCount || 0}</strong></div>
+                <div>Son Anlık Akış: <strong className="text-indigo-300 block text-xs mt-0.5">{feedData.lastSyncTime}</strong></div>
+              </div>
+
+              <div className="flex items-center space-x-2 pt-1">
+                <span className="text-slate-400 font-semibold">RSS XML Adresi:</span>
+                <code className="text-indigo-300 font-mono bg-slate-950 px-2 py-1 rounded text-[11px] truncate flex-1">
+                  {`${window.location.origin}${import.meta.env.BASE_URL || '/'}api/health-sync/rss?token=vps_secure_secret_2026`}
+                </code>
+              </div>
+
+              <pre className="p-4 bg-slate-950 rounded-lg text-emerald-400 font-mono text-xs overflow-x-auto max-h-72 border border-slate-800">
+                {JSON.stringify(feedData, null, 2)}
+              </pre>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                onClick={() => setShowFeedModal(false)}
+                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-semibold"
+              >
+                Kapat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Transaction History */}
       <div className="bg-slate-800 rounded-xl border border-slate-700 shadow-sm overflow-hidden">

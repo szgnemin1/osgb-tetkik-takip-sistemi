@@ -77,6 +77,7 @@ export interface Referral {
   status: Status;
   referralDate: string; // ISO Date string
   notes?: string;
+  notesShow?: boolean;
   resultSummary?: string;
   doctorName?: string; // Kayıt anındaki doktor
   specialistName?: string; // Kayıt anındaki uzman
@@ -129,7 +130,12 @@ export interface AppSettings {
   telegramCustomReportEndDay2?: number;
   telegramReportHour2?: number;
   telegramLastReportSent2?: string;
-
+  healthSyncEnabled?: boolean;
+  healthSyncUrl?: string;
+  healthSyncToken?: string;
+  healthSyncCronEnabled?: boolean;
+  healthSyncLastSync?: string;
+  healthSyncLastCronSent?: string;
 }
 
 /**

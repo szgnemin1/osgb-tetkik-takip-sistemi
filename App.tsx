@@ -28,6 +28,7 @@ import { EndOfDayReportModal } from './components/EndOfDayReportModal';
 import { ReferralPrintTemplate } from './components/ReferralPrintTemplate';
 import { Auth } from './components/Auth';
 import { BulkImportModal } from './components/BulkImportModal';
+import { MobileReferralPreviewModal } from './components/MobileReferralPreviewModal';
 import { Referral, Status, Company, ExamDefinition, SafeTransaction, MedicalInstitution, AppSettings, turkishIncludes } from './types';
 import { 
   useServerData,
@@ -71,6 +72,7 @@ const App: React.FC = () => {
   
   const [editingReferral, setEditingReferral] = useState<Referral | null>(null);
   const [printingReferral, setPrintingReferral] = useState<Referral | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [logoClickCount, setLogoClickCount] = useState(0);
@@ -92,14 +94,23 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (printingReferral) {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 1024);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    if (printingReferral && !isMobile) {
       const timer = setTimeout(() => {
         window.print();
         setTimeout(() => setPrintingReferral(null), 100);
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [printingReferral]);
+  }, [printingReferral, isMobile]);
 
   const filteredReferrals = useMemo(() => {
     return referrals
@@ -570,6 +581,15 @@ const App: React.FC = () => {
           referral={printingReferral}
           institution={institutions.find(i => i.id === printingReferral.targetInstitutionId)}
           settings={appSettings}
+        />
+      )}
+
+      {printingReferral && isMobile && (
+        <MobileReferralPreviewModal
+          referral={printingReferral}
+          institution={institutions.find(i => i.id === printingReferral.targetInstitutionId)}
+          settings={appSettings}
+          onClose={() => setPrintingReferral(null)}
         />
       )}
     </div>

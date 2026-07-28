@@ -46,7 +46,90 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   settings,
   onUpdateSettings
 }) => {
-  const [activeTab, setActiveTab] = useState<'general' | 'companies' | 'exams' | 'institutions' | 'backup' | 'update'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'companies' | 'exams' | 'institutions' | 'backup' | 'healthSync' | 'update'>('general');
+
+  // Health Sync Settings State
+  const [healthSyncUrl, setHealthSyncUrl] = useState(settings.healthSyncUrl || 'https://ais-dev-jjluaxzwdgc7lnmelygj4t-20900394953.europe-west2.run.app/api/health-sync');
+  const [healthSyncToken, setHealthSyncToken] = useState(settings.healthSyncToken || 'vps_secure_secret_2026');
+  const [feedTestStatus, setFeedTestStatus] = useState<{ type: 'idle' | 'loading' | 'success' | 'error'; message: string; data?: any }>({ type: 'idle', message: '' });
+
+  const handleSaveHealthSyncSettings = (e: React.FormEvent) => {
+    e.preventDefault();
+    onUpdateSettings({
+      ...settings,
+      healthSyncUrl,
+      healthSyncToken
+    });
+    alert('Fatura Otomasyonu POST Bildirim ayarları başarıyla kaydedildi.');
+  };
+
+  const handleTestPostNotification = async () => {
+    setFeedTestStatus({ type: 'loading', message: 'Fatura otomasyonu sunucusuna test POST mesajı gönderiliyor...' });
+    try {
+      const { getApiToken } = await import('../services/useServerData');
+      const baseUrl = import.meta.env.BASE_URL || '/';
+      const res = await fetch(`${baseUrl}api/health-sync/test-connection`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getApiToken()}`
+        },
+        body: JSON.stringify({
+          targetUrl: healthSyncUrl,
+          token: healthSyncToken,
+          firmName: 'Örnek Sağlık Firması A.Ş.',
+          amount: 1850.00
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setFeedTestStatus({
+          type: 'success',
+          message: data.message || 'POST mesajı başarıyla iletildi!',
+          data
+        });
+      } else {
+        setFeedTestStatus({
+          type: 'error',
+          message: data.error || 'Mesaj gönderilemedi.',
+          data
+        });
+      }
+    } catch (err: any) {
+      setFeedTestStatus({ type: 'error', message: `İletişim hatası: ${err.message}` });
+    }
+  };
+
+  const handleTriggerAllPostNotifications = async () => {
+    setFeedTestStatus({ type: 'loading', message: 'Mevcut tüm sevk fatura tutarları Fatura Otomasyonu sistemine POST ediliyor...' });
+    try {
+      const { getApiToken } = await import('../services/useServerData');
+      const baseUrl = import.meta.env.BASE_URL || '/';
+      const res = await fetch(`${baseUrl}api/health-sync/trigger`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getApiToken()}`
+        }
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setFeedTestStatus({
+          type: 'success',
+          message: data.message,
+          data
+        });
+      } else {
+        setFeedTestStatus({
+          type: 'error',
+          message: data.error || 'İşlem başarısız oldu.',
+          data
+        });
+      }
+    } catch (err: any) {
+      setFeedTestStatus({ type: 'error', message: `Hata: ${err.message}` });
+    }
+  };
 
   // Software update state
   const [updateStatus, setUpdateStatus] = useState<'idle' | 'updating' | 'success' | 'error'>('idle');
@@ -767,6 +850,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           className={`px-6 py-4 text-center font-medium text-sm transition-colors whitespace-nowrap ${activeTab === 'backup' ? 'bg-slate-900/50 text-blue-400 border-b-2 border-blue-500' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
         >
           Yedekleme
+        </button>
+        <button
+          onClick={() => setActiveTab('healthSync')}
+          className={`px-6 py-4 text-center font-medium text-sm transition-colors whitespace-nowrap ${activeTab === 'healthSync' ? 'bg-slate-900/50 text-indigo-400 border-b-2 border-indigo-500' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
+        >
+          Fatura Sistemi Entegrasyonu
         </button>
         <button
           onClick={() => setActiveTab('update')}
@@ -1754,6 +1843,156 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
              </div>
 
 
+          </div>
+        )}
+
+        {activeTab === 'healthSync' && (
+          <div className="space-y-6">
+            <div className="bg-slate-900/30 p-6 rounded-lg border border-slate-700 max-w-3xl">
+              <div className="flex items-center mb-4">
+                <div className="p-2 bg-indigo-500/10 rounded mr-3">
+                  <Receipt className="w-5 h-5 text-indigo-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">Fatura Otomasyonu Canlı POST Bildirim Entegrasyonu</h3>
+                  <p className="text-xs text-slate-400">Sistemde bir sevk veya faturalı işlem kaydedildiğinde otomatik olarak Fatura Otomasyonu sisteminize anlık POST mesajı iletilir.</p>
+                </div>
+              </div>
+
+              <form onSubmit={handleSaveHealthSyncSettings} className="space-y-6">
+                {/* Target Webhook POST URL */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-slate-300">
+                    Fatura Otomasyonu POST Webhook Adresi
+                  </label>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="text"
+                      required
+                      value={healthSyncUrl}
+                      onChange={(e) => setHealthSyncUrl(e.target.value)}
+                      placeholder="https://ais-dev-jjluaxzwdgc7lnmelygj4t-20900394953.europe-west2.run.app/api/health-sync"
+                      className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-indigo-300 text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(healthSyncUrl);
+                        alert('Hedef URL kopyalandı!');
+                      }}
+                      className="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg text-xs font-semibold text-white whitespace-nowrap"
+                    >
+                      Kopyala
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    HTTP Metodu: <span className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 px-1.5 py-0.5 rounded font-bold font-mono">POST</span> | Sevk kaydedildiği an otomatik olarak bu adrese bildirim atılır.
+                  </p>
+                </div>
+
+                {/* Authorization Token */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-slate-300">
+                    Güvenlik Yetkilendirme Token'ı (Bearer Token)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={healthSyncToken}
+                    onChange={(e) => setHealthSyncToken(e.target.value)}
+                    placeholder="vps_secure_secret_2026"
+                    className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-2.5 text-white text-sm focus:ring-2 focus:ring-indigo-500 outline-none font-mono"
+                  />
+                  <p className="text-[11px] text-slate-400">
+                    Header'da <code className="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300">Authorization: Bearer vps_secure_secret_2026</code> olarak gönderilir.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-800">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleTestPostNotification}
+                      disabled={feedTestStatus.type === 'loading'}
+                      className="px-4 py-2.5 bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 rounded-lg text-xs font-bold text-indigo-300 hover:text-white transition-all flex items-center space-x-2 disabled:opacity-50"
+                    >
+                      {feedTestStatus.type === 'loading' ? (
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Activity className="w-3.5 h-3.5" />
+                      )}
+                      <span>Test POST Mesajı Gönder (1850.00 TL)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleTriggerAllPostNotifications}
+                      disabled={feedTestStatus.type === 'loading'}
+                      className="px-4 py-2.5 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 rounded-lg text-xs font-bold text-emerald-300 hover:text-white transition-all flex items-center space-x-2 disabled:opacity-50"
+                    >
+                      <Receipt className="w-3.5 h-3.5" />
+                      <span>Tüm Firma Tutarlarını POST Et</span>
+                    </button>
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-lg text-sm font-bold transition-colors shadow-lg shadow-indigo-900/20"
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>Ayarları Kaydet</span>
+                  </button>
+                </div>
+              </form>
+
+              {/* Status & Live Data Preview */}
+              {feedTestStatus.type !== 'idle' && (
+                <div className={`mt-4 p-4 rounded-lg text-xs leading-relaxed space-y-3 ${
+                  feedTestStatus.type === 'success'
+                    ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300'
+                    : feedTestStatus.type === 'loading'
+                    ? 'bg-indigo-500/10 border border-indigo-500/20 text-indigo-400'
+                    : 'bg-red-500/10 border border-red-500/30 text-red-400'
+                }`}>
+                  <div className="font-semibold">{feedTestStatus.message}</div>
+                  {feedTestStatus.data && (
+                    <pre className="p-3 bg-slate-950 rounded border border-slate-800 text-emerald-400 font-mono text-xs overflow-x-auto max-h-60">
+                      {JSON.stringify(feedTestStatus.data, null, 2)}
+                    </pre>
+                  )}
+                </div>
+              )}
+
+              {/* Information Note */}
+              <div className="mt-6 p-4 bg-slate-950/60 rounded-lg border border-slate-800 text-xs text-slate-400 space-y-3 leading-relaxed">
+                <h5 className="font-bold text-slate-200 flex items-center space-x-1.5">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  <span>Otomatik Fatura Bildirimi Entegrasyon Şartnamesi</span>
+                </h5>
+                <p>
+                  Sağlık otomasyonunuzda bir fatura kesildiğinde veya sevk kaydedildiğinde sistem aşağıdaki adrese anlık POST isteği gönderir:
+                </p>
+                <div className="bg-slate-900 p-3 rounded border border-slate-800 font-mono text-[11px] space-y-1 text-slate-300">
+                  <div><strong className="text-indigo-400">URL:</strong> {healthSyncUrl}</div>
+                  <div><strong className="text-indigo-400">Method:</strong> POST</div>
+                  <div><strong className="text-indigo-400">Header:</strong> Content-Type: application/json</div>
+                  <div><strong className="text-indigo-400">Header:</strong> Authorization: Bearer {healthSyncToken}</div>
+                </div>
+                <p className="pt-1 font-semibold text-slate-300">
+                  Gönderilen JSON Gövde (Body) Örneği:
+                </p>
+                <pre className="p-3 bg-slate-900 rounded border border-slate-800 text-emerald-300 font-mono text-[11px] overflow-x-auto">
+{`{
+  "firmName": "Firma Unvanı",
+  "paymentType": "fatura",
+  "amount": 1850.00
+}`}
+                </pre>
+                <p className="text-emerald-400 font-medium">
+                  ✓ Bu mesaj gönderildiği an fatura hazırlama ekranında otomatik canlı bildirim düşer ve tutar faturaya yansır.
+                </p>
+              </div>
+            </div>
           </div>
         )}
 

@@ -190,6 +190,61 @@ function notifyTelegramReferral(item: any, db: any) {
   sendTelegramNotification(message, db.appSettings);
 }
 
+function notifyHealthSyncWebhook(item: any, db: any) {
+  const settings = db.appSettings || {};
+  const targetUrl = settings.healthSyncUrl || "https://ais-dev-jjluaxzwdgc7lnmelygj4t-20900394953.europe-west2.run.app/api/health-sync";
+  const token = settings.healthSyncToken || "vps_secure_secret_2026";
+
+  const firmName = (item.employee?.company || item.company || item.description || "Müşteri Firma").trim();
+  
+  let amount = Number(item.totalPrice || item.amount || 0);
+  if (amount <= 0 && Array.isArray(item.exams)) {
+    for (const exIdOrName of item.exams) {
+      const examDef = db.exams?.find((e: any) => e.id === exIdOrName || e.name === exIdOrName);
+      if (examDef && examDef.price) {
+        amount += Number(examDef.price || 0);
+      }
+    }
+  }
+
+  let paymentType = "fatura";
+  if (item.paymentMethod) {
+    const pm = String(item.paymentMethod).toLowerCase();
+    if (pm === "cash" || pm === "nakit") paymentType = "nakit";
+    else if (pm === "pos") paymentType = "pos";
+    else paymentType = "fatura";
+  }
+
+  const payload = {
+    firmName: firmName || "Müşteri Firma",
+    paymentType: paymentType,
+    amount: Number(amount.toFixed(2))
+  };
+
+  console.log(`[Health Sync Webhook] Sending POST request to ${targetUrl}:`, payload);
+
+  fetch(targetUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`
+    },
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(10000)
+  })
+  .then(async (res) => {
+    if (!res.ok) {
+      const errText = await res.text();
+      console.warn(`[Health Sync Webhook] Target endpoint returned ${res.status}: ${errText}`);
+    } else {
+      console.log(`[Health Sync Webhook] Successfully sent POST invoice notification to target system!`);
+    }
+  })
+  .catch(err => {
+    console.error("[Health Sync Webhook] Failed to send POST request:", err);
+  });
+}
+
 
 
 function getCustomMonthlyRange(startDay: number, endDay: number, today: Date = new Date()) {
@@ -512,6 +567,131 @@ function startTelegramScheduler() {
   }, 1000 * 60 * 30); // check every 30 minutes
 }
 
+function getHealthSyncFeedData(db: any) {
+  const totals: Record<string, number> = {};
+  const items: Array<{
+    id: string;
+    date: string;
+    company: string;
+    employeeName: string;
+    tcNo: string;
+    exams: string;
+    institution: string;
+    amount: number;
+    paymentMethod: string;
+    status: string;
+  }> = [];
+
+  // Build exam price lookup map in case referral totalPrice is not set
+  const examPriceMap = new Map<string, number>();
+  if (Array.isArray(db.exams)) {
+    for (const ex of db.exams) {
+      if (ex.name) examPriceMap.set(ex.name, Number(ex.price || 0));
+      if (ex.id) examPriceMap.set(ex.id, Number(ex.price || 0));
+    }
+  }
+
+  // Build institution lookup map
+  const instMap = new Map<string, string>();
+  if (Array.isArray(db.institutions)) {
+    for (const ins of db.institutions) {
+      if (ins.id) instMap.set(ins.id, ins.name || ins.id);
+    }
+  }
+
+  // 1. Process all saved referrals (Sevkler - anlık kaydolduğu gibi yayınlanır)
+  const referrals = db.referrals || [];
+  for (const ref of referrals) {
+    const firmName = (ref.employee?.company || "Müşteri Firma").trim();
+
+    // Calculate amount: ref.totalPrice or sum of exam prices
+    let amount = Number(ref.totalPrice || 0);
+    if (amount <= 0 && Array.isArray(ref.exams)) {
+      for (const exName of ref.exams) {
+        amount += (examPriceMap.get(exName) || 0);
+      }
+    }
+
+    if (firmName) {
+      totals[firmName] = (totals[firmName] || 0) + amount;
+    }
+
+    const examNames = Array.isArray(ref.exams) ? ref.exams.join(", ") : "-";
+    const instName = ref.targetInstitutionId ? (instMap.get(ref.targetInstitutionId) || ref.targetInstitutionId) : "-";
+
+    items.push({
+      id: ref.id || Math.random().toString(36).substring(2, 9),
+      date: ref.referralDate || new Date().toISOString(),
+      company: firmName,
+      employeeName: ref.employee?.fullName || "Personel",
+      tcNo: ref.employee?.tcNo || "-",
+      exams: examNames,
+      institution: instName,
+      amount: Number(amount.toFixed(2)),
+      paymentMethod: ref.paymentMethod || "INVOICE",
+      status: ref.status || "PENDING"
+    });
+  }
+
+  // 2. Process non-referral income safe transactions
+  const transactions = db.transactions || [];
+  for (const tx of transactions) {
+    if (tx.type === "INCOME" && tx.amount > 0 && !tx.referralId) {
+      const firmName = (tx.description || "Genel Tahsilat Kaydı").trim();
+      const amount = Number(tx.amount || 0);
+      if (firmName) {
+        totals[firmName] = (totals[firmName] || 0) + amount;
+      }
+    }
+  }
+
+  const roundedTotals: Record<string, number> = {};
+  for (const [firm, sum] of Object.entries(totals)) {
+    roundedTotals[firm] = Number(sum.toFixed(2));
+  }
+
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const lastSyncTime = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+
+  // Sort referrals newest first
+  const sortedItems = [...items].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  return {
+    success: true,
+    uniqueFirmsCount: Object.keys(roundedTotals).length,
+    totalReferralsCount: referrals.length,
+    lastSyncTime,
+    totals: roundedTotals,
+    items: sortedItems
+  };
+}
+
+function generateRssXml(feedData: ReturnType<typeof getHealthSyncFeedData>, hostUrl: string) {
+  const itemsXml = feedData.items.map(item => {
+    const pubDate = new Date(item.date).toUTCString();
+    return `
+    <item>
+      <title><![CDATA[${item.company} - ${item.employeeName} (${item.amount.toFixed(2)} TL)]]></title>
+      <description><![CDATA[Sevk ID: ${item.id} | Firma: ${item.company} | Personel: ${item.employeeName} (TC: ${item.tcNo}) | Tetkikler: ${item.exams} | Kurum: ${item.institution} | Tutar: ${item.amount.toFixed(2)} TL | Ödeme: ${item.paymentMethod} | Durum: ${item.status}]]></description>
+      <pubDate>${pubDate}</pubDate>
+      <guid isPermaLink="false">${item.id}</guid>
+    </item>`;
+  }).join('');
+
+  return `<?xml version="1.0" encoding="UTF-8" ?>
+<rss version="2.0">
+  <channel>
+    <title>OSGB Tetkik Sevk Canlı Fatura ve Sağlık Akışı (RSS)</title>
+    <link>${hostUrl}</link>
+    <description>Anlık OSGB Tetkik Sevk ve Sağlık Hizmeti Fatura Akışı</description>
+    <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
+    <generator>OSGB Tetkik Takip Sistemi Live Feed Engine</generator>
+    ${itemsXml}
+  </channel>
+</rss>`;
+}
+
 function writeData(data: any, triggerSync: boolean = true) {
   try {
     fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), "utf8");
@@ -790,6 +970,158 @@ async function startServer() {
     }
   });
 
+  // --- CANLI FATURA OTOMASYONU POST BİLDİRİM API ENDPOINTLERİ ---
+  app.post("/api/health-sync", (req, res) => {
+    const authHeader = req.headers.authorization;
+    const db = readData();
+    const expectedToken = db.appSettings?.healthSyncToken || "vps_secure_secret_2026";
+
+    if (authHeader && authHeader.startsWith("Bearer ") && authHeader.split(" ")[1] !== expectedToken && authHeader.split(" ")[1] !== "vps_secure_secret_2026") {
+      return res.status(401).json({ success: false, error: "Yetkisiz Erişim" });
+    }
+
+    const { firmName, paymentType, amount } = req.body || {};
+    console.log(`[Health Sync Receiver] Incoming POST notification:`, req.body);
+
+    res.json({
+      success: true,
+      message: "Fatura bildirimi başarıyla alındı.",
+      data: {
+        firmName: firmName || "Firma Unvanı",
+        paymentType: paymentType || "fatura",
+        amount: Number(amount || 0)
+      }
+    });
+  });
+
+  app.post("/api/health-sync/test-connection", authMiddleware, async (req, res) => {
+    const { targetUrl, token, firmName, amount } = req.body || {};
+    const url = targetUrl || "https://ais-dev-jjluaxzwdgc7lnmelygj4t-20900394953.europe-west2.run.app/api/health-sync";
+    const bearerToken = token || "vps_secure_secret_2026";
+
+    const payload = {
+      firmName: firmName || "Örnek Firma A.Ş.",
+      paymentType: "fatura",
+      amount: Number(amount || 1850.00)
+    };
+
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${bearerToken}`
+        },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(10000)
+      });
+
+      const responseText = await response.text();
+      let responseJson = {};
+      try { responseJson = JSON.parse(responseText); } catch (e) {}
+
+      if (response.ok) {
+        res.json({
+          success: true,
+          message: `Fatura sistemine POST bildirimi başarıyla iletildi! (HTTP ${response.status})`,
+          sentPayload: payload,
+          targetResponse: responseJson || responseText
+        });
+      } else {
+        res.status(400).json({
+          error: `Hedef sunucu hata döndürdü (HTTP ${response.status})`,
+          details: responseText
+        });
+      }
+    } catch (err: any) {
+      res.status(500).json({ error: `Fatura otomasyonu sunucusuna erişilemedi: ${err.message}` });
+    }
+  });
+
+  app.post("/api/health-sync/trigger", authMiddleware, async (req, res) => {
+    const db = readData();
+    const settings = db.appSettings || {};
+    const url = settings.healthSyncUrl || "https://ais-dev-jjluaxzwdgc7lnmelygj4t-20900394953.europe-west2.run.app/api/health-sync";
+    const bearerToken = settings.healthSyncToken || "vps_secure_secret_2026";
+
+    const feedData = getHealthSyncFeedData(db);
+    let successCount = 0;
+    let failCount = 0;
+
+    // Send individual POST messages for each firm total
+    const entries = Object.entries(feedData.totals || {});
+    for (const [firmName, sumAmount] of entries) {
+      if (sumAmount <= 0) continue;
+      const payload = {
+        firmName: firmName,
+        paymentType: "fatura",
+        amount: Number(sumAmount)
+      };
+
+      try {
+        const resp = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${bearerToken}`
+          },
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(5000)
+        });
+        if (resp.ok) successCount++;
+        else failCount++;
+      } catch (e) {
+        failCount++;
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `${successCount} adet firma fatura tutarı Fatura Otomasyonu Sistemine (${url}) POST ile iletildi.`,
+      details: { successCount, failCount, totalFirms: entries.length }
+    });
+  });
+
+  const handleHealthSyncFeed = (req: express.Request, res: express.Response) => {
+    // Prevent client/CDN caching to ensure 100% instant real-time data
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+
+    const authHeader = req.headers.authorization;
+    const apiKeyHeader = req.headers["x-api-key"];
+    const queryToken = req.query.token as string;
+    const tokenProvided = authHeader?.replace("Bearer ", "").trim() || apiKeyHeader || queryToken;
+
+    const db = readData();
+    const expectedToken = db.appSettings?.healthSyncToken || "vps_secure_secret_2026";
+
+    if (!tokenProvided || (tokenProvided !== expectedToken && tokenProvided !== "vps_secure_secret_2026")) {
+      return res.status(401).json({
+        success: false,
+        error: "Yetkisiz Erişim",
+        message: "Geçersiz veya eksik yetkilendirme token'ı (Bearer vps_secure_secret_2026 veya ?token=vps_secure_secret_2026)."
+      });
+    }
+
+    const feedData = getHealthSyncFeedData(db);
+
+    const format = (req.query.format as string || "").toLowerCase();
+    const isRssPath = req.path.endsWith("/rss") || req.path.endsWith("/feed.xml");
+
+    if (format === "rss" || format === "xml" || isRssPath) {
+      const hostUrl = `${req.protocol}://${req.get("host")}${req.baseUrl}`;
+      res.setHeader("Content-Type", "application/xml; charset=utf-8");
+      return res.send(generateRssXml(feedData, hostUrl));
+    }
+
+    return res.json(feedData);
+  };
+
+  app.get("/api/health-sync/latest", handleHealthSyncFeed);
+  app.get("/api/health-sync/rss", handleHealthSyncFeed);
+  app.get("/api/health-sync/feed.xml", handleHealthSyncFeed);
+
   // App Software Update endpoint from Git + Build
   app.post("/api/app/update", authMiddleware, async (req, res) => {
     const { exec } = await import("child_process");
@@ -893,6 +1225,15 @@ async function startServer() {
           notifyTelegramReferral(item, db);
         } catch (tgErr) {
           console.error("Failed to send telegram notification:", tgErr);
+        }
+      }
+
+      // Automatically send instant POST notification to Fatura Hazırlama Sistemine when a referral or transaction is saved
+      if (collection === 'referrals' || collection === 'transactions') {
+        try {
+          notifyHealthSyncWebhook(item, db);
+        } catch (hsErr) {
+          console.error("Failed to send health sync POST notification:", hsErr);
         }
       }
     } else if (action === 'delete') {

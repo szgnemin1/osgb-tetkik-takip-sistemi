@@ -72,7 +72,7 @@ export const ReferralPrintTemplate: React.FC<Props> = ({ referral, institution, 
             ))}
           </ul>
           
-          {referral.notes && (
+          {referral.notes && referral.notesShow !== false && (
             <div className="mt-6">
               <h3 className="text-xs font-bold text-gray-900 mb-1.5">Sevk Notu:</h3>
               <p className="text-sm text-gray-700 whitespace-pre-wrap italic p-2.5 bg-gray-50 border border-gray-200 rounded">{referral.notes}</p>
