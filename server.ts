@@ -195,6 +195,19 @@ function notifyHealthSyncWebhook(item: any, db: any) {
   const targetUrl = settings.healthSyncUrl || "http://localhost:3002/api/health-sync";
   const token = settings.healthSyncToken || "vps_secure_secret_2026";
 
+  let isFatura = true;
+  if (item.paymentMethod) {
+    const pm = String(item.paymentMethod).toUpperCase();
+    if (pm === "CASH" || pm === "NAKİT" || pm === "NAKIT" || pm === "POS") {
+      isFatura = false;
+    }
+  }
+
+  if (!isFatura) {
+    console.log(`[Health Sync Webhook] Nakit/POS kaydı olduğu için Fatura Sistemine bildirim gönderilmedi.`);
+    return;
+  }
+
   const firmName = (item.employee?.company || item.company || item.description || "Müşteri Firma").trim();
   
   let amount = Number(item.totalPrice || item.amount || 0);
@@ -207,17 +220,9 @@ function notifyHealthSyncWebhook(item: any, db: any) {
     }
   }
 
-  let paymentType = "fatura";
-  if (item.paymentMethod) {
-    const pm = String(item.paymentMethod).toLowerCase();
-    if (pm === "cash" || pm === "nakit") paymentType = "nakit";
-    else if (pm === "pos") paymentType = "pos";
-    else paymentType = "fatura";
-  }
-
   const payload = {
     firmName: firmName || "Müşteri Firma",
-    paymentType: paymentType,
+    paymentType: "fatura",
     amount: Number(amount.toFixed(2))
   };
 
@@ -599,10 +604,10 @@ function getHealthSyncFeedData(db: any) {
     }
   }
 
-  // 1. Process all saved referrals (Sevkler - anlık kaydolduğu gibi yayınlanır)
+  // 1. Process all saved referrals (Sevkler - fatura/cari olanlar toplam tutarlara eklenir)
   const referrals = db.referrals || [];
   for (const ref of referrals) {
-    const firmName = (ref.employee?.company || "Müşteri Firma").trim();
+    const firmName = (ref.employee?.company || ref.company || "Müşteri Firma").trim();
 
     // Calculate amount: ref.totalPrice or sum of exam prices
     let amount = Number(ref.totalPrice || 0);
@@ -612,7 +617,10 @@ function getHealthSyncFeedData(db: any) {
       }
     }
 
-    if (firmName) {
+    const pm = String(ref.paymentMethod || "INVOICE").toUpperCase();
+    const isFatura = (pm === "INVOICE" || pm === "FATURA" || pm === "CARİ" || pm === "CARI");
+
+    if (firmName && isFatura) {
       totals[firmName] = (totals[firmName] || 0) + amount;
     }
 
