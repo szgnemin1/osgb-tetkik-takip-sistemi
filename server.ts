@@ -192,7 +192,7 @@ function notifyTelegramReferral(item: any, db: any) {
 
 function notifyHealthSyncWebhook(item: any, db: any) {
   const settings = db.appSettings || {};
-  const targetUrl = settings.healthSyncUrl || "https://ais-dev-jjluaxzwdgc7lnmelygj4t-20900394953.europe-west2.run.app/api/health-sync";
+  const targetUrl = settings.healthSyncUrl || "http://localhost:3002/api/health-sync";
   const token = settings.healthSyncToken || "vps_secure_secret_2026";
 
   const firmName = (item.employee?.company || item.company || item.description || "Müşteri Firma").trim();
@@ -712,7 +712,7 @@ async function startServer() {
   const app = express();
   app.set('trust proxy', 1);
   const dbForPort = readData();
-  const PORT = process.env.PORT || dbForPort.appSettings?.serverPort || 3031;
+  const PORT = process.env.PORT || dbForPort.appSettings?.serverPort || 3001;
 
   // Rewrite for subpath deployments (e.g. YunoHost)
   // This allows the app to respond correctly whether Nginx strips the path or not.
@@ -997,7 +997,7 @@ async function startServer() {
 
   app.post("/api/health-sync/test-connection", authMiddleware, async (req, res) => {
     const { targetUrl, token, firmName, amount } = req.body || {};
-    const url = targetUrl || "https://ais-dev-jjluaxzwdgc7lnmelygj4t-20900394953.europe-west2.run.app/api/health-sync";
+    const url = targetUrl || "http://localhost:3002/api/health-sync";
     const bearerToken = token || "vps_secure_secret_2026";
 
     const payload = {
@@ -1042,7 +1042,7 @@ async function startServer() {
   app.post("/api/health-sync/trigger", authMiddleware, async (req, res) => {
     const db = readData();
     const settings = db.appSettings || {};
-    const url = settings.healthSyncUrl || "https://ais-dev-jjluaxzwdgc7lnmelygj4t-20900394953.europe-west2.run.app/api/health-sync";
+    const url = settings.healthSyncUrl || "http://localhost:3002/api/health-sync";
     const bearerToken = settings.healthSyncToken || "vps_secure_secret_2026";
 
     const feedData = getHealthSyncFeedData(db);

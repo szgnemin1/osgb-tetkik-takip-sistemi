@@ -49,7 +49,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [activeTab, setActiveTab] = useState<'general' | 'companies' | 'exams' | 'institutions' | 'backup' | 'healthSync' | 'update'>('general');
 
   // Health Sync Settings State
-  const [healthSyncUrl, setHealthSyncUrl] = useState(settings.healthSyncUrl || 'https://ais-dev-jjluaxzwdgc7lnmelygj4t-20900394953.europe-west2.run.app/api/health-sync');
+  const [healthSyncUrl, setHealthSyncUrl] = useState(settings.healthSyncUrl || 'http://localhost:3002/api/health-sync');
   const [healthSyncToken, setHealthSyncToken] = useState(settings.healthSyncToken || 'vps_secure_secret_2026');
   const [feedTestStatus, setFeedTestStatus] = useState<{ type: 'idle' | 'loading' | 'success' | 'error'; message: string; data?: any }>({ type: 'idle', message: '' });
 
@@ -142,7 +142,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [printBgLogo, setPrintBgLogo] = useState<string | undefined>(settings.printBackgroundLogo);
   const [autoPrint, setAutoPrint] = useState(settings.autoPrintReferral);
   const [printPageSize, setPrintPageSize] = useState<'A4' | 'A5' | 'A6'>(settings.printPageSize || 'A4');
-  const [serverPort, setServerPort] = useState<number>(settings.serverPort || 3031);
+  const [serverPort, setServerPort] = useState<number>(settings.serverPort || 3001);
   const [isPasswordEnabled, setIsPasswordEnabled] = useState(settings.isPasswordEnabled || false);
   const [appPassword, setAppPassword] = useState(settings.appPassword || '');
 
@@ -1007,7 +1007,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                    <div className="flex items-center justify-between p-4 bg-slate-800 rounded border border-slate-600">
                       <div>
                          <label className="block text-sm font-medium text-white">Sunucu Çalışma Port Numarası</label>
-                         <p className="text-xs text-slate-400 mt-1">Lokal sunucu veya VPS/Linux kurulumlarında uygulamanın dinleyeceği port numarası.</p>
+                         <p className="text-xs text-slate-400 mt-1">Lokal sunucu veya VPS/Linux kurulumlarında uygulamanın dinleyeceği port numarası (Varsayılan: 3001).</p>
                       </div>
                       <div className="flex items-center space-x-2">
                          <input 
@@ -1015,7 +1015,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                            min="1024"
                            max="65535"
                            value={serverPort}
-                           onChange={(e) => setServerPort(parseInt(e.target.value) || 3031)}
+                           onChange={(e) => setServerPort(parseInt(e.target.value) || 3001)}
                            className="w-28 px-3 py-2 bg-slate-900 border border-slate-500 rounded text-emerald-300 text-center font-mono font-bold text-sm focus:ring-blue-500 outline-none"
                          />
                       </div>
@@ -1891,7 +1891,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       required
                       value={healthSyncUrl}
                       onChange={(e) => setHealthSyncUrl(e.target.value)}
-                      placeholder="https://ais-dev-jjluaxzwdgc7lnmelygj4t-20900394953.europe-west2.run.app/api/health-sync"
+                      placeholder="http://localhost:3002/api/health-sync"
                       className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2.5 text-indigo-300 text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                     <button
