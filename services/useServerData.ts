@@ -22,20 +22,31 @@ let API_TOKEN = '';
 
 export function setApiToken(token: string) {
   API_TOKEN = token;
+  if (token) {
+    sessionStorage.setItem('api_token', token);
+    localStorage.setItem('api_token', token);
+  } else {
+    sessionStorage.removeItem('api_token');
+    localStorage.removeItem('api_token');
+  }
 }
 
 export function getApiToken() {
+  if (!API_TOKEN) {
+    API_TOKEN = sessionStorage.getItem('api_token') || localStorage.getItem('api_token') || '';
+  }
   return API_TOKEN;
 }
 
 const fetchWithToken = async (url: string, options: RequestInit = {}) => {
+  const token = getApiToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as object),
   };
   
-  if (API_TOKEN) {
-    headers['Authorization'] = `Bearer ${API_TOKEN}`;
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
   const baseUrl = import.meta.env.BASE_URL || '/';
@@ -127,12 +138,10 @@ export function useServerData(isAuthenticated: boolean) {
       }));
 
     } catch (e) {
-      console.error(e);
-      // Auto-logout on unauthorized
+      console.warn("[Background Data Sync Warning]", e);
+      // Soft handling of auth errors without forcing window.location.reload()
       if (e instanceof Error && e.message === 'Unauthorized') {
         setApiToken('');
-        sessionStorage.removeItem('api_token');
-        window.location.reload();
       }
     } finally {
       setLoading(false);

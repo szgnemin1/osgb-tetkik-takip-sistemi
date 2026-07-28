@@ -39,8 +39,9 @@ export const Auth: React.FC<AuthProps> = ({ onAuthenticated }) => {
       const data = await res.json();
       setApiToken(data.token);
       
-      // Save token temporarily in sessionStorage
+      // Save token in both sessionStorage and localStorage for session persistence
       sessionStorage.setItem('api_token', data.token);
+      localStorage.setItem('api_token', data.token);
 
       onAuthenticated();
     } catch (err: any) {

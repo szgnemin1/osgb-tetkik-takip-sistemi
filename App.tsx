@@ -59,13 +59,21 @@ const App: React.FC = () => {
 
   // Authentication State
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    const token = sessionStorage.getItem('api_token');
+    const token = sessionStorage.getItem('api_token') || localStorage.getItem('api_token');
     if (token) {
       setApiToken(token);
       return true;
     }
     return false;
   });
+
+  // Keep auth state synced if token gets cleared
+  useEffect(() => {
+    const currentToken = getApiToken() || sessionStorage.getItem('api_token') || localStorage.getItem('api_token');
+    if (!currentToken && isAuthenticated) {
+      setIsAuthenticated(false);
+    }
+  }, [isAuthenticated]);
 
   // Data States from Server
   const { referrals, companies, exams, institutions, transactions, appSettings, loading, reloadData } = useServerData(isAuthenticated);

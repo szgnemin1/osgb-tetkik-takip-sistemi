@@ -779,8 +779,8 @@ async function startServer() {
     
     // Verify the password against the stored password hash
     if (bcrypt.compareSync(password, currentHash)) {
-      // Generate secure 12-hour token
-      const token = jwt.sign({ role: "admin" }, JWT_SECRET, { expiresIn: '12h' });
+      // Generate secure 30-day token
+      const token = jwt.sign({ role: "admin" }, JWT_SECRET, { expiresIn: '30d' });
       res.json({ token });
     } else {
       res.status(401).json({ error: "Yanlış Şifre" });
@@ -810,7 +810,7 @@ async function startServer() {
     writeData(db);
     
     // Issue a fresh token
-    const token = jwt.sign({ role: "admin" }, JWT_SECRET, { expiresIn: '12h' });
+    const token = jwt.sign({ role: "admin" }, JWT_SECRET, { expiresIn: '30d' });
     res.json({ success: true, token });
   });
 
