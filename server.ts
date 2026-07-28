@@ -208,9 +208,9 @@ function notifyHealthSyncWebhook(item: any, db: any) {
     return;
   }
 
-  const firmName = (item.employee?.company || item.company || item.description || "Müşteri Firma").trim();
+  const firmName = (item.employee?.company || item.company || item.description || item.firmName || item.firma || "Müşteri Firma").trim();
   
-  let amount = Number(item.totalPrice || item.amount || 0);
+  let amount = Number(item.totalPrice || item.amount || item.price || item.tutar || 0);
   if (amount <= 0 && Array.isArray(item.exams)) {
     for (const exIdOrName of item.exams) {
       const examDef = db.exams?.find((e: any) => e.id === exIdOrName || e.name === exIdOrName);
@@ -220,19 +220,26 @@ function notifyHealthSyncWebhook(item: any, db: any) {
     }
   }
 
-  const payload = {
+  const numAmount = Number(amount.toFixed(2));
+  const singleRecord = {
     firmName: firmName || "Müşteri Firma",
     paymentType: "fatura",
-    amount: Number(amount.toFixed(2))
+    amount: numAmount
   };
 
-  console.log(`[Health Sync Webhook] Sending POST request to ${targetUrl}:`, payload);
+  const payload = {
+    ...singleRecord,
+    records: [ singleRecord ]
+  };
+
+  console.log(`[Health Sync Webhook] Sending POST request to ${targetUrl}:`, JSON.stringify(payload));
 
   fetch(targetUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`
+      "Authorization": `Bearer ${token}`,
+      "x-api-key": token
     },
     body: JSON.stringify(payload),
     signal: AbortSignal.timeout(10000)
@@ -246,7 +253,7 @@ function notifyHealthSyncWebhook(item: any, db: any) {
     }
   })
   .catch(err => {
-    console.error("[Health Sync Webhook] Failed to send POST request:", err);
+    console.error("[Health Sync Webhook] Failed to send POST request (Port 3002 unreachable):", err.message);
   });
 }
 
@@ -1008,10 +1015,16 @@ async function startServer() {
     const url = targetUrl || "http://localhost:3002/api/health-sync";
     const bearerToken = token || "vps_secure_secret_2026";
 
-    const payload = {
+    const numAmount = Number(amount || 1850.00);
+    const recItem = {
       firmName: firmName || "Örnek Firma A.Ş.",
       paymentType: "fatura",
-      amount: Number(amount || 1850.00)
+      amount: numAmount
+    };
+
+    const payload = {
+      ...recItem,
+      records: [ recItem ]
     };
 
     try {
@@ -1019,7 +1032,8 @@ async function startServer() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${bearerToken}`
+          "Authorization": `Bearer ${bearerToken}`,
+          "x-api-key": bearerToken
         },
         body: JSON.stringify(payload),
         signal: AbortSignal.timeout(10000)
@@ -1061,10 +1075,14 @@ async function startServer() {
     const entries = Object.entries(feedData.totals || {});
     for (const [firmName, sumAmount] of entries) {
       if (sumAmount <= 0) continue;
-      const payload = {
+      const itemData = {
         firmName: firmName,
         paymentType: "fatura",
         amount: Number(sumAmount)
+      };
+      const payload = {
+        ...itemData,
+        records: [ itemData ]
       };
 
       try {
@@ -1072,7 +1090,8 @@ async function startServer() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${bearerToken}`
+            "Authorization": `Bearer ${bearerToken}`,
+            "x-api-key": bearerToken
           },
           body: JSON.stringify(payload),
           signal: AbortSignal.timeout(5000)
