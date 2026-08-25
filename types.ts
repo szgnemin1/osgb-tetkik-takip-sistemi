@@ -130,13 +130,7 @@ export interface AppSettings {
   telegramCustomReportEndDay2?: number;
   telegramReportHour2?: number;
   telegramLastReportSent2?: string;
-  healthSyncEnabled?: boolean;
-  healthSyncUrl?: string;
-  healthSyncToken?: string;
-  healthSyncCronEnabled?: boolean;
-  healthSyncLastSync?: string;
-  healthSyncLastCronSent?: string;
-  serverPort?: number;
+
 }
 
 /**
