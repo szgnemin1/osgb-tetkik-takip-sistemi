@@ -112,6 +112,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [iPhone, setIPhone] = useState('');
   const [iAddress, setIAddress] = useState('');
   const [iLocationUrl, setILocationUrl] = useState('');
+  const [iSendWhatsapp, setISendWhatsapp] = useState(false);
+  const [iWhatsappTemplate, setIWhatsappTemplate] = useState('Sayın {hasta_adi}, {kurum_adi} kurumuna sevkiniz oluşturulmuştur. Konum: {konum_linki}');
 
   const toggleCompanyExam = (examName: string) => {
     setCSelectedExams(prev => 
@@ -127,6 +129,49 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   // Backup & External Sync State
   const backupInputRef = useRef<HTMLInputElement>(null);
+
+  // WhatsApp Web State
+  const [waReady, setWaReady] = useState(false);
+  const [waQr, setWaQr] = useState('');
+
+  useEffect(() => {
+    let interval: any;
+    if (activeTab === 'whatsapp') {
+      const fetchWaStatus = async () => {
+        try {
+          const { getApiToken } = await import('../services/useServerData');
+          const baseUrl = import.meta.env.BASE_URL || '/';
+          const res = await fetch(`${baseUrl}api/whatsapp/status`, {
+             headers: { 'Authorization': `Bearer ${getApiToken()}` }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setWaReady(data.ready);
+            setWaQr(data.qr);
+          }
+        } catch(e) {}
+      };
+      fetchWaStatus();
+      interval = setInterval(fetchWaStatus, 3000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [activeTab]);
+
+  const handleWaLogout = async () => {
+      if(!window.confirm('WhatsApp bağlantısını kesmek istediğinize emin misiniz?')) return;
+      try {
+          const { getApiToken } = await import('../services/useServerData');
+          const baseUrl = import.meta.env.BASE_URL || '/';
+          await fetch(`${baseUrl}api/whatsapp/logout`, {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${getApiToken()}` }
+          });
+          setWaReady(false);
+          setWaQr('');
+      } catch(e) {}
+  };
 
   const handleSaveTelegramSettings = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -452,6 +497,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       // ADD New
       const newCompany: Company = {
         id: Math.random().toString(36).substr(2, 9),
+        sendWhatsapp: iSendWhatsapp,
+        whatsappTemplate: iWhatsappTemplate,
         name: cName,
         hazardClass: cHazard,
         assignedDoctor: cDoctor || 'Belirlenmedi',
@@ -471,6 +518,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setIPhone('');
     setIAddress('');
     setILocationUrl('');
+    setISendWhatsapp(false);
+    setIWhatsappTemplate('Sayın {hasta_adi}, {kurum_adi} kurumuna sevkiniz oluşturulmuştur. Konum: {konum_linki}');
   };
 
   const handleEditInstitution = (inst: MedicalInstitution) => {
@@ -479,6 +528,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setIPhone(inst.phone || '');
     setIAddress(inst.address || '');
     setILocationUrl(inst.locationUrl || '');
+    setISendWhatsapp(inst.sendWhatsapp || false);
+    setIWhatsappTemplate(inst.whatsappTemplate || 'Sayın {hasta_adi}, {kurum_adi} kurumuna sevkiniz oluşturulmuştur. Konum: {konum_linki}');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -489,6 +540,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     if (editingInstitutionId) {
       onUpdateInstitution({
         id: editingInstitutionId,
+        sendWhatsapp: iSendWhatsapp,
+        whatsappTemplate: iWhatsappTemplate,
         name: iName,
         phone: iPhone,
         address: iAddress,
@@ -749,6 +802,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           className={`px-6 py-4 text-center font-medium text-sm transition-colors whitespace-nowrap ${activeTab === 'companies' ? 'bg-slate-900/50 text-blue-400 border-b-2 border-blue-500' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
         >
           Firmalar
+        </button>
+        <button
+          onClick={() => setActiveTab('whatsapp')}
+          className={`px-6 py-4 text-center font-medium text-sm transition-colors whitespace-nowrap ${activeTab === 'whatsapp' ? 'bg-slate-900/50 text-blue-400 border-b-2 border-blue-500' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
+        >
+          WhatsApp Web
         </button>
         <button
           onClick={() => setActiveTab('institutions')}
@@ -1224,6 +1283,51 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
         )}
 
+        
+        {activeTab === 'whatsapp' && (
+          <div className="space-y-6 max-w-2xl">
+            <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 shadow-sm">
+               <div className="flex items-center space-x-3 mb-6">
+                 <div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-500">
+                    <Smartphone className="w-6 h-6" />
+                 </div>
+                 <div>
+                    <h3 className="text-lg font-bold text-white">WhatsApp Web Bağlantısı</h3>
+                    <p className="text-sm text-slate-400">Sistemin arka planda otomatik mesaj gönderebilmesi için telefonunuzu bağlayın.</p>
+                 </div>
+               </div>
+               
+               <div className="bg-slate-950 p-6 rounded-lg border border-slate-800 text-center flex flex-col items-center">
+                  {waReady ? (
+                      <div className="space-y-4">
+                          <div className="w-20 h-20 bg-emerald-500/20 text-emerald-500 rounded-full flex items-center justify-center mx-auto">
+                              <Check className="w-10 h-10" />
+                          </div>
+                          <h4 className="text-xl font-bold text-emerald-400">WhatsApp Bağlı</h4>
+                          <p className="text-slate-400 text-sm">Sistem aktif olarak mesaj gönderebilir durumda.</p>
+                          <button onClick={handleWaLogout} className="mt-4 px-6 py-2 bg-red-600/20 text-red-500 hover:bg-red-600/30 rounded-lg font-medium transition-colors">
+                              Bağlantıyı Kes
+                          </button>
+                      </div>
+                  ) : waQr ? (
+                      <div className="space-y-4">
+                          <h4 className="text-md font-bold text-white">QR Kodu Okutun</h4>
+                          <p className="text-slate-400 text-sm max-w-sm mx-auto">WhatsApp uygulamasını açın, "Bağlı Cihazlar" menüsünden "Cihaz Bağla" diyerek bu QR kodu okutun.</p>
+                          <div className="p-4 bg-white rounded-xl inline-block mt-4">
+                              <QRCodeSVG value={waQr} size={250} level="H" />
+                          </div>
+                      </div>
+                  ) : (
+                      <div className="space-y-4">
+                          <div className="w-12 h-12 border-4 border-slate-700 border-t-emerald-500 rounded-full animate-spin mx-auto"></div>
+                          <p className="text-slate-400">WhatsApp başlatılıyor veya QR kod bekleniyor...</p>
+                      </div>
+                  )}
+               </div>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'institutions' && (
           <div className="space-y-8">
              <form onSubmit={handleInstitutionSubmit} className="bg-slate-900/30 p-4 rounded-lg border border-slate-700 space-y-4">
@@ -1236,6 +1340,34 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                    <input placeholder="Telefon / İletişim" value={iPhone} onChange={e => setIPhone(e.target.value)} className="bg-slate-800 border-slate-600 rounded px-3 py-2 text-white text-sm focus:ring-blue-500 outline-none" />
                    <input placeholder="Detaylı Adres Tarifi" value={iAddress} onChange={e => setIAddress(e.target.value)} className="bg-slate-800 border-slate-600 rounded px-3 py-2 text-white text-sm focus:ring-blue-500 outline-none" />
                    <input placeholder="Konum Linki (Google Maps vb.)" value={iLocationUrl} onChange={e => setILocationUrl(e.target.value)} className="bg-slate-800 border-slate-600 rounded px-3 py-2 text-white text-sm focus:ring-blue-500 outline-none" />
+                   
+                   <div className="md:col-span-2 mt-4 space-y-3 border-t border-slate-700/50 pt-4">
+                     <label className="flex items-center space-x-2 cursor-pointer bg-slate-900/50 p-3 rounded-lg border border-slate-700 hover:bg-slate-800 transition-colors">
+                       <input 
+                         type="checkbox" 
+                         checked={iSendWhatsapp}
+                         onChange={(e) => setISendWhatsapp(e.target.checked)}
+                         className="w-4 h-4 rounded border-slate-600 text-blue-600 focus:ring-blue-500 bg-slate-800"
+                       />
+                       <div className="flex flex-col">
+                         <span className="text-sm font-bold text-slate-200">Personel Telefonuna WhatsApp Mesajı Gönder (Web)</span>
+                         <span className="text-xs text-slate-400">Bu kurum seçilip sevk kaydedildiğinde, doğrudan WhatsApp Web'e yönlendirerek konum ve sevk bilgisini atmaya yarar.</span>
+                       </div>
+                     </label>
+                     
+                     {iSendWhatsapp && (
+                       <div className="pl-6">
+                         <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">WhatsApp Mesaj Taslağı</label>
+                         <textarea 
+                           value={iWhatsappTemplate}
+                           onChange={(e) => setIWhatsappTemplate(e.target.value)}
+                           className="w-full bg-slate-800 border-slate-600 rounded px-3 py-2 text-slate-200 text-sm focus:ring-blue-500 outline-none min-h-[80px]"
+                           placeholder="Değişkenler: {hasta_adi}, {tc_kimlik}, {dogum_tarihi}, {dogum_tarihi_bitisik}, {kurum_adi}, {konum_linki}"
+                         />
+                         <p className="text-xs text-slate-500 mt-1">Kullanılabilecek Değişkenler: <strong>{'{hasta_adi}'}</strong>, <strong>{'{tc_kimlik}'}</strong>, <strong>{'{dogum_tarihi}'}</strong>, <strong>{'{dogum_tarihi_bitisik}'}</strong>, <strong>{'{kurum_adi}'}</strong>, <strong>{'{konum_linki}'}</strong></p>
+                       </div>
+                     )}
+                   </div>
                 </div>
                 <div className="flex justify-end space-x-3">
                   {editingInstitutionId && (

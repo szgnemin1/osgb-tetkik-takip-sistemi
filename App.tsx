@@ -161,6 +161,51 @@ const App: React.FC = () => {
   // Handlers
   const handleSaveReferral = async (referral: Referral, shouldPrint: boolean = false) => {
     await saveReferralToDb(referral);
+
+    if (referral.targetInstitutionId) {
+      const inst = institutions.find(i => i.id === referral.targetInstitutionId);
+      if (inst && inst.sendWhatsapp && referral.employee.phone && !referral.skipNotifications) {
+         let msg = inst.whatsappTemplate || 'Sayın {hasta_adi}, {kurum_adi} kurumuna sevkiniz oluşturulmuştur. Konum: {konum_linki}';
+         
+         const birthDateStr = referral.employee.birthDate || '';
+         let dogumTarihi = '';
+         let dogumTarihiBitisik = '';
+         if (birthDateStr) {
+            const parts = birthDateStr.split('-');
+            if (parts.length === 3) {
+              dogumTarihi = `${parts[2]}.${parts[1]}.${parts[0]}`;
+              dogumTarihiBitisik = `${parts[2]}${parts[1]}${parts[0]}`;
+            }
+         }
+         
+         msg = msg.replace(/\{hasta_adi\}/g, referral.employee.fullName)
+                  .replace(/\{tc_kimlik\}/g, referral.employee.tcNo || '')
+                  .replace(/\{dogum_tarihi\}/g, dogumTarihi)
+                  .replace(/\{dogum_tarihi_bitisik\}/g, dogumTarihiBitisik)
+                  .replace(/\{kurum_adi\}/g, inst.name)
+                  .replace(/\{konum_linki\}/g, inst.locationUrl || '');
+         
+         let phoneFormatted = referral.employee.phone.replace(/\D/g, '');
+         if (phoneFormatted.startsWith('0')) {
+             phoneFormatted = '90' + phoneFormatted.substring(1);
+         } else if (!phoneFormatted.startsWith('90') && phoneFormatted.length === 10) {
+             phoneFormatted = '90' + phoneFormatted;
+         }
+
+         const encodedMsg = encodeURIComponent(msg);
+         
+         fetch('/api/whatsapp/send', {
+             method: 'POST',
+             headers: {
+                 'Content-Type': 'application/json',
+                 'Authorization': `Bearer ${sessionStorage.getItem('api_token')}`
+             },
+             body: JSON.stringify({ phone: phoneFormatted, message: msg })
+         }).catch(err => console.error('WhatsApp send error', err));
+
+      }
+    }
+
     
     if (editingReferral) {
         // Find existing transaction and update/replace it if payment is involved

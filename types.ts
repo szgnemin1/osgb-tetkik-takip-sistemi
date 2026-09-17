@@ -41,6 +41,8 @@ export interface MedicalInstitution {
   address?: string;
   phone?: string;
   locationUrl?: string; // QR code için konum linki
+  sendWhatsapp?: boolean; // WhatsApp mesajı gönderilecek mi
+  whatsappTemplate?: string; // Gönderilecek mesaj taslağı
 }
 
 export enum HazardClass {
@@ -85,6 +87,7 @@ export interface Referral {
   totalCost?: number; // OSGB'nin ödeyeceği maliyet
   paymentMethod: 'CASH' | 'POS' | 'INVOICE'; // Nakit, Pos veya Cari
   targetInstitutionId?: string; // Hangi kuruma sevk edildiği
+  skipNotifications?: boolean; // Sadece kayıt yaparken bildirimleri atlamak için
 }
 
 export interface Stats {

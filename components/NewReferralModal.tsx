@@ -35,6 +35,7 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
   }, []);
   
   // Personel State
+  const [isExternalRecord, setIsExternalRecord] = useState(false);
   const [fullName, setFullName] = useState('');
   const [tcNo, setTcNo] = useState('');
   const [birthDate, setBirthDate] = useState('');
@@ -107,17 +108,20 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
       fullName.trim().length >= 3 &&
       tcNo.trim().length === 11 &&
       birthDate !== '' &&
+      phone.trim().length >= 10 &&
       (selectedCompanyData !== null || (initialData !== null && initialData !== undefined && companySearchTerm.trim() !== ''))
     );
-  }, [fullName, tcNo, birthDate, selectedCompanyData, initialData, companySearchTerm]);
+  }, [fullName, tcNo, birthDate, phone, selectedCompanyData, initialData, companySearchTerm]);
 
   const isStep2Valid = useMemo(() => {
+    if (isExternalRecord) return true;
     return selectedExamIds.length > 0;
-  }, [selectedExamIds]);
+  }, [selectedExamIds, isExternalRecord]);
 
   const isStep3Valid = useMemo(() => {
+    if (isExternalRecord) return true;
     return selectedInstitutionId !== '';
-  }, [selectedInstitutionId]);
+  }, [selectedInstitutionId, isExternalRecord]);
 
   const isFormValid = isStep1Valid && isStep2Valid && isStep3Valid;
 
@@ -253,7 +257,7 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
     );
   };
 
-  const executeSubmit = (selectedMethod: 'CASH' | 'POS' | 'INVOICE', shouldPrint: boolean) => {
+  const executeSubmit = (selectedMethod: 'CASH' | 'POS' | 'INVOICE', shouldPrint: boolean, skipNotifications: boolean = false) => {
     // ID'yi koru (düzenleme) veya yeni oluştur
     const referralId = initialData ? initialData.id : Math.random().toString(36).substr(2, 9);
     const employeeId = initialData ? initialData.employee.id : Math.random().toString(36).substr(2, 9);
@@ -279,6 +283,7 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
       totalCost: estimatedCost,
       paymentMethod: selectedMethod,
       targetInstitutionId: selectedInstitutionId || undefined,
+      skipNotifications,
     };
     onSubmit(newReferral, shouldPrint);
     setShowPaymentReminder(false);
@@ -290,9 +295,13 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
 
     if (paymentMethod !== 'INVOICE') {
       setPendingPrint(shouldPrint);
-      setShowPaymentReminder(true);
+      if (isExternalRecord) {
+          executeSubmit(paymentMethod, shouldPrint, isExternalRecord);
+      } else {
+          setShowPaymentReminder(true);
+      }
     } else {
-      executeSubmit('INVOICE', shouldPrint);
+      executeSubmit('INVOICE', shouldPrint, isExternalRecord);
     }
   };
 
@@ -482,6 +491,24 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
                     )}
                   </div>
 
+                  {/* Dışarıdan Kayıt Checkbox */}
+                  {!initialData && (
+                    <label className="flex items-center space-x-3 p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl cursor-pointer hover:bg-indigo-500/20 transition-colors mb-4">
+                      <div className="relative flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={isExternalRecord}
+                          onChange={(e) => setIsExternalRecord(e.target.checked)}
+                          className="w-5 h-5 rounded border-slate-600 text-indigo-500 bg-slate-900 focus:ring-indigo-500 focus:ring-offset-slate-900"
+                        />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-bold text-indigo-300">Dışarıdan Gelen Tetkik (Sadece Kayıt)</span>
+                        <span className="text-[10px] text-slate-400">Tetkik sormaz, kuruma bildirim ve hastaya mesaj gitmez. Sadece gelir olarak kaydedilir.</span>
+                      </div>
+                    </label>
+                  )}
+
                   {/* Personel Bilgisi Kartı */}
                   <div className={`bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm transition-all duration-300 ${!selectedCompanyData && !initialData ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
                     <div className="flex items-center justify-between mb-3">
@@ -516,6 +543,11 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
                             )}
                           </div>
                         </div>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] uppercase font-bold text-slate-500 mb-1 block ml-1">Telefon Numarası <span className="text-[9px] text-slate-400 font-normal">(WhatsApp İçin)</span></label>
+                        <input type="text" value={phone} onChange={e => setPhone(e.target.value)} className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-base focus:border-emerald-500 outline-none placeholder-slate-600" placeholder="05XX XXX XX XX" />
                       </div>
                     </div>
                   </div>
@@ -728,7 +760,7 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
                 </button>
               )}
 
-              {currentStep < 3 ? (
+              {currentStep < 3 && !isExternalRecord ? (
                 <button
                   type="button"
                   onClick={() => {
@@ -739,10 +771,10 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
                   className={`flex-1 sm:flex-initial px-6 py-3 rounded-xl font-bold text-white shadow-lg flex items-center justify-center space-x-2 transition-all active:scale-95 ${
                     (currentStep === 1 ? !isStep1Valid : !isStep2Valid) 
                       ? 'bg-slate-800 text-slate-500 cursor-not-allowed' 
-                      : 'bg-blue-600 hover:bg-blue-500 shadow-blue-900/20'
+                      : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/30'
                   }`}
                 >
-                  <span>Devam Et</span>
+                  <span>İLERİ</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               ) : (
@@ -839,13 +871,31 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
                       <span className="text-slate-200 font-medium truncate">
                         {selectedCompanyData?.assignedSpecialist || initialData?.specialistName || '-'}
                       </span>
-                    </div>
-                  </div>
-                )}
+                        </div>
+                      </div>
+                    )}
               </div>
 
+              {/* Dışarıdan Kayıt Checkbox */}
+              {!initialData && (
+                <label className="flex items-center space-x-3 p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl cursor-pointer hover:bg-indigo-500/20 transition-colors mb-4">
+                  <div className="relative flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={isExternalRecord}
+                      onChange={(e) => setIsExternalRecord(e.target.checked)}
+                      className="w-5 h-5 rounded border-slate-600 text-indigo-500 bg-slate-900 focus:ring-indigo-500 focus:ring-offset-slate-900"
+                    />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold text-indigo-300">Dışarıdan Gelen Tetkik (Sadece Kayıt)</span>
+                    <span className="text-[10px] text-slate-400">Tetkik sormaz, kuruma bildirim ve hastaya mesaj gitmez. Sadece gelir olarak kaydedilir.</span>
+                  </div>
+                </label>
+              )}
+
               {/* Personel Bilgisi Kartı */}
-              <div className={`bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm transition-all duration-300 shrink-0 ${!selectedCompanyData && !initialData ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
+              <div className={`bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm transition-all duration-300 shrink-0 ${!selectedCompanyData && !initialData && !isExternalRecord ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center">
                     <div className="p-1.5 bg-emerald-500/10 rounded-lg mr-2">
@@ -878,11 +928,33 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
                       </div>
                     </div>
                   </div>
+                  <div>
+                    <label className="text-[10px] uppercase font-bold text-slate-500 mb-1 block ml-1">Telefon Numarası <span className="text-[9px] text-slate-400 font-normal">(WhatsApp İçin)</span></label>
+                    <input type="text" value={phone} onChange={e => setPhone(e.target.value)} className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-sm focus:border-emerald-500 outline-none placeholder-slate-600" placeholder="05XX XXX XX XX" />
+                  </div>
+                  
+                  {/* Sadece Kayıt Modu Butonu (Masaüstü) */}
+                  {isExternalRecord && (
+                    <button 
+                      onClick={(e) => handleSubmit(e, !initialData ? settings.autoPrintReferral : false)}
+                      disabled={!isStep1Valid}
+                      className={`w-full mt-4 py-3 rounded-lg font-bold text-white shadow-lg flex items-center justify-center space-x-2 transition-all active:scale-95 ${
+                        !isStep1Valid ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-900/30'
+                      }`}
+                    >
+                      <Save className="w-4 h-4" />
+                      <span className="text-sm">
+                        {initialData ? 'GÜNCELLE' : 'KAYDI OLUŞTUR'}
+                      </span>
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* COLUMN 2: NE? (Tetkikler) - lg:col-span-5 */}
+            {!isExternalRecord && (
+              <>
+                {/* COLUMN 2: NE? (Tetkikler) - lg:col-span-5 */}
             <div className={`col-span-12 lg:col-span-5 flex flex-col transition-all duration-300 lg:min-h-0 min-h-fit ${!selectedCompanyData && !initialData ? 'opacity-40 pointer-events-none' : ''}`}>
               <div className="bg-slate-900 border border-slate-800 rounded-xl p-1 lg:h-full h-auto flex flex-col shadow-sm overflow-hidden">
                 <div className="p-3 border-b border-slate-800 flex justify-between items-center shrink-0">
@@ -1083,6 +1155,9 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
               </div>
 
             </div>
+            </>
+          )}
+
           </div>
         </div>
       )}
