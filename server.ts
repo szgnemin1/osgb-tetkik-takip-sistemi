@@ -9,43 +9,52 @@
 import express from "express";
 import path from "path";
 
-import { Client, LocalAuth } from 'whatsapp-web.js';
+import makeWASocket, { DisconnectReason, useMultiFileAuthState } from '@whiskeysockets/baileys';
+import pino from 'pino';
 
 // --- WHATSAPP CLIENT SETUP ---
 let waReady = false;
 let waQr = '';
+let sock: any = null;
 
-const waClient = new Client({
-    authStrategy: new LocalAuth(),
-    puppeteer: {
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-accelerated-2d-canvas', '--no-first-run', '--no-zygote', '--single-process', '--disable-gpu']
-    }
-});
-
-waClient.on('qr', (qr) => {
-    waQr = qr;
-    waReady = false;
-    console.log('WhatsApp QR Created');
-});
-
-waClient.on('ready', () => {
-    waReady = true;
-    waQr = '';
-    console.log('WhatsApp Client is ready!');
-});
-
-waClient.on('disconnected', (reason) => {
-    waReady = false;
-    waQr = '';
-    console.log('WhatsApp Client disconnected', reason);
-});
-
-// Start initialization but catch errors so it doesn't crash the server
-try {
-    waClient.initialize().catch(err => console.error("WA Init Catch:", err));
-} catch(e) {
-    console.error("WA Init Error:", e);
+async function connectToWhatsApp() {
+    const { state, saveCreds } = await useMultiFileAuthState('baileys_auth_info');
+    
+    sock = makeWASocket({
+        auth: state,
+        logger: pino({ level: 'silent' }) as any,
+        printQRInTerminal: false
+    });
+    
+    sock.ev.on('connection.update', (update: any) => {
+        const { connection, lastDisconnect, qr } = update;
+        
+        if (qr) {
+            waQr = qr;
+            waReady = false;
+            console.log('WhatsApp QR Created');
+        }
+        
+        if (connection === 'close') {
+            waReady = false;
+            waQr = '';
+            const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+            if (shouldReconnect) {
+                connectToWhatsApp();
+            } else {
+                console.log('WhatsApp Client disconnected/logged out');
+            }
+        } else if (connection === 'open') {
+            waReady = true;
+            waQr = '';
+            console.log('WhatsApp Client is ready!');
+        }
+    });
+    
+    sock.ev.on('creds.update', saveCreds);
 }
+
+connectToWhatsApp();
 
 import fs from "fs";
 import { createServer as createViteServer } from "vite";
@@ -949,7 +958,10 @@ async function startServer() {
 
   app.post("/api/whatsapp/logout", authMiddleware, async (req, res) => {
       try {
-          await waClient.logout();
+          if (sock) sock.logout();
+            waReady = false;
+            waQr = '';
+            connectToWhatsApp();
           waReady = false;
           waQr = '';
           res.json({ success: true });
@@ -964,9 +976,8 @@ async function startServer() {
           return res.status(400).json({ error: 'WhatsApp is not connected' });
       }
       try {
-          // whatsapp-web.js uses the format: countrycode + number + @c.us
-          const chatId = phone + "@c.us";
-          await waClient.sendMessage(chatId, message);
+          const chatId = phone.includes('@s.whatsapp.net') ? phone : phone + '@s.whatsapp.net';
+            await sock.sendMessage(chatId, { text: message });
           res.json({ success: true });
       } catch (error) {
           console.error("WA Send Error:", error);
