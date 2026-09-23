@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Project: OSGB Tetkik Takip Sistemi
  * Copyright (C) 2026 szgn_emin
  * 
@@ -232,7 +232,7 @@ const App: React.FC = () => {
     setEditingReferral(null);
     await reloadData();
     
-    if (shouldPrint || appSettings?.autoPrintReferral) {
+    if (shouldPrint) {
       setPrintingReferral(referral);
     }
     setActiveTab('referrals');
