@@ -292,6 +292,8 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
   const handleSubmit = (e: React.FormEvent, shouldPrint: boolean = false) => {
     e.preventDefault();
     if (!isFormValid) return;
+    
+    if (isExternalRecord) shouldPrint = false;
 
     if (paymentMethod !== 'INVOICE') {
       setPendingPrint(shouldPrint);
