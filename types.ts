@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Project: OSGB Tetkik Takip Sistemi
  * Copyright (C) 2026 szgn_emin
  * 
@@ -8,31 +8,31 @@
  */
 
 export enum Status {
-  PENDING = 'PENDING',       // Bekliyor (Henüz gitmedi)
+  PENDING = 'PENDING',       // Bekliyor (HenÃ¼z gitmedi)
   AT_HOSPITAL = 'AT_HOSPITAL', // Hastanede / Tetkikte
-  AWAITING_RESULT = 'AWAITING_RESULT', // Sonuç Bekleniyor
-  COMPLETED = 'COMPLETED',   // Tamamlandı
-  CANCELLED = 'CANCELLED'    // İptal
+  AWAITING_RESULT = 'AWAITING_RESULT', // SonuÃ§ Bekleniyor
+  COMPLETED = 'COMPLETED',   // TamamlandÄ±
+  CANCELLED = 'CANCELLED'    // Ä°ptal
 }
 
 // Deprecated enum usage in favor of dynamic list, keeping for type safety in legacy code
 export enum ExamType {
   AUDIOMETRY = 'Odyometri',
-  LUNG_XRAY = 'Akciğer Grafisi',
+  LUNG_XRAY = 'AkciÄŸer Grafisi',
   HEMOGRAM = 'Hemogram',
-  VISION = 'Göz Muayenesi',
+  VISION = 'GÃ¶z Muayenesi',
   EKG = 'EKG',
-  TETANUS = 'Tetanoz Aşısı',
-  BLOOD_SUGAR = 'Açlık Kan Şekeri',
-  LIVER_FUNC = 'Karaciğer Fonksiyon Testleri'
+  TETANUS = 'Tetanoz AÅŸÄ±sÄ±',
+  BLOOD_SUGAR = 'AÃ§lÄ±k Kan Åekeri',
+  LIVER_FUNC = 'KaraciÄŸer Fonksiyon Testleri'
 }
 
 export interface ExamDefinition {
   id: string;
   code: string; // Excel mapping code (e.g. "101", "HEM")
   name: string;
-  price: number; // Müşteriye satılan fiyat
-  cost?: number; // OSGB'ye olan maliyeti (Kurum ödemesi)
+  price: number; // MÃ¼ÅŸteriye satÄ±lan fiyat
+  cost?: number; // OSGB'ye olan maliyeti (Kurum Ã¶demesi)
 }
 
 export interface MedicalInstitution {
@@ -40,26 +40,26 @@ export interface MedicalInstitution {
   name: string;
   address?: string;
   phone?: string;
-  locationUrl?: string; // QR code için konum linki
-  sendWhatsapp?: boolean; // WhatsApp mesajı gönderilecek mi
-  whatsappTemplate?: string; // Gönderilecek mesaj taslağı
+  locationUrl?: string; // QR code iÃ§in konum linki
+  sendWhatsapp?: boolean; // WhatsApp mesajÄ± gÃ¶nderilecek mi
+  whatsappTemplate?: string; // GÃ¶nderilecek mesaj taslaÄŸÄ±
 }
 
 export enum HazardClass {
   LESS = 'Az Tehlikeli',
   DANGEROUS = 'Tehlikeli',
-  VERY_DANGEROUS = 'Çok Tehlikeli'
+  VERY_DANGEROUS = 'Ã‡ok Tehlikeli'
 }
 
 export interface Company {
   id: string;
   name: string;
   hazardClass: HazardClass;
-  assignedDoctor: string;     // İşyeri Hekimi
-  assignedSpecialist: string; // İSG Uzmanı
+  assignedDoctor: string;     // Ä°ÅŸyeri Hekimi
+  assignedSpecialist: string; // Ä°SG UzmanÄ±
   defaultExams: string[];     // Changed from ExamType[] to string[] to support dynamic exams
-  defaultPaymentMethod: 'CASH' | 'POS' | 'INVOICE'; // Firmanın varsayılan ödeme yöntemi (POS eklendi)
-  forcedInstitutionId?: string; // Eğer varsa, bu firma sadece bu kuruma sevk edilebilir
+  defaultPaymentMethod: 'CASH' | 'POS' | 'INVOICE'; // FirmanÄ±n varsayÄ±lan Ã¶deme yÃ¶ntemi (POS eklendi)
+  forcedInstitutionId?: string; // EÄŸer varsa, bu firma sadece bu kuruma sevk edilebilir
 }
 
 export interface Employee {
@@ -81,13 +81,14 @@ export interface Referral {
   notes?: string;
   notesShow?: boolean;
   resultSummary?: string;
-  doctorName?: string; // Kayıt anındaki doktor
-  specialistName?: string; // Kayıt anındaki uzman
-  totalPrice?: number; // Müşteriden alınacak tutar
-  totalCost?: number; // OSGB'nin ödeyeceği maliyet
+  doctorName?: string; // KayÄ±t anÄ±ndaki doktor
+  specialistName?: string; // KayÄ±t anÄ±ndaki uzman
+  totalPrice?: number; // MÃ¼ÅŸteriden alÄ±nacak tutar
+  totalCost?: number; // OSGB'nin Ã¶deyeceÄŸi maliyet
   paymentMethod: 'CASH' | 'POS' | 'INVOICE'; // Nakit, Pos veya Cari
-  targetInstitutionId?: string; // Hangi kuruma sevk edildiği
-  skipNotifications?: boolean; // Sadece kayıt yaparken bildirimleri atlamak için
+  targetInstitutionId?: string; // Hangi kuruma sevk edildiÄŸi
+  skipNotifications?: boolean; // Sadece kayÄ±t yaparken bildirimleri atlamak iÃ§in
+  isExternalRecord?: boolean; // Disaridan gelen kayit
 }
 
 export interface Stats {
@@ -110,12 +111,12 @@ export interface SafeTransaction {
 export interface AppSettings {
   ekgLimitAge: number; // Age threshold for mandatory EKG (default 40)
   companyLogo?: string; // Base64 string for the logo
-  autoPrintReferral: boolean; // Otomatik yazdırma ayarı
+  autoPrintReferral: boolean; // Otomatik yazdÄ±rma ayarÄ±
   printBackgroundLogo?: string; // Base64 string for the print background watermark
   printPageSize?: 'A4' | 'A5' | 'A6'; // Sayfa boyutu
-  defaultScannerId?: string; // Varsayılan tarayıcı cihaz ID'si
-  isPasswordEnabled?: boolean; // Şifre koruması aktif mi
-  appPassword?: string; // Uygulama giriş şifresi
+  defaultScannerId?: string; // VarsayÄ±lan tarayÄ±cÄ± cihaz ID'si
+  isPasswordEnabled?: boolean; // Åifre korumasÄ± aktif mi
+  appPassword?: string; // Uygulama giriÅŸ ÅŸifresi
   webhookUrl?: string; // Webhook sync target URL
   backupApiKey?: string; // API key for external sync RSS feed
   telegramBotToken?: string;
@@ -142,13 +143,13 @@ export interface AppSettings {
 export const turkishToLowerCase = (str: string | null | undefined): string => {
   if (!str) return '';
   return str
-    .replace(/İ/g, 'i')
-    .replace(/I/g, 'ı')
-    .replace(/Ş/g, 'ş')
-    .replace(/Ğ/g, 'ğ')
-    .replace(/Ü/g, 'ü')
-    .replace(/Ö/g, 'ö')
-    .replace(/Ç/g, 'ç')
+    .replace(/Ä°/g, 'i')
+    .replace(/I/g, 'Ä±')
+    .replace(/Å/g, 'ÅŸ')
+    .replace(/Ä/g, 'ÄŸ')
+    .replace(/Ãœ/g, 'Ã¼')
+    .replace(/Ã–/g, 'Ã¶')
+    .replace(/Ã‡/g, 'Ã§')
     .toLowerCase();
 };
 

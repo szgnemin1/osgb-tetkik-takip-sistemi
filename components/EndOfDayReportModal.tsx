@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Project: OSGB Tetkik Takip Sistemi
  * Copyright (C) 2026 szgn_emin
  * 
@@ -124,6 +124,7 @@ export const EndOfDayReportModal: React.FC<EndOfDayReportModalProps> = ({ onClos
     let totalReferralPrice = 0;
 
     filteredReferrals.forEach(ref => {
+        if (ref.isExternalRecord) return; // Disaridan gelenleri cari hesaplamalara katma
         const price = ref.totalPrice || 0;
         const cost = ref.totalCost || 0;
 

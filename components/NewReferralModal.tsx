@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Project: OSGB Tetkik Takip Sistemi
  * Copyright (C) 2026 szgn_emin
  * 
@@ -283,7 +283,7 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
       totalCost: estimatedCost,
       paymentMethod: selectedMethod,
       targetInstitutionId: selectedInstitutionId || undefined,
-      skipNotifications,
+      skipNotifications, isExternalRecord,
     };
     onSubmit(newReferral, shouldPrint);
     setShowPaymentReminder(false);

@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Project: OSGB Tetkik Takip Sistemi
  * Copyright (C) 2026 szgn_emin
  * 
@@ -181,8 +181,17 @@ export const ReferralList: React.FC<ReferralListProps> = ({
                 {/* Tutar */}
                 <td className="px-4 py-2.5 text-right">
                   <div className="flex flex-col items-end">
-                    <span className="text-white font-bold text-sm">₺{referral.totalPrice?.toLocaleString('tr-TR') || 0}</span>
-                    {getPaymentBadge(referral.paymentMethod)}
+                    {referral.isExternalRecord ? (
+                        <>
+                          <span className="text-indigo-400 font-bold text-sm">-</span>
+                          <span className="text-[9px] uppercase font-bold tracking-wider px-1 py-0.5 rounded text-indigo-400 bg-indigo-500/10">DIŞARIDAN</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-white font-bold text-sm">₺{referral.totalPrice?.toLocaleString('tr-TR') || 0}</span>
+                          {getPaymentBadge(referral.paymentMethod)}
+                        </>
+                      )}
                   </div>
                 </td>
 
