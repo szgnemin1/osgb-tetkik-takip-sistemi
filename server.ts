@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Project: OSGB Tetkik Takip Sistemi
  * Copyright (C) 2026 szgn_emin
  * 
@@ -205,35 +205,35 @@ function notifyTelegramReferral(item: any, db: any) {
   let statusText = item.status || "Bekliyor";
   if (statusText === "PENDING") statusText = "Bekliyor (Gitmedi)";
   else if (statusText === "AT_HOSPITAL") statusText = "Hastanede / Tetkikte";
-  else if (statusText === "AWAITING_RESULT") statusText = "Sonuç Bekleniyor";
-  else if (statusText === "COMPLETED") statusText = "✅ Tamamlandı";
-  else if (statusText === "CANCELLED") statusText = "❌ İptal Edildi";
+  else if (statusText === "AWAITING_RESULT") statusText = "SonuÃ§ Bekleniyor";
+  else if (statusText === "COMPLETED") statusText = "âœ… TamamlandÄ±";
+  else if (statusText === "CANCELLED") statusText = "âŒ Ä°ptal Edildi";
 
   // Resolve exams
   const examsList = (item.exams || []).map((examId: string) => {
     const examDef = db.exams?.find((e: any) => e.id === examId);
-    return examDef ? `• ${examDef.name} (${examDef.code || ''})` : `• ${examId}`;
+    return examDef ? `â€¢ ${examDef.name} (${examDef.code || ''})` : `â€¢ ${examId}`;
   }).join("\n");
 
   // Format payment method
   let paymentText = item.paymentMethod || "-";
-  if (paymentText === "CASH") paymentText = "💵 Nakit";
-  else if (paymentText === "POS") paymentText = "💳 POS";
-  else if (paymentText === "INVOICE") paymentText = "💼 Cari / Fatura";
+  if (paymentText === "CASH") paymentText = "ğŸ’µ Nakit";
+  else if (paymentText === "POS") paymentText = "ğŸ’³ POS";
+  else if (paymentText === "INVOICE") paymentText = "ğŸ’¼ Cari / Fatura";
 
   const date = item.referralDate ? new Date(item.referralDate).toLocaleDateString("tr-TR") : "-";
   const notes = item.notes ? item.notes : "-";
   const price = item.totalPrice !== undefined ? `${item.totalPrice} TL` : "-";
   const cost = item.totalCost !== undefined ? `${item.totalCost} TL` : "-";
 
-  const message = `<b>🔔 YENİ SEVK KAYDI</b>\n\n` +
-    `<b>👤 Çalışan:</b> ${employeeName} (TC: ${tcNo})\n` +
-    `<b>🏢 Firma:</b> ${companyName}\n` +
-    `<b>📅 Tarih:</b> ${date}\n` +
-    `<b>💳 Ödeme Tipi:</b> ${paymentText}\n\n` +
-    `<b>🧪 Yapılan Tetkikler:</b>\n${examsList || 'Belirtilmemiş'}\n\n` +
-    `<b>💰 Ücret:</b> ${price} / <b>Maliyet:</b> ${cost}\n` +
-    `<b>📝 Notlar:</b> ${notes}`;
+  const message = `<b>ğŸ”” YENÄ° SEVK KAYDI</b>\n\n` +
+    `<b>ğŸ‘¤ Ã‡alÄ±ÅŸan:</b> ${employeeName} (TC: ${tcNo})\n` +
+    `<b>ğŸ¢ Firma:</b> ${companyName}\n` +
+    `<b>ğŸ“… Tarih:</b> ${date}\n` +
+    `<b>ğŸ’³ Ã–deme Tipi:</b> ${paymentText}\n\n` +
+    `<b>ğŸ§ª YapÄ±lan Tetkikler:</b>\n${examsList || 'BelirtilmemiÅŸ'}\n\n` +
+    `<b>ğŸ’° Ãœcret:</b> ${price} / <b>Maliyet:</b> ${cost}\n` +
+    `<b>ğŸ“ Notlar:</b> ${notes}`;
 
   sendTelegramNotification(message, db.appSettings);
 }
@@ -308,9 +308,9 @@ function generateExcelReport(db: any, dateRange?: number | { startDate: Date; en
     let statusText = item.status || "Bekliyor";
     if (statusText === "PENDING") statusText = "Bekliyor (Gitmedi)";
     else if (statusText === "AT_HOSPITAL") statusText = "Hastanede / Tetkikte";
-    else if (statusText === "AWAITING_RESULT") statusText = "Sonuç Bekleniyor";
-    else if (statusText === "COMPLETED") statusText = "Tamamlandı";
-    else if (statusText === "CANCELLED") statusText = "İptal Edildi";
+    else if (statusText === "AWAITING_RESULT") statusText = "SonuÃ§ Bekleniyor";
+    else if (statusText === "COMPLETED") statusText = "TamamlandÄ±";
+    else if (statusText === "CANCELLED") statusText = "Ä°ptal Edildi";
 
     let paymentText = item.paymentMethod || "-";
     if (paymentText === "CASH") paymentText = "Nakit";
@@ -324,15 +324,15 @@ function generateExcelReport(db: any, dateRange?: number | { startDate: Date; en
 
     return {
       "Sevk Tarihi": item.referralDate ? new Date(item.referralDate).toLocaleDateString("tr-TR") : "-",
-      "Çalışan Adı Soyadı": item.employee?.fullName || "-",
+      "Ã‡alÄ±ÅŸan AdÄ± SoyadÄ±": item.employee?.fullName || "-",
       "TC Kimlik No": item.employee?.tcNo || "-",
-      "Firma / Şirket": item.employee?.company || "-",
+      "Firma / Åirket": item.employee?.company || "-",
       "Kurum / Hastane": db.institutions?.find((ins: any) => ins.id === item.institutionId)?.name || item.institutionId || "-",
       "Sevk Edilen Tetkikler": examsList || "-",
-      "Toplam Ücret (TL)": item.totalPrice !== undefined ? item.totalPrice : 0,
+      "Toplam Ãœcret (TL)": item.totalPrice !== undefined ? item.totalPrice : 0,
       "Toplam Maliyet (TL)": item.totalCost !== undefined ? item.totalCost : 0,
-      "Kâr (TL)": (item.totalPrice !== undefined && item.totalCost !== undefined) ? (item.totalPrice - item.totalCost) : 0,
-      "Ödeme Tipi": paymentText,
+      "KÃ¢r (TL)": (item.totalPrice !== undefined && item.totalCost !== undefined) ? (item.totalPrice - item.totalCost) : 0,
+      "Ã–deme Tipi": paymentText,
       "Notlar": item.notes || "-"
     };
   });
@@ -340,11 +340,11 @@ function generateExcelReport(db: any, dateRange?: number | { startDate: Date; en
   const transactionData = transactions.map((item: any) => {
     return {
       "Tarih": item.date ? new Date(item.date).toLocaleDateString("tr-TR") : "-",
-      "Hareket Türü": item.type === "INCOME" ? "Gelir (+)" : "Gider (-)",
-      "Açıklama": item.description || "-",
+      "Hareket TÃ¼rÃ¼": item.type === "INCOME" ? "Gelir (+)" : "Gider (-)",
+      "AÃ§Ä±klama": item.description || "-",
       "Tutar (TL)": item.amount || 0,
       "Kategori": item.category || "-",
-      "Ödeme Yöntemi": item.paymentMethod === "CASH" ? "Nakit" : item.paymentMethod === "POS" ? "POS" : item.paymentMethod === "INVOICE" ? "Cari / Fatura" : "-"
+      "Ã–deme YÃ¶ntemi": item.paymentMethod === "CASH" ? "Nakit" : item.paymentMethod === "POS" ? "POS" : item.paymentMethod === "INVOICE" ? "Cari / Fatura" : "-"
     };
   });
 
@@ -363,7 +363,7 @@ function generateExcelReport(db: any, dateRange?: number | { startDate: Date; en
 async function sendTelegramReport(db: any, dateRange?: number | { startDate: Date; endDate: Date }, caption?: string, company?: string) {
   const settings = db.appSettings;
   if (!settings?.isTelegramEnabled || !settings?.telegramBotToken || !settings?.telegramChatId) {
-    console.warn("[Telegram Report] Entegrasyon aktif değil veya ayarlar eksik.");
+    console.warn("[Telegram Report] Entegrasyon aktif deÄŸil veya ayarlar eksik.");
     return false;
   }
 
@@ -442,9 +442,9 @@ function startTelegramScheduler() {
       // Check Period 1
       if (period !== 'none' && isTime1 && settings.telegramLastReportSent !== todayStr) {
         if (period === 'daily') {
-          const caption = `<b>📊 GÜNLÜK TETKİK & KASA RAPORU (1. Periyot)</b>\n` +
-            `📅 Tarih: ${now.toLocaleDateString("tr-TR")}\n\n` +
-            `Sisteminiz tarafından otomatik olarak oluşturulan günlük detaylı Excel raporu ektedir.`;
+          const caption = `<b>ğŸ“Š GÃœNLÃœK TETKÄ°K & KASA RAPORU (1. Periyot)</b>\n` +
+            `ğŸ“… Tarih: ${now.toLocaleDateString("tr-TR")}\n\n` +
+            `Sisteminiz tarafÄ±ndan otomatik olarak oluÅŸturulan gÃ¼nlÃ¼k detaylÄ± Excel raporu ektedir.`;
 
           sendTelegramReport(db, 1, caption).then(success => {
             if (success) {
@@ -457,9 +457,9 @@ function startTelegramScheduler() {
           // Only run on Sunday
           const dayOfWeek = now.getDay(); // 0 is Sunday
           if (dayOfWeek === 0) {
-            const caption = `<b>📊 HAFTALIK TETKİK & KASA RAPORU (1. Periyot)</b>\n` +
-              `📅 Tarih: ${now.toLocaleDateString("tr-TR")}\n\n` +
-              `Sisteminiz tarafından otomatik olarak oluşturulan haftalık detaylı Excel raporu ektedir.`;
+            const caption = `<b>ğŸ“Š HAFTALIK TETKÄ°K & KASA RAPORU (1. Periyot)</b>\n` +
+              `ğŸ“… Tarih: ${now.toLocaleDateString("tr-TR")}\n\n` +
+              `Sisteminiz tarafÄ±ndan otomatik olarak oluÅŸturulan haftalÄ±k detaylÄ± Excel raporu ektedir.`;
 
             sendTelegramReport(db, 7, caption).then(success => {
               if (success) {
@@ -482,9 +482,9 @@ function startTelegramScheduler() {
             }
             const endDate = new Date(now);
 
-            const caption = `<b>📊 AYLIK TETKİK & KASA RAPORU (ÖZEL PERİYOT) (1. Periyot)</b>\n` +
-              `📅 Dönem: ${startDate.toLocaleDateString("tr-TR")} - ${endDate.toLocaleDateString("tr-TR")}\n\n` +
-              `Sisteminiz tarafından belirlenen özel periyot (${startDay} - ${endDay}) uyarınca otomatik oluşturulan aylık detaylı Excel raporu ektedir.`;
+            const caption = `<b>ğŸ“Š AYLIK TETKÄ°K & KASA RAPORU (Ã–ZEL PERÄ°YOT) (1. Periyot)</b>\n` +
+              `ğŸ“… DÃ¶nem: ${startDate.toLocaleDateString("tr-TR")} - ${endDate.toLocaleDateString("tr-TR")}\n\n` +
+              `Sisteminiz tarafÄ±ndan belirlenen Ã¶zel periyot (${startDay} - ${endDay}) uyarÄ±nca otomatik oluÅŸturulan aylÄ±k detaylÄ± Excel raporu ektedir.`;
 
             sendTelegramReport(db, { startDate, endDate }, caption).then(success => {
               if (success) {
@@ -500,9 +500,9 @@ function startTelegramScheduler() {
       // Check Period 2
       if (period2 !== 'none' && isTime2 && settings.telegramLastReportSent2 !== todayStr) {
         if (period2 === 'daily') {
-          const caption = `<b>📊 GÜNLÜK TETKİK & KASA RAPORU (2. Periyot)</b>\n` +
-            `📅 Tarih: ${now.toLocaleDateString("tr-TR")}\n\n` +
-            `Sisteminiz tarafından otomatik olarak oluşturulan günlük detaylı Excel raporu ektedir.`;
+          const caption = `<b>ğŸ“Š GÃœNLÃœK TETKÄ°K & KASA RAPORU (2. Periyot)</b>\n` +
+            `ğŸ“… Tarih: ${now.toLocaleDateString("tr-TR")}\n\n` +
+            `Sisteminiz tarafÄ±ndan otomatik olarak oluÅŸturulan gÃ¼nlÃ¼k detaylÄ± Excel raporu ektedir.`;
 
           sendTelegramReport(db, 1, caption).then(success => {
             if (success) {
@@ -515,9 +515,9 @@ function startTelegramScheduler() {
           // Only run on Sunday
           const dayOfWeek = now.getDay(); // 0 is Sunday
           if (dayOfWeek === 0) {
-            const caption = `<b>📊 HAFTALIK TETKİK & KASA RAPORU (2. Periyot)</b>\n` +
-              `📅 Tarih: ${now.toLocaleDateString("tr-TR")}\n\n` +
-              `Sisteminiz tarafından otomatik olarak oluşturulan haftalık detaylı Excel raporu ektedir.`;
+            const caption = `<b>ğŸ“Š HAFTALIK TETKÄ°K & KASA RAPORU (2. Periyot)</b>\n` +
+              `ğŸ“… Tarih: ${now.toLocaleDateString("tr-TR")}\n\n` +
+              `Sisteminiz tarafÄ±ndan otomatik olarak oluÅŸturulan haftalÄ±k detaylÄ± Excel raporu ektedir.`;
 
             sendTelegramReport(db, 7, caption).then(success => {
               if (success) {
@@ -540,9 +540,9 @@ function startTelegramScheduler() {
             }
             const endDate = new Date(now);
 
-            const caption = `<b>📊 AYLIK TETKİK & KASA RAPORU (ÖZEL PERİYOT) (2. Periyot)</b>\n` +
-              `📅 Dönem: ${startDate.toLocaleDateString("tr-TR")} - ${endDate.toLocaleDateString("tr-TR")}\n\n` +
-              `Sisteminiz tarafından belirlenen özel periyot (${startDay2} - ${endDay2}) uyarınca otomatik oluşturulan aylık detaylı Excel raporu ektedir.`;
+            const caption = `<b>ğŸ“Š AYLIK TETKÄ°K & KASA RAPORU (Ã–ZEL PERÄ°YOT) (2. Periyot)</b>\n` +
+              `ğŸ“… DÃ¶nem: ${startDate.toLocaleDateString("tr-TR")} - ${endDate.toLocaleDateString("tr-TR")}\n\n` +
+              `Sisteminiz tarafÄ±ndan belirlenen Ã¶zel periyot (${startDay2} - ${endDay2}) uyarÄ±nca otomatik oluÅŸturulan aylÄ±k detaylÄ± Excel raporu ektedir.`;
 
             sendTelegramReport(db, { startDate, endDate }, caption).then(success => {
               if (success) {
@@ -604,7 +604,7 @@ async function startServer() {
   const loginLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 10, // Limit each IP to 10 login requests per windowMs
-    message: { error: "Çok fazla giriş denemesi yapıldı. Lütfen 15 dakika sonra tekrar deneyin." },
+    message: { error: "Ã‡ok fazla giriÅŸ denemesi yapÄ±ldÄ±. LÃ¼tfen 15 dakika sonra tekrar deneyin." },
     validate: false
   });
 
@@ -620,7 +620,7 @@ async function startServer() {
       jwt.verify(token, JWT_SECRET);
       next();
     } catch (error) {
-      return res.status(401).json({ error: "Oturum süresi doldu veya geçersiz token." });
+      return res.status(401).json({ error: "Oturum sÃ¼resi doldu veya geÃ§ersiz token." });
     }
   };
 
@@ -635,7 +635,7 @@ async function startServer() {
       const token = jwt.sign({ role: "admin" }, JWT_SECRET, { expiresIn: '12h' });
       res.json({ token });
     } else {
-      res.status(401).json({ error: "Yanlış Şifre" });
+      res.status(401).json({ error: "YanlÄ±ÅŸ Åifre" });
     }
   });
 
@@ -645,11 +645,11 @@ async function startServer() {
     const currentHash = getAppPasswordHash();
     
     if (!bcrypt.compareSync(oldPassword, currentHash)) {
-      return res.status(400).json({ error: "Eski şifre yanlış" });
+      return res.status(400).json({ error: "Eski ÅŸifre yanlÄ±ÅŸ" });
     }
     
     if (newPassword.length < 6) {
-       return res.status(400).json({ error: "Yeni şifre en az 6 karakter olmalıdır." });
+       return res.status(400).json({ error: "Yeni ÅŸifre en az 6 karakter olmalÄ±dÄ±r." });
     }
 
     const db = readData();
@@ -671,7 +671,7 @@ async function startServer() {
     try {
       const newData = req.body;
       if (!newData || typeof newData !== 'object') {
-         return res.status(400).json({ error: "Geçersiz yedek dosyası" });
+         return res.status(400).json({ error: "GeÃ§ersiz yedek dosyasÄ±" });
       }
       
       // Preserve current password hash to avoid locking out the user
@@ -682,7 +682,7 @@ async function startServer() {
       writeData(newData);
       res.json({ success: true });
     } catch (err) {
-      res.status(500).json({ error: "Geri yükleme sırasında hata oluştu" });
+      res.status(500).json({ error: "Geri yÃ¼kleme sÄ±rasÄ±nda hata oluÅŸtu" });
     }
   });
 
@@ -700,12 +700,12 @@ async function startServer() {
   app.post("/api/telegram/test-bot", authMiddleware, (req, res) => {
     const { token, chatId } = req.body;
     if (!token || !chatId) {
-      return res.status(400).json({ error: "Token ve Sohbet Kimliği (Chat ID) gereklidir." });
+      return res.status(400).json({ error: "Token ve Sohbet KimliÄŸi (Chat ID) gereklidir." });
     }
 
-    const testMessage = `<b>🔔 OSGB Tetkik Takip Sistemi</b>\n\n` +
-      `Telegram bildirim entegrasyonu başarıyla test edildi! 🎉\n` +
-      `Sisteminiz artık tetkik (sevk) hareketlerini buraya raporlayacak.`;
+    const testMessage = `<b>ğŸ”” OSGB Tetkik Takip Sistemi</b>\n\n` +
+      `Telegram bildirim entegrasyonu baÅŸarÄ±yla test edildi! ğŸ‰\n` +
+      `Sisteminiz artÄ±k tetkik (sevk) hareketlerini buraya raporlayacak.`;
 
     const url = `https://api.telegram.org/bot${token}/sendMessage`;
 
@@ -722,12 +722,12 @@ async function startServer() {
     .then(async (tgRes) => {
       if (!tgRes.ok) {
         const errText = await tgRes.text();
-        return res.status(400).json({ error: `Telegram Hatası: ${tgRes.status} - ${errText}` });
+        return res.status(400).json({ error: `Telegram HatasÄ±: ${tgRes.status} - ${errText}` });
       }
-      res.json({ success: true, message: "Test mesajı başarıyla Telegram botunuza gönderildi!" });
+      res.json({ success: true, message: "Test mesajÄ± baÅŸarÄ±yla Telegram botunuza gÃ¶nderildi!" });
     })
     .catch(err => {
-      res.status(500).json({ error: `Telegram ile bağlantı kurulamadı: ${err.message}` });
+      res.status(500).json({ error: `Telegram ile baÄŸlantÄ± kurulamadÄ±: ${err.message}` });
     });
   });
 
@@ -740,46 +740,46 @@ async function startServer() {
     const settings = db.appSettings;
 
     let dateRange: number | { startDate: Date; endDate: Date } = 0;
-    let periodText = 'Tüm Zamanlar';
+    let periodText = 'TÃ¼m Zamanlar';
 
     if (startDate && endDate) {
       const start = new Date(startDate);
       const end = new Date(endDate);
       dateRange = { startDate: start, endDate: end };
-      periodText = `Özel Dönem (${start.toLocaleDateString("tr-TR")} - ${end.toLocaleDateString("tr-TR")})`;
+      periodText = `Ã–zel DÃ¶nem (${start.toLocaleDateString("tr-TR")} - ${end.toLocaleDateString("tr-TR")})`;
     } else if (period === 'daily') {
       dateRange = 1;
-      periodText = 'Günlük';
+      periodText = 'GÃ¼nlÃ¼k';
     } else if (period === 'weekly') {
       dateRange = 7;
-      periodText = 'Haftalık';
+      periodText = 'HaftalÄ±k';
     } else if (period === 'monthly_custom') {
       const startDay = settings?.telegramCustomReportStartDay !== undefined ? settings.telegramCustomReportStartDay : 20;
       const endDay = settings?.telegramCustomReportEndDay !== undefined ? settings.telegramCustomReportEndDay : 19;
       const range = getCustomMonthlyRange(startDay, endDay);
       dateRange = range;
-      periodText = `Özel Aylık (${range.startDate.toLocaleDateString("tr-TR")} - ${range.endDate.toLocaleDateString("tr-TR")})`;
+      periodText = `Ã–zel AylÄ±k (${range.startDate.toLocaleDateString("tr-TR")} - ${range.endDate.toLocaleDateString("tr-TR")})`;
     } else if (period === 'monthly') {
       const start = new Date();
       start.setDate(1);
       start.setHours(0, 0, 0, 0);
       const end = new Date();
       dateRange = { startDate: start, endDate: end };
-      periodText = 'Aylık';
+      periodText = 'AylÄ±k';
     }
 
     let caption = customCaption;
     if (!caption) {
-      caption = `<b>📊 OSGB TETKİK & KASA RAPORU (${periodText})</b>\n` +
-        `📅 İstek Tarihi: ${new Date().toLocaleString("tr-TR")}\n\n` +
-        `Seçtiğiniz periyoda ait anlık oluşturulan detaylı Excel raporu ektedir.`;
+      caption = `<b>ğŸ“Š OSGB TETKÄ°K & KASA RAPORU (${periodText})</b>\n` +
+        `ğŸ“… Ä°stek Tarihi: ${new Date().toLocaleString("tr-TR")}\n\n` +
+        `SeÃ§tiÄŸiniz periyoda ait anlÄ±k oluÅŸturulan detaylÄ± Excel raporu ektedir.`;
     }
 
     const success = await sendTelegramReport(db, dateRange, caption, company);
     if (success) {
-      res.json({ success: true, message: `${periodText} Excel raporu başarıyla Telegram botunuza gönderildi!` });
+      res.json({ success: true, message: `${periodText} Excel raporu baÅŸarÄ±yla Telegram botunuza gÃ¶nderildi!` });
     } else {
-      res.status(500).json({ error: "Rapor gönderilemedi. Lütfen Telegram Bot Token ve Chat ID bilgilerinizi, ayrıca botun gruba/sohbete mesaj atma yetkisini kontrol edin." });
+      res.status(500).json({ error: "Rapor gÃ¶nderilemedi. LÃ¼tfen Telegram Bot Token ve Chat ID bilgilerinizi, ayrÄ±ca botun gruba/sohbete mesaj atma yetkisini kontrol edin." });
     }
   });
 
@@ -790,7 +790,7 @@ async function startServer() {
     const serverKey = db.appSettings?.backupApiKey;
 
     if (!serverKey || key !== serverKey) {
-      return res.status(401).json({ error: "Geçersiz veya eksik API Anahtarı. Lütfen Ayarlar sekmesindeki doğru URL'yi kullanın." });
+      return res.status(401).json({ error: "GeÃ§ersiz veya eksik API AnahtarÄ±. LÃ¼tfen Ayarlar sekmesindeki doÄŸru URL'yi kullanÄ±n." });
     }
 
     // Prepare a clean payload, removing internal security details
@@ -810,7 +810,7 @@ async function startServer() {
   app.post("/api/backup/test-webhook", authMiddleware, async (req, res) => {
     const { url } = req.body;
     if (!url || !url.startsWith("http")) {
-      return res.status(400).json({ error: "Geçersiz webhook adresi" });
+      return res.status(400).json({ error: "GeÃ§ersiz webhook adresi" });
     }
 
     try {
@@ -829,12 +829,12 @@ async function startServer() {
       });
 
       if (response.ok) {
-        res.json({ success: true, message: `Bağlantı Başarılı (Durum: ${response.status})` });
+        res.json({ success: true, message: `BaÄŸlantÄ± BaÅŸarÄ±lÄ± (Durum: ${response.status})` });
       } else {
-        res.status(400).json({ error: `Sunucu hata döndürdü (Durum: ${response.status})` });
+        res.status(400).json({ error: `Sunucu hata dÃ¶ndÃ¼rdÃ¼ (Durum: ${response.status})` });
       }
     } catch (err: any) {
-      res.status(500).json({ error: `Bağlantı kurulamadı: ${err.message}` });
+      res.status(500).json({ error: `BaÄŸlantÄ± kurulamadÄ±: ${err.message}` });
     }
   });
 
@@ -862,7 +862,7 @@ async function startServer() {
       const gitRes = await executeCommand("git pull");
       if (!gitRes.success) {
         return res.status(500).json({ 
-          error: "Git (Geri Çekme) başarısız oldu. Lütfen internet bağlantınızı veya yerel dosya çakışmalarını kontrol edin.", 
+          error: "Git (Geri Ã‡ekme) baÅŸarÄ±sÄ±z oldu. LÃ¼tfen internet baÄŸlantÄ±nÄ±zÄ± veya yerel dosya Ã§akÄ±ÅŸmalarÄ±nÄ± kontrol edin.", 
           details: gitRes.stderr || gitRes.stdout
         });
       }
@@ -872,7 +872,7 @@ async function startServer() {
       const npmRes = await executeCommand("npm install");
       if (!npmRes.success) {
         return res.status(500).json({ 
-          error: "Bağımlılıklar (npm install) yüklenirken hata oluştu.", 
+          error: "BaÄŸÄ±mlÄ±lÄ±klar (npm install) yÃ¼klenirken hata oluÅŸtu.", 
           details: npmRes.stderr || npmRes.stdout
         });
       }
@@ -882,7 +882,7 @@ async function startServer() {
       const buildRes = await executeCommand("npm run build");
       if (!buildRes.success) {
         return res.status(500).json({ 
-          error: "Uygulama derlenirken (npm run build) hata oluştu.", 
+          error: "Uygulama derlenirken (npm run build) hata oluÅŸtu.", 
           details: buildRes.stderr || buildRes.stdout
         });
       }
@@ -890,7 +890,7 @@ async function startServer() {
       console.log("[Web Update] Application successfully built! Scheduling restart...");
       res.json({ 
         success: true, 
-        message: "Güncelleme başarıyla tamamlandı! Sunucu yeni sürümle yeniden başlatılıyor..." 
+        message: "GÃ¼ncelleme baÅŸarÄ±yla tamamlandÄ±! Sunucu yeni sÃ¼rÃ¼mle yeniden baÅŸlatÄ±lÄ±yor..." 
       });
       
       // Standalone exit to trigger service manager auto-restart with updated build
@@ -900,7 +900,7 @@ async function startServer() {
       }, 1500);
 
     } catch (err: any) {
-      res.status(500).json({ error: "Güncelleme sırasında beklenmeyen bir hata oluştu.", details: err.message });
+      res.status(500).json({ error: "GÃ¼ncelleme sÄ±rasÄ±nda beklenmeyen bir hata oluÅŸtu.", details: err.message });
     }
   });
 
@@ -935,6 +935,30 @@ async function startServer() {
         db[collection].push(item);
       }
 
+      // Fatura Takip Webhook Integration
+      if (collection === 'referrals' && item.paymentMethod === 'INVOICE' && !item.isExternalRecord) {
+        try {
+          const payload = [{
+            id: item.id,
+            paymentMethod: item.paymentMethod,
+            totalPrice: item.totalPrice || 0,
+            referralDate: item.referralDate,
+            employee: {
+                fullName: item.employee?.fullName || "",
+                company: item.employee?.company || ""
+            },
+            exams: item.exams || []
+          }];
+          
+          fetch('http://localhost:5000/api/webhook/health-services', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          }).catch(err => console.error("Webhook (Fatura Takip) gonderilemedi:", err.message));
+        } catch (e) {
+          console.error("Webhook (Fatura Takip) hatasi:", e);
+        }
+      }
       // If collection is referrals, trigger telegram notification only for newly created items
       if (collection === 'referrals' && isNew && !item.skipNotifications) {
         try {
@@ -1012,3 +1036,4 @@ async function startServer() {
 }
 
 startServer();
+
