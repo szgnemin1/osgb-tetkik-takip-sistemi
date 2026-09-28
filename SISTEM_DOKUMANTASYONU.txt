@@ -1,0 +1,55 @@
+﻿================================================================================
+OSGB TETKİK TAKİP SİSTEMİ - GELİŞTİRİCİ DÖKÜMANTASYONU (HANDOVER DOCUMENT)
+================================================================================
+
+1. PROJE ÖZETİ VE AMACI
+Bu proje, bir OSGB (Ortak Sağlık ve Güvenlik Birimi) veya mobil sağlık aracının tetkik, sevk, finans ve hasta kayıt işlemlerini tek bir yerden yönetmesini sağlayan kapalı devre (lokal ağda çalışan) bir web uygulamasıdır. 
+Sistem, çalışanların tetkik süreçlerini, firmalarla olan cari(fatura) ilişkilerini, anlık WhatsApp bilgilendirmelerini ve günlük finans (Z-Raporu) dökümlerini yönetir.
+
+2. TEKNOLOJİ STACK'İ (MİMARİ)
+- Frontend: React (TypeScript) + Vite + Tailwind CSS + Lucide React ikonları.
+- Backend: Node.js (Express.js). 'server.ts' üzerinden çalışır, Vite ile build alınırken ESBuild ile 'dist/server.cjs' adında tek bir dosyaya derlenir.
+- Veritabanı: Sistemin veritabanı JSON tabanlıdır. Veriler sunucuda kök dizindeki 'global_data.json' dosyasına yazılıp okunur.
+- WhatsApp Altyapısı: @whiskeysockets/baileys kütüphanesi (WebSocket tabanlıdır). Windows Server 2012 R2 gibi eski işletim sistemlerinde Puppeteer/Chromium çalışmadığı için tarayıcısız olan Baileys tercih edilmiştir. Kimlik doğrulama verileri 'baileys_auth_info' klasöründe saklanır.
+- Raporlama: Gelişmiş Excel çıktıları için 'xlsx' kütüphanesi kullanılır.
+
+3. TEMEL ÖZELLİKLER VE İŞ AKIŞLARI
+- Tetkik/Sevk Kaydı: Kullanıcı yeni bir sevk kaydı açtığında, seçilen kuruma hastanın gideceğine dair otomatik WhatsApp mesajı atılır (eğer kurum ayarlarında açıksa) ve yöneticiye Telegram'dan anlık bilgilendirme düşer.
+- Finans ve Kasa Yönetimi: Sevkler 'Nakit', 'POS' veya 'Fatura(Cari)' olarak etiketlenir. Nakit ve POS işlemleri kasa bakiyesini etkiler. 
+- Dışarıdan Tetkik (Sadece Kayıt): Dışarıdan gelen misafir hastalar için cari hesaplara, Z-raporuna ve istatistiklere YANSIMAYAN, mesaj atılmayan ve otomatik yazdırılmayan bir "Sadece Kayıt" modudur (Referral.isExternalRecord = true).
+- Fatura Takip Webhook Entegrasyonu: 'INVOICE' (Fatura/Cari) ödeme yöntemiyle yapılan tüm gerçek sevk kayıtları, anında 'http://localhost:5000/api/webhook/health-services' adresindeki dış Fatura Takip sistemine JSON payload olarak POST edilir (server.ts içinde yer alır).
+- Z-Raporu (Gün Sonu): Günlük, haftalık veya aylık periyotlarda gelir-gider dökümlerini ve detaylı sevk listelerini tek bir Excel dosyasında oluşturup indirir veya Telegram'a gönderir.
+
+4. KLASÖR VE DOSYA YAPISI
+- server.ts: Backend uygulamasının kalbidir. Express.js API rotaları (/api/data/*), WhatsApp bağlantı mantığı, Telegram bot entegrasyonu ve Webhook gönderim işlemleri buradadır. Ayrıca frontend build (dist) klasörünü servis eder.
+- App.tsx: React uygulamasının ana kapsayıcısı. Sekme yönlendirmeleri (Dashboard, Finans, Ayarlar, Yeni Kayıt vb.), yazdırma tetikleyicileri ve ana state'leri barındırır.
+- services/useServerData.ts: Frontend'in backend'den (API'den) veri çekip (global_data.json'dan) güncellediği ana servis katmanı.
+- types.ts: Sistemdeki tüm TypeScript arayüzlerini (Referral, Company, AppSettings vb.) tanımlar. Geliştirme yaparken veri modellerine buradan bakabilirsiniz.
+- components/:
+   -> NewReferralModal.tsx: Yeni hasta kayıt formu, ödeme tipi seçimi, hesaplamalar.
+   -> EndOfDayReportModal.tsx: Z-raporu, istatistik derlemeleri ve Excel(xlsx) oluşturma mantığı.
+   -> FinanceView.tsx: Kasa girdileri ve çıktıları yönetimi.
+   -> SettingsView.tsx: Firmalar, kurumlar ve tetkiklerin yönetildiği ayarlar sayfası.
+   -> ReferralList.tsx: Ana dashboard listesi ("DIŞARIDAN" badge render işlemleri vb.)
+
+5. GELİŞTİRİCİ İÇİN KRİTİK NOTLAR / UYARILAR
+- BAĞIMLILIKLAR VE BUILD: 
+  Sistemde kod değişikliği yaptıktan sonra mutlaka 
+pm run build komutunu çalıştırmalısınız. Bu komut hem React'i derler hem de 'server.ts' dosyasını 'dist/server.cjs' olarak paketler. Ardından test etmek veya sunmak için 
+pm run start komutu kullanılır.
+  
+- GİZLİ DOSYALAR (SECURITY):
+  global_data.json dosyası tüm hasta PII verilerini, Telegram bot token'larını ve parolaları barındırır. aileys_auth_info klasörü WhatsApp oturum token'larını barındırır. Bu iki veri .gitignore içerisindedir ve KESİNLİKLE GitHub veya public bir depoya push edilmemelidir!
+
+- GİT ve VERSİYON KONTROLÜ:
+  Sistem bilgisayarında standart bir Git kurulu değildir. Push/Commit işlemleri için kullanıcının bilgisayarında bulunan taşınabilir (portable) Git dizini kullanılmıştır: 'C:\Users\emins\Downloads\fatura-ve-cari-takip-sistemi\mingit\cmd\git.exe'
+  Ayrıca Windows NTFS koruma hatasını aşmak için depoda git config core.protectNTFS false kuralı uygulanmıştır.
+
+- WHATSAPP BAĞLANTISI:
+  Baileys sürekli socket üzerinden güncellemeler alır. QR kod taraması beklenirken terminalde sıklıkla 'WhatsApp QR Created' yazabilir, bu normaldir. Kodlar her seferinde yenilenir. Bağlantı koparsa veya telefon internetten düşerse, memory'deki session üzerinden kendiliğinden tekrar bağlanmayı dener.
+
+- FİNANS HESAPLAMALARI:
+  'EndOfDayReportModal.tsx' içindeki forEach döngüsünde ef.isExternalRecord filtresi mevcuttur. Eğer 'Dışarıdan Tetkik' kayıtlarının finans veya raporlara dahil olmasını isterseniz, bu break (return) kuralını ve 'App.tsx' ile 'NewReferralModal.tsx' içindeki print/mesaj block kısımlarını manipüle etmeniz gerekecektir.
+
+Kolay gelsin!
+================================================================================
