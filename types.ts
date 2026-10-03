@@ -115,7 +115,8 @@ export interface AppSettings {
   printBackgroundLogo?: string; // Base64 string for the print background watermark
   printPageSize?: 'A4' | 'A5' | 'A6'; // Sayfa boyutu
   defaultScannerId?: string; // VarsayÄ±lan tarayÄ±cÄ± cihaz ID'si
-  isPasswordEnabled?: boolean; // Åifre korumasÄ± aktif mi
+  isPasswordEnabled?: boolean;
+  enableAdminOtp?: boolean; // Åifre korumasÄ± aktif mi
   appPassword?: string; // Uygulama giriÅŸ ÅŸifresi
   webhookUrl?: string; // Webhook sync target URL
   backupApiKey?: string; // API key for external sync RSS feed

@@ -340,7 +340,7 @@ const App: React.FC = () => {
 
     const handleNavClick = (tab: typeof activeTab) => {
         if (tab === 'finance' || tab === 'settings') {
-            if (!isAdminVerified) {
+            if (appSettings?.enableAdminOtp && !isAdminVerified) {
                 setPendingAdminTab(tab);
                 setIsMobileMenuOpen(false);
                 return;
