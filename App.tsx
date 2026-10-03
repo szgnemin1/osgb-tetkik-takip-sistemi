@@ -345,7 +345,12 @@ const App: React.FC = () => {
                 setIsMobileMenuOpen(false);
                 return;
             }
+        } else {
+            // Başka bir sekmeye geçildiğinde yetkiyi iptal et
+            setIsAdminVerified(false);
+            sessionStorage.removeItem('admin_verified');
         }
+        
         if (tab === 'create_referral') {
             setEditingReferral(null); 
         }
