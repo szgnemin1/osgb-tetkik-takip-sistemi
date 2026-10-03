@@ -1,5 +1,5 @@
 ﻿import React, { useState } from 'react';
-import { Shield, KeyRound, Loader2, Send } from 'lucide-react';
+import { Shield, KeyRound, Loader2, Send, Lock } from 'lucide-react';
 
 interface AdminAuthModalProps {
   onSuccess: () => void;
@@ -8,7 +8,8 @@ interface AdminAuthModalProps {
 }
 
 export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ onSuccess, onCancel, apiToken }) => {
-  const [step, setStep] = useState<'REQUEST' | 'VERIFY'>('REQUEST');
+  const [step, setStep] = useState<'REQUEST' | 'VERIFY' | 'FALLBACK'>('REQUEST');
+  const [fallbackPassword, setFallbackPassword] = useState('');
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,6 +28,30 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ onSuccess, onCan
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Sifre gonderilemedi.');
       setStep('VERIFY');
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const verifyFallback = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      const baseUrl = import.meta.env.BASE_URL || '/';
+      const res = await fetch(baseUrl + 'api/admin/verify-fallback', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + apiToken 
+        },
+        body: JSON.stringify({ password: fallbackPassword })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Hatalı şifre.');
+      onSuccess();
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -96,6 +121,39 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ onSuccess, onCan
               Iptal
             </button>
           </div>
+        ) : step === 'FALLBACK' ? (
+          <form onSubmit={verifyFallback} className="space-y-4">
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Ana Sistem Şifresi</label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
+                <input
+                  type="password"
+                  required
+                  autoFocus
+                  value={fallbackPassword}
+                  onChange={(e) => setFallbackPassword(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-lg text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                  placeholder="Şifrenizi girin..."
+                />
+              </div>
+            </div>
+            <button
+              type="submit"
+              disabled={loading || !fallbackPassword}
+              className="w-full flex items-center justify-center py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold transition-all disabled:opacity-50"
+            >
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Giriş Yap'}
+            </button>
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={loading}
+              className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-bold transition-all disabled:opacity-50"
+            >
+              Vazgeç
+            </button>
+          </form>
         ) : (
           <form onSubmit={verifyOTP} className="space-y-4">
             <div>

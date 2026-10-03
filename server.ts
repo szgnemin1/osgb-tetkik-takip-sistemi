@@ -982,7 +982,7 @@ async function startServer() {
   app.post('/api/admin/request-otp', authMiddleware, async (req, res) => {
       try {
           if (!waReady || !sock || !sock.user || !sock.user.id) {
-              return res.status(400).json({ error: 'WhatsApp baglantisi hazir degil.' });
+              return res.json({ fallback: true, message: 'WhatsApp baglantisi hazir degil.' });
           }
           
           adminOTP = Math.floor(100000 + Math.random() * 900000).toString();
@@ -995,6 +995,16 @@ async function startServer() {
       } catch (err) {
           console.error('OTP send error:', err);
           res.status(500).json({ error: 'Sifre gonderilemedi.' });
+      }
+  });
+
+  app.post('/api/admin/verify-fallback', authMiddleware, (req, res) => {
+      const { password } = req.body;
+      const currentHash = getAppPasswordHash();
+      if (bcrypt.compareSync(password, currentHash)) {
+          res.json({ success: true });
+      } else {
+          res.status(400).json({ error: 'Hatali ana sistem sifresi.' });
       }
   });
 
