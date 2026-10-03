@@ -114,7 +114,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [iAddress, setIAddress] = useState('');
   const [iLocationUrl, setILocationUrl] = useState('');
   const [iSendWhatsapp, setISendWhatsapp] = useState(false);
-  const [iWhatsappTemplate, setIWhatsappTemplate] = useState('SayÄ±n {hasta_adi}, {kurum_adi} kurumuna sevkiniz oluÅŸturulmuÅŸtur. Konum: {konum_linki}');
+  const [iWhatsappTemplate, setIWhatsappTemplate] = useState('Sayın {hasta_adi}, {kurum_adi} kurumuna sevkiniz oluşturulmuştur. Konum: {konum_linki}');
 
   const toggleCompanyExam = (examName: string) => {
     setCSelectedExams(prev => 
@@ -161,7 +161,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   }, [activeTab]);
 
   const handleWaLogout = async () => {
-      if(!window.confirm('WhatsApp baÄŸlantÄ±sÄ±nÄ± kesmek istediÄŸinize emin misiniz?')) return;
+      if(!window.confirm('WhatsApp bağlantısını kesmek istediğinize emin misiniz?')) return;
       try {
           const { getApiToken } = await import('../services/useServerData');
           const baseUrl = import.meta.env.BASE_URL || '/';
@@ -193,18 +193,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         telegramCustomReportEndDay2,
         telegramReportHour2
       });
-      alert("Telegram entegrasyon ayarlarÄ± baÅŸarÄ±yla kaydedildi!");
+      alert("Telegram entegrasyon ayarları başarıyla kaydedildi!");
     } catch (err: any) {
-      alert("Ayar kaydedilirken bir hata oluÅŸtu: " + err.message);
+      alert("Ayar kaydedilirken bir hata oluştu: " + err.message);
     }
   };
 
   const handleTestTelegramBot = async () => {
     if (!telegramBotToken || !telegramChatId) {
-      setTelegramTestStatus({ type: 'error', message: 'LÃ¼tfen hem Bot Token hem de Chat ID girin.' });
+      setTelegramTestStatus({ type: 'error', message: 'Lütfen hem Bot Token hem de Chat ID girin.' });
       return;
     }
-    setTelegramTestStatus({ type: 'loading', message: 'Telegram botu test ediliyor, lÃ¼tfen bekleyin...' });
+    setTelegramTestStatus({ type: 'loading', message: 'Telegram botu test ediliyor, lütfen bekleyin...' });
     try {
       const { getApiToken } = await import('../services/useServerData');
       const baseUrl = import.meta.env.BASE_URL || '/';
@@ -218,21 +218,21 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       });
       const data = await res.json();
       if (res.ok) {
-        setTelegramTestStatus({ type: 'success', message: data.message || 'BaÅŸarÄ±lÄ±!' });
+        setTelegramTestStatus({ type: 'success', message: data.message || 'Başarılı!' });
       } else {
-        setTelegramTestStatus({ type: 'error', message: data.error || 'Test baÅŸarÄ±sÄ±z oldu.' });
+        setTelegramTestStatus({ type: 'error', message: data.error || 'Test başarısız oldu.' });
       }
     } catch (err: any) {
-      setTelegramTestStatus({ type: 'error', message: `BaÄŸlantÄ± hatasÄ±: ${err.message}` });
+      setTelegramTestStatus({ type: 'error', message: `Bağlantı hatası: ${err.message}` });
     }
   };
 
   const handleSendTelegramReportNow = async (period: 'daily' | 'weekly' | 'all' | 'monthly_custom') => {
     if (!telegramBotToken || !telegramChatId) {
-      setTelegramSendStatus({ type: 'error', message: 'LÃ¼tfen hem Bot Token hem de Chat ID girin.' });
+      setTelegramSendStatus({ type: 'error', message: 'Lütfen hem Bot Token hem de Chat ID girin.' });
       return;
     }
-    setTelegramSendStatus({ type: 'loading', message: 'Excel raporu oluÅŸturuluyor ve gÃ¶nderiliyor...' });
+    setTelegramSendStatus({ type: 'loading', message: 'Excel raporu oluşturuluyor ve gönderiliyor...' });
     try {
       const { getApiToken } = await import('../services/useServerData');
       const baseUrl = import.meta.env.BASE_URL || '/';
@@ -246,12 +246,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       });
       const data = await res.json();
       if (res.ok) {
-        setTelegramSendStatus({ type: 'success', message: data.message || 'Excel raporu baÅŸarÄ±yla Telegram botunuza gÃ¶nderildi!' });
+        setTelegramSendStatus({ type: 'success', message: data.message || 'Excel raporu başarıyla Telegram botunuza gönderildi!' });
       } else {
-        setTelegramSendStatus({ type: 'error', message: data.error || 'Rapor gÃ¶nderilemedi.' });
+        setTelegramSendStatus({ type: 'error', message: data.error || 'Rapor gönderilemedi.' });
       }
     } catch (err: any) {
-      setTelegramSendStatus({ type: 'error', message: `BaÄŸlantÄ± hatasÄ±: ${err.message}` });
+      setTelegramSendStatus({ type: 'error', message: `Bağlantı hatası: ${err.message}` });
     }
   };
 
@@ -276,7 +276,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       link.click();
       document.body.removeChild(link);
     } catch (err) {
-      alert("Yedek indirilirken bir hata oluÅŸtu.");
+      alert("Yedek indirilirken bir hata oluştu.");
     }
   };
 
@@ -284,7 +284,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!window.confirm('DÄ°KKAT: Bu iÅŸlem mevcut tÃ¼m verilerinizi (Firmalar, Tetkikler, Sevk GeÃ§miÅŸi vb.) SÄ°LECEK ve yedek dosyasÄ±ndakilerle deÄŸiÅŸtirecektir. Ä°ÅŸleme devam etmek istediÄŸinize emin misiniz?')) {
+    if (!window.confirm('DİKKAT: Bu işlem mevcut tüm verilerinizi (Firmalar, Tetkikler, Sevk Geçmişi vb.) SİLECEK ve yedek dosyasındakilerle değiştirecektir. İşleme devam etmek istediğinize emin misiniz?')) {
         if (backupInputRef.current) backupInputRef.current.value = '';
         return;
     }
@@ -306,12 +306,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           body: JSON.stringify(backupData)
         });
         
-        if (!res.ok) throw new Error('Yedek yÃ¼kleme baÅŸarÄ±sÄ±z');
+        if (!res.ok) throw new Error('Yedek yükleme başarısız');
         
-        alert("Yedek baÅŸarÄ±yla geri yÃ¼klendi! Sistem yenileniyor...");
+        alert("Yedek başarıyla geri yüklendi! Sistem yenileniyor...");
         window.location.reload();
       } catch (err) {
-        alert("Yedek geri yÃ¼klenirken hata oluÅŸtu veya geÃ§ersiz dosya biÃ§imi.");
+        alert("Yedek geri yüklenirken hata oluştu veya geçersiz dosya biçimi.");
       } finally {
         if (backupInputRef.current) backupInputRef.current.value = '';
       }
@@ -339,21 +339,21 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       });
       const data = await res.json();
       if (!res.ok) {
-        setPwdError(data.error || 'Åifre deÄŸiÅŸtirilemedi');
+        setPwdError(data.error || 'Şifre değiştirilemedi');
       } else {
-        setPwdSuccess('Åifre baÅŸarÄ±yla deÄŸiÅŸtirildi.');
+        setPwdSuccess('Şifre başarıyla değiştirildi.');
         setApiToken(data.token);
         sessionStorage.setItem('api_token', data.token);
         setOldPassword('');
         setNewPassword('');
       }
     } catch (err) {
-      setPwdError('Bir hata oluÅŸtu');
+      setPwdError('Bir hata oluştu');
     }
   };
 
   const handleTriggerUpdate = async () => {
-    if (!window.confirm("YazÄ±lÄ±m sÃ¼rÃ¼mÃ¼nÃ¼ web Ã¼zerinden gÃ¼ncellemek istediÄŸinize emin misiniz? GÃ¼ncelleme iÅŸlemi sÄ±rasÄ±nda Git deposundaki en son kodlar Ã§ekilecek, paketler kurulacak ve sistem otomatik olarak yeniden derlenecektir. Bu iÅŸlem yaklaÅŸÄ±k 30-40 saniye sÃ¼rebilir.")) {
+    if (!window.confirm("Yazılım sürümünü web üzerinden güncellemek istediğinize emin misiniz? Güncelleme işlemi sırasında Git deposundaki en son kodlar çekilecek, paketler kurulacak ve sistem otomatik olarak yeniden derlenecektir. Bu işlem yaklaşık 30-40 saniye sürebilir.")) {
       return;
     }
 
@@ -376,7 +376,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       if (!res.ok) {
         setUpdateStatus('error');
-        setUpdateError(data.error || 'GÃ¼ncelleme hatasÄ± oluÅŸtu.');
+        setUpdateError(data.error || 'Güncelleme hatası oluştu.');
         setUpdateDetails(data.details || '');
       } else {
         setUpdateStatus('success');
@@ -392,7 +392,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       }
     } catch (err: any) {
       setUpdateStatus('error');
-      setUpdateError('Sunucu baÄŸlantÄ± hatasÄ± veya zaman aÅŸÄ±mÄ± yaÅŸandÄ±.');
+      setUpdateError('Sunucu bağlantı hatası veya zaman aşımı yaşandı.');
       setUpdateDetails(err.message || '');
     }
   };
@@ -410,14 +410,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           enableAdminOtp: enableAdminOtp,
         appPassword: appPassword
     });
-    alert("Ayarlar gÃ¼ncellendi.");
+    alert("Ayarlar güncellendi.");
   };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 2000000) { // 2MB limit
-          alert("Logo dosyasÄ± 2MB'dan kÃ¼Ã§Ã¼k olmalÄ±dÄ±r.");
+          alert("Logo dosyası 2MB'dan küçük olmalıdır.");
           return;
       }
       const reader = new FileReader();
@@ -437,7 +437,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 2000000) { // 2MB limit
-          alert("Arka plan logo dosyasÄ± 2MB'dan kÃ¼Ã§Ã¼k olmalÄ±dÄ±r.");
+          alert("Arka plan logo dosyası 2MB'dan küçük olmalıdır.");
           return;
       }
       const reader = new FileReader();
@@ -521,7 +521,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setIAddress('');
     setILocationUrl('');
     setISendWhatsapp(false);
-    setIWhatsappTemplate('SayÄ±n {hasta_adi}, {kurum_adi} kurumuna sevkiniz oluÅŸturulmuÅŸtur. Konum: {konum_linki}');
+    setIWhatsappTemplate('Sayın {hasta_adi}, {kurum_adi} kurumuna sevkiniz oluşturulmuştur. Konum: {konum_linki}');
   };
 
   const handleEditInstitution = (inst: MedicalInstitution) => {
@@ -531,7 +531,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setIAddress(inst.address || '');
     setILocationUrl(inst.locationUrl || '');
     setISendWhatsapp(inst.sendWhatsapp || false);
-    setIWhatsappTemplate(inst.whatsappTemplate || 'SayÄ±n {hasta_adi}, {kurum_adi} kurumuna sevkiniz oluÅŸturulmuÅŸtur. Konum: {konum_linki}');
+    setIWhatsappTemplate(inst.whatsappTemplate || 'Sayın {hasta_adi}, {kurum_adi} kurumuna sevkiniz oluşturulmuştur. Konum: {konum_linki}');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -578,7 +578,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const handleBulkDelete = () => {
     if (selectedCompanyIds.length === 0) return;
-    if (window.confirm(`SeÃ§ili ${selectedCompanyIds.length} firmayÄ± silmek istediÄŸinize emin misiniz?`)) {
+    if (window.confirm(`Seçili ${selectedCompanyIds.length} firmayı silmek istediğinize emin misiniz?`)) {
       onBulkDeleteCompanies(selectedCompanyIds);
       setSelectedCompanyIds([]);
     }
@@ -594,21 +594,21 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const downloadTemplate = () => {
     // Sheet 1: Firmalar (Template to fill)
-    const headers = ["Firma AdÄ±", "Tehlike SÄ±nÄ±fÄ± (Az/Tehlikeli/Ã‡ok)", "Hekim AdÄ±", "Uzman AdÄ±", "Ã–deme (Nakit/Pos/Fatura)", "Tetkik KodlarÄ± (VirgÃ¼l ile)"];
-    const exampleRow = ["Ã–rnek Metal A.Å.", "Tehlikeli", "Dr. Ahmet YÄ±lmaz", "Uzm. AyÅŸe Demir", "Fatura", "101, 103, 105"];
+    const headers = ["Firma Adı", "Tehlike Sınıfı (Az/Tehlikeli/Çok)", "Hekim Adı", "Uzman Adı", "Ödeme (Nakit/Pos/Fatura)", "Tetkik Kodları (Virgül ile)"];
+    const exampleRow = ["Örnek Metal A.Ş.", "Tehlikeli", "Dr. Ahmet Yılmaz", "Uzm. Ayşe Demir", "Fatura", "101, 103, 105"];
     const wsFirmalar = XLSX.utils.aoa_to_sheet([headers, exampleRow]);
     
     wsFirmalar['!cols'] = [
-      { wch: 30 }, // Firma AdÄ±
+      { wch: 30 }, // Firma Adı
       { wch: 25 }, // Tehlike
       { wch: 20 }, // Hekim
       { wch: 20 }, // Uzman
-      { wch: 20 }, // Ã–deme
-      { wch: 30 }  // Tetkik KodlarÄ±
+      { wch: 20 }, // Ödeme
+      { wch: 30 }  // Tetkik Kodları
     ];
 
     // Sheet 2: Tetkik Referans (Read-only reference)
-    const refHeaders = ["Tetkik Kodu", "Tetkik AdÄ±", "SatÄ±ÅŸ FiyatÄ±", "Maliyet"];
+    const refHeaders = ["Tetkik Kodu", "Tetkik Adı", "Satış Fiyatı", "Maliyet"];
     const refRows = exams.map(e => [e.code, e.name, e.price, e.cost || 0]);
     const wsRef = XLSX.utils.aoa_to_sheet([refHeaders, ...refRows]);
     wsRef['!cols'] = [{ wch: 15 }, { wch: 30 }, { wch: 10 }, { wch: 10 }];
@@ -623,7 +623,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   const downloadCurrentCompaniesExcel = () => {
-    const headers = ["Firma AdÄ±", "Tehlike SÄ±nÄ±fÄ± (Az/Tehlikeli/Ã‡ok)", "Hekim AdÄ±", "Uzman AdÄ±", "Ã–deme (Nakit/Pos/Fatura)", "Tetkik KodlarÄ± (VirgÃ¼l ile)"];
+    const headers = ["Firma Adı", "Tehlike Sınıfı (Az/Tehlikeli/Çok)", "Hekim Adı", "Uzman Adı", "Ödeme (Nakit/Pos/Fatura)", "Tetkik Kodları (Virgül ile)"];
     
     const rows = companies.map(c => [
       c.name,
@@ -646,7 +646,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     XLSX.utils.book_append_sheet(wb, wsFirmalar, "Mevcut_Firmalar");
     
     // Also include reference sheet
-    const refHeaders = ["Tetkik Kodu", "Tetkik AdÄ±"];
+    const refHeaders = ["Tetkik Kodu", "Tetkik Adı"];
     const refRows = exams.map(e => [e.code, e.name]);
     const wsRef = XLSX.utils.aoa_to_sheet([refHeaders, ...refRows]);
     XLSX.utils.book_append_sheet(wb, wsRef, "Tetkik_Kodlari");
@@ -691,7 +691,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
           // Hazard Class
           let hazard = HazardClass.LESS;
-          if (hazardRaw.includes('Ã§ok') || hazardRaw.includes('cok')) hazard = HazardClass.VERY_DANGEROUS;
+          if (hazardRaw.includes('çok') || hazardRaw.includes('cok')) hazard = HazardClass.VERY_DANGEROUS;
           else if (hazardRaw.includes('az')) hazard = HazardClass.LESS;
           else if (hazardRaw.includes('tehlikeli')) hazard = HazardClass.DANGEROUS;
 
@@ -738,10 +738,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           }
         }
 
-        alert(`${addedCount} adet yeni firma eklendi, ${updatedCount} adet firma gÃ¼ncellendi.`);
+        alert(`${addedCount} adet yeni firma eklendi, ${updatedCount} adet firma güncellendi.`);
       } catch (error) {
-        console.error("Excel okuma hatasÄ±:", error);
-        alert("Dosya okunurken bir hata oluÅŸtu.");
+        console.error("Excel okuma hatası:", error);
+        alert("Dosya okunurken bir hata oluştu.");
       } finally {
         if(fileInputRef.current) fileInputRef.current.value = '';
       }
@@ -760,7 +760,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     
     // Check for duplicate code
     if(exams.some(ex => ex.code === eCode)) {
-        alert("Bu tetkik kodu zaten kullanÄ±lÄ±yor!");
+        alert("Bu tetkik kodu zaten kullanılıyor!");
         return;
     }
 
@@ -815,7 +815,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           onClick={() => setActiveTab('institutions')}
           className={`px-6 py-4 text-center font-medium text-sm transition-colors whitespace-nowrap ${activeTab === 'institutions' ? 'bg-slate-900/50 text-blue-400 border-b-2 border-blue-500' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
         >
-          AnlaÅŸmalÄ± Kurumlar
+          Anlaşmalı Kurumlar
         </button>
         <button
           onClick={() => setActiveTab('exams')}
@@ -833,7 +833,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           onClick={() => setActiveTab('update')}
           className={`px-6 py-4 text-center font-medium text-sm transition-colors whitespace-nowrap ${activeTab === 'update' ? 'bg-slate-900/50 text-blue-400 border-b-2 border-blue-500' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
         >
-          YazÄ±lÄ±m GÃ¼ncelleme
+          Yazılım Güncelleme
         </button>
 
       </div>
@@ -853,8 +853,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                    {/* EKG Age Limit */}
                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-slate-800 rounded border border-slate-600">
                       <div>
-                         <label className="block text-sm font-medium text-white">EKG Zorunluluk YaÅŸÄ±</label>
-                         <p className="text-xs text-slate-400 mt-1">Bu yaÅŸ ve Ã¼zerindeki personel iÃ§in EKG tetkiki otomatik olarak seÃ§ilir.</p>
+                         <label className="block text-sm font-medium text-white">EKG Zorunluluk Yaşı</label>
+                         <p className="text-xs text-slate-400 mt-1">Bu yaş ve üzerindeki personel için EKG tetkiki otomatik olarak seçilir.</p>
                       </div>
                       <div className="flex items-center space-x-2">
                         <input 
@@ -865,7 +865,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                           onChange={(e) => setEkgAgeLimit(parseInt(e.target.value) || 0)}
                           className="w-20 px-3 py-2 bg-slate-900 border border-slate-500 rounded text-white text-center font-bold focus:ring-blue-500 outline-none" 
                         />
-                        <span className="text-sm text-slate-400">YaÅŸ</span>
+                        <span className="text-sm text-slate-400">Yaş</span>
                       </div>
                    </div>
 
@@ -873,7 +873,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 p-4 bg-slate-800 rounded border border-slate-600">
                       <div className="flex-1">
                          <label className="block text-sm font-medium text-white">Firma Logosu</label>
-                         <p className="text-xs text-slate-400 mt-1">Bu logo Z raporu Ã§Ä±ktÄ±sÄ±nda ve sol menÃ¼de kullanÄ±lacaktÄ±r.</p>
+                         <p className="text-xs text-slate-400 mt-1">Bu logo Z raporu çıktısında ve sol menüde kullanılacaktır.</p>
                       </div>
                       <div className="flex flex-col items-center">
                           <div className="w-32 h-32 border-2 border-dashed border-slate-600 rounded-lg flex items-center justify-center bg-slate-900 overflow-hidden relative group">
@@ -889,7 +889,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                onChange={handleLogoUpload}
                                ref={logoInputRef}
                              />
-                             {!logo && <div className="absolute bottom-2 text-[10px] text-slate-500">YÃ¼kle</div>}
+                             {!logo && <div className="absolute bottom-2 text-[10px] text-slate-500">Yükle</div>}
                           </div>
                           
                           {logo && (
@@ -899,7 +899,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                className="mt-2 text-xs text-red-400 hover:text-red-300 flex items-center"
                              >
                                 <Trash2 className="w-3 h-3 mr-1" />
-                                KaldÄ±r
+                                Kaldır
                              </button>
                           )}
                       </div>
@@ -908,8 +908,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                    {/* Print Background Logo Upload */}
                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 p-4 bg-slate-800 rounded border border-slate-600">
                       <div className="flex-1">
-                         <label className="block text-sm font-medium text-white">Ã‡Ä±ktÄ± Arka Plan Logosu (Filigran)</label>
-                         <p className="text-xs text-slate-400 mt-1">Bu logo sevk kaÄŸÄ±dÄ± Ã§Ä±ktÄ±sÄ±nda arka planda silik (filigran) olarak gÃ¶rÃ¼necektir.</p>
+                         <label className="block text-sm font-medium text-white">Çıktı Arka Plan Logosu (Filigran)</label>
+                         <p className="text-xs text-slate-400 mt-1">Bu logo sevk kağıdı çıktısında arka planda silik (filigran) olarak görünecektir.</p>
                       </div>
                       <div className="flex flex-col items-center">
                           <div className="w-32 h-32 border-2 border-dashed border-slate-600 rounded-lg flex items-center justify-center bg-slate-900 overflow-hidden relative group">
@@ -925,7 +925,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                onChange={handlePrintBgLogoUpload}
                                ref={printBgLogoInputRef}
                              />
-                             {!printBgLogo && <div className="absolute bottom-2 text-[10px] text-slate-500">YÃ¼kle</div>}
+                             {!printBgLogo && <div className="absolute bottom-2 text-[10px] text-slate-500">Yükle</div>}
                           </div>
                           
                           {printBgLogo && (
@@ -935,7 +935,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                className="mt-2 text-xs text-red-400 hover:text-red-300 flex items-center"
                              >
                                 <Trash2 className="w-3 h-3 mr-1" />
-                                KaldÄ±r
+                                Kaldır
                              </button>
                           )}
                       </div>
@@ -944,8 +944,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                    {/* Auto Print Toggle */}
                    <div className="flex items-center justify-between p-4 bg-slate-800 rounded border border-slate-600">
                       <div>
-                         <label className="block text-sm font-medium text-white">Otomatik YazdÄ±rma</label>
-                         <p className="text-xs text-slate-400 mt-1">Yeni sevk kaydÄ± oluÅŸturulduÄŸunda otomatik olarak yazdÄ±rma ekranÄ±nÄ± aÃ§ar.</p>
+                         <label className="block text-sm font-medium text-white">Otomatik Yazdırma</label>
+                         <p className="text-xs text-slate-400 mt-1">Yeni sevk kaydı oluşturulduğunda otomatik olarak yazdırma ekranını açar.</p>
                       </div>
                       <button 
                           type="button"
@@ -959,8 +959,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                    {/* Print Page Size */}
                    <div className="flex items-center justify-between p-4 bg-slate-800 rounded border border-slate-600">
                       <div>
-                         <label className="block text-sm font-medium text-white">Ã‡Ä±ktÄ± Sayfa Boyutu</label>
-                         <p className="text-xs text-slate-400 mt-1">Sevk kaÄŸÄ±dÄ± yazdÄ±rÄ±lÄ±rken kullanÄ±lacak kaÄŸÄ±t boyutu.</p>
+                         <label className="block text-sm font-medium text-white">Çıktı Sayfa Boyutu</label>
+                         <p className="text-xs text-slate-400 mt-1">Sevk kağıdı yazdırılırken kullanılacak kağıt boyutu.</p>
                       </div>
                       <select
                           value={printPageSize}
@@ -968,8 +968,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                           className="bg-slate-900 border border-slate-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none"
                       >
                           <option value="A4">A4 (Standart)</option>
-                          <option value="A5">A5 (YarÄ±m Sayfa)</option>
-                          <option value="A6">A6 (Ã‡eyrek Sayfa)</option>
+                          <option value="A5">A5 (Yarım Sayfa)</option>
+                          <option value="A6">A6 (Çeyrek Sayfa)</option>
                       </select>
                    </div>
 
@@ -994,7 +994,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                    <div className="flex justify-end pt-2">
                       <button type="submit" className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-lg text-sm font-bold transition-colors shadow-lg shadow-blue-900/20">
                          <Save className="w-4 h-4" />
-                         <span>AyarlarÄ± Kaydet</span>
+                         <span>Ayarları Kaydet</span>
                       </button>
                    </div>
                 </form>
@@ -1005,7 +1005,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                    <div className="p-2 bg-orange-500/10 rounded mr-3">
                       <Sliders className="w-5 h-5 text-orange-500" />
                    </div>
-                   <h3 className="text-lg font-bold text-white">Sistem Åifresini DeÄŸiÅŸtir</h3>
+                   <h3 className="text-lg font-bold text-white">Sistem Şifresini Değiştir</h3>
                 </div>
                 
                 <form onSubmit={handlePasswordChange} className="space-y-6">
@@ -1022,7 +1022,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
                     <div className="space-y-4">
                       <div>
-                          <label className="block text-sm font-medium text-slate-400 mb-1">Mevcut Åifre</label>
+                          <label className="block text-sm font-medium text-slate-400 mb-1">Mevcut Şifre</label>
                           <input 
                               type="password" 
                               value={oldPassword} 
@@ -1032,7 +1032,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                           />
                       </div>
                       <div>
-                          <label className="block text-sm font-medium text-slate-400 mb-1">Yeni Åifre</label>
+                          <label className="block text-sm font-medium text-slate-400 mb-1">Yeni Şifre</label>
                           <input 
                               type="password" 
                               value={newPassword} 
@@ -1046,7 +1046,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     <div className="flex justify-end pt-2">
                       <button type="submit" className="flex items-center space-x-2 bg-orange-600 hover:bg-orange-500 text-white px-5 py-2.5 rounded-lg text-sm font-bold transition-colors shadow-lg shadow-orange-900/20">
                          <Save className="w-4 h-4" />
-                         <span>Åifreyi GÃ¼ncelle</span>
+                         <span>Şifreyi Güncelle</span>
                       </button>
                    </div>
                 </form>
@@ -1065,8 +1065,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     <Upload className="w-6 h-6 text-emerald-500" />
                     </div>
                     <div>
-                        <h5 className="text-sm font-bold text-white">Toplu Firma YÃ¼kleme (Excel)</h5>
-                        <p className="text-xs text-slate-400">Åablonu indirin, <strong>2. Sayfadaki tetkik kodlarÄ±na bakarak</strong> doldurun ve yÃ¼kleyin.</p>
+                        <h5 className="text-sm font-bold text-white">Toplu Firma Yükleme (Excel)</h5>
+                        <p className="text-xs text-slate-400">Şablonu indirin, <strong>2. Sayfadaki tetkik kodlarına bakarak</strong> doldurun ve yükleyin.</p>
                     </div>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3">
@@ -1076,7 +1076,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       className="flex items-center justify-center space-x-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded text-xs text-slate-300 transition-colors"
                     >
                         <FileDown className="w-4 h-4" />
-                        <span>BoÅŸ Åablon Ä°ndir</span>
+                        <span>Boş Şablon İndir</span>
                     </button>
                     <button 
                       onClick={downloadCurrentCompaniesExcel}
@@ -1084,11 +1084,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       className="flex items-center justify-center space-x-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded text-xs text-blue-300 transition-colors"
                     >
                         <Download className="w-4 h-4" />
-                        <span>Mevcut Listeyi Ä°ndir (DÃ¼zenlemek iÃ§in)</span>
+                        <span>Mevcut Listeyi İndir (Düzenlemek için)</span>
                     </button>
                     <label className="flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs font-medium cursor-pointer transition-colors shadow-lg shadow-blue-900/20">
                         <Upload className="w-4 h-4" />
-                        <span>Verileri YÃ¼kle / GÃ¼ncelle</span>
+                        <span>Verileri Yükle / Güncelle</span>
                         <input 
                         type="file" 
                         accept=".xlsx, .xls" 
@@ -1105,15 +1105,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <form onSubmit={handleCompanySubmit} className={`bg-slate-900/30 p-4 rounded-lg border ${editingCompanyId ? 'border-orange-500/50 shadow-lg shadow-orange-900/20' : 'border-slate-700'} space-y-4 transition-all duration-300`}>
               <h4 className={`text-sm font-bold flex items-center ${editingCompanyId ? 'text-orange-400' : 'text-white'}`}>
                 {editingCompanyId ? <Edit2 className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />} 
-                {editingCompanyId ? 'Firma Bilgilerini DÃ¼zenle' : 'Tek Firma Ekle'}
+                {editingCompanyId ? 'Firma Bilgilerini Düzenle' : 'Tek Firma Ekle'}
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input required placeholder="Firma AdÄ±" value={cName} onChange={e => setCName(e.target.value)} className="bg-slate-800 border-slate-600 rounded px-3 py-2 text-white text-sm focus:ring-blue-500 outline-none" />
+                <input required placeholder="Firma Adı" value={cName} onChange={e => setCName(e.target.value)} className="bg-slate-800 border-slate-600 rounded px-3 py-2 text-white text-sm focus:ring-blue-500 outline-none" />
                 <select value={cHazard} onChange={e => setCHazard(e.target.value as HazardClass)} className="bg-slate-800 border-slate-600 rounded px-3 py-2 text-white text-sm outline-none">
                   {Object.values(HazardClass).map(h => <option key={h} value={h}>{h}</option>)}
                 </select>
-                <input placeholder="Ä°ÅŸyeri Hekimi" value={cDoctor} onChange={e => setCDoctor(e.target.value)} className="bg-slate-800 border-slate-600 rounded px-3 py-2 text-white text-sm focus:ring-blue-500 outline-none" />
-                <input placeholder="Ä°SG UzmanÄ±" value={cSpecialist} onChange={e => setCSpecialist(e.target.value)} className="bg-slate-800 border-slate-600 rounded px-3 py-2 text-white text-sm focus:ring-blue-500 outline-none" />
+                <input placeholder="İşyeri Hekimi" value={cDoctor} onChange={e => setCDoctor(e.target.value)} className="bg-slate-800 border-slate-600 rounded px-3 py-2 text-white text-sm focus:ring-blue-500 outline-none" />
+                <input placeholder="İSG Uzmanı" value={cSpecialist} onChange={e => setCSpecialist(e.target.value)} className="bg-slate-800 border-slate-600 rounded px-3 py-2 text-white text-sm focus:ring-blue-500 outline-none" />
                 
                 {/* Forced Institution Dropdown */}
                 <select 
@@ -1121,8 +1121,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   onChange={e => setCPreferredInst(e.target.value)} 
                   className="bg-slate-800 border-slate-600 rounded px-3 py-2 text-white text-sm outline-none"
                 >
-                    <option value="">AnlaÅŸmalÄ± Kurum (SeÃ§iniz)</option>
-                    <option value="">Serbest (Ä°stenilen yere gidebilir)</option>
+                    <option value="">Anlaşmalı Kurum (Seçiniz)</option>
+                    <option value="">Serbest (İstenilen yere gidebilir)</option>
                     {institutions.map(inst => (
                       <option key={inst.id} value={inst.id}>{inst.name}</option>
                     ))}
@@ -1182,7 +1182,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         onClick={handleCancelEdit}
                         className="bg-slate-700 hover:bg-slate-600 text-slate-300 px-4 py-2 rounded text-sm flex items-center"
                     >
-                        <XCircle className="w-4 h-4 mr-1" /> VazgeÃ§
+                        <XCircle className="w-4 h-4 mr-1" /> Vazgeç
                     </button>
                 )}
                 <button 
@@ -1190,7 +1190,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     className={`${editingCompanyId ? 'bg-orange-600 hover:bg-orange-500' : 'bg-blue-600 hover:bg-blue-500'} text-white px-6 py-2 rounded text-sm font-bold shadow-lg transition-colors flex items-center`}
                 >
                     {editingCompanyId ? <Save className="w-4 h-4 mr-1" /> : <Plus className="w-4 h-4 mr-1" />}
-                    {editingCompanyId ? 'GÃ¼ncelle' : 'Ekle'}
+                    {editingCompanyId ? 'Güncelle' : 'Ekle'}
                 </button>
               </div>
             </form>
@@ -1200,7 +1200,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                   <input 
                     type="text" 
-                    placeholder="Firma adÄ±, hekim veya uzman ara..." 
+                    placeholder="Firma adı, hekim veya uzman ara..." 
                     value={companySearchQuery}
                     onChange={(e) => setCompanySearchQuery(e.target.value)}
                     className="w-full pl-10 pr-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
@@ -1220,7 +1220,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     ) : (
                        <Square className="w-4 h-4" />
                     )}
-                    <span>TÃ¼mÃ¼nÃ¼ SeÃ§</span>
+                    <span>Tümünü Seç</span>
                  </button>
                  <span className="text-sm text-slate-400">| Toplam {filteredCompanies.length} Firma</span>
                </div>
@@ -1231,7 +1231,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                    className="flex items-center space-x-2 px-3 py-1.5 bg-red-600/20 hover:bg-red-600/40 border border-red-500/30 text-red-400 rounded text-xs font-bold transition-all animate-pulse"
                  >
                    <Trash2 className="w-3.5 h-3.5" />
-                   <span>SeÃ§ilenleri Sil ({selectedCompanyIds.length})</span>
+                   <span>Seçilenleri Sil ({selectedCompanyIds.length})</span>
                  </button>
                )}
             </div>
@@ -1270,7 +1270,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                            </span>
                         )}
                       </h5>
-                      <p className="text-xs text-slate-400">{company.assignedDoctor} â€¢ {company.assignedSpecialist}</p>
+                      <p className="text-xs text-slate-400">{company.assignedDoctor} • {company.assignedSpecialist}</p>
                       <div className="flex flex-wrap gap-1 mt-1">
                         {company.defaultExams.map((ex, i) => (
                            <span key={i} className="text-[10px] px-1.5 py-0.5 bg-slate-800 text-slate-400 rounded border border-slate-600">{ex}</span>
@@ -1283,7 +1283,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     <button 
                         onClick={() => handleEditCompany(company)} 
                         className="text-slate-500 hover:text-blue-400 p-1.5 hover:bg-blue-500/10 rounded transition-colors"
-                        title="DÃ¼zenle"
+                        title="Düzenle"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
@@ -1310,8 +1310,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     <Smartphone className="w-6 h-6" />
                  </div>
                  <div>
-                    <h3 className="text-lg font-bold text-white">WhatsApp Web BaÄŸlantÄ±sÄ±</h3>
-                    <p className="text-sm text-slate-400">Sistemin arka planda otomatik mesaj gÃ¶nderebilmesi iÃ§in telefonunuzu baÄŸlayÄ±n.</p>
+                    <h3 className="text-lg font-bold text-white">WhatsApp Web Bağlantısı</h3>
+                    <p className="text-sm text-slate-400">Sistemin arka planda otomatik mesaj gönderebilmesi için telefonunuzu bağlayın.</p>
                  </div>
                </div>
                
@@ -1321,16 +1321,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                           <div className="w-20 h-20 bg-emerald-500/20 text-emerald-500 rounded-full flex items-center justify-center mx-auto">
                               <Check className="w-10 h-10" />
                           </div>
-                          <h4 className="text-xl font-bold text-emerald-400">WhatsApp BaÄŸlÄ±</h4>
-                          <p className="text-slate-400 text-sm">Sistem aktif olarak mesaj gÃ¶nderebilir durumda.</p>
+                          <h4 className="text-xl font-bold text-emerald-400">WhatsApp Bağlı</h4>
+                          <p className="text-slate-400 text-sm">Sistem aktif olarak mesaj gönderebilir durumda.</p>
                           <button onClick={handleWaLogout} className="mt-4 px-6 py-2 bg-red-600/20 text-red-500 hover:bg-red-600/30 rounded-lg font-medium transition-colors">
-                              BaÄŸlantÄ±yÄ± Kes
+                              Bağlantıyı Kes
                           </button>
                       </div>
                   ) : waQr ? (
                       <div className="space-y-4">
                           <h4 className="text-md font-bold text-white">QR Kodu Okutun</h4>
-                          <p className="text-slate-400 text-sm max-w-sm mx-auto">WhatsApp uygulamasÄ±nÄ± aÃ§Ä±n, "BaÄŸlÄ± Cihazlar" menÃ¼sÃ¼nden "Cihaz BaÄŸla" diyerek bu QR kodu okutun.</p>
+                          <p className="text-slate-400 text-sm max-w-sm mx-auto">WhatsApp uygulamasını açın, "Bağlı Cihazlar" menüsünden "Cihaz Bağla" diyerek bu QR kodu okutun.</p>
                           <div className="p-4 bg-white rounded-xl inline-block mt-4">
                               <QRCodeSVG value={waQr} size={250} level="H" />
                           </div>
@@ -1338,7 +1338,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   ) : (
                       <div className="space-y-4">
                           <div className="w-12 h-12 border-4 border-slate-700 border-t-emerald-500 rounded-full animate-spin mx-auto"></div>
-                          <p className="text-slate-400">WhatsApp baÅŸlatÄ±lÄ±yor veya QR kod bekleniyor...</p>
+                          <p className="text-slate-400">WhatsApp başlatılıyor veya QR kod bekleniyor...</p>
                       </div>
                   )}
                </div>
@@ -1351,12 +1351,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
              <form onSubmit={handleInstitutionSubmit} className="bg-slate-900/30 p-4 rounded-lg border border-slate-700 space-y-4">
                 <h4 className="text-sm font-bold text-white flex items-center">
                   {editingInstitutionId ? <Edit2 className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-                  {editingInstitutionId ? 'SaÄŸlÄ±k Kurumunu DÃ¼zenle' : 'SaÄŸlÄ±k Kurumu Ekle'}
+                  {editingInstitutionId ? 'Sağlık Kurumunu Düzenle' : 'Sağlık Kurumu Ekle'}
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                   <input required placeholder="Kurum AdÄ± (Ã–rn: Merkez Hastanesi)" value={iName} onChange={e => setIName(e.target.value)} className="bg-slate-800 border-slate-600 rounded px-3 py-2 text-white text-sm focus:ring-blue-500 outline-none" />
-                   <input placeholder="Telefon / Ä°letiÅŸim" value={iPhone} onChange={e => setIPhone(e.target.value)} className="bg-slate-800 border-slate-600 rounded px-3 py-2 text-white text-sm focus:ring-blue-500 outline-none" />
-                   <input placeholder="DetaylÄ± Adres Tarifi" value={iAddress} onChange={e => setIAddress(e.target.value)} className="bg-slate-800 border-slate-600 rounded px-3 py-2 text-white text-sm focus:ring-blue-500 outline-none" />
+                   <input required placeholder="Kurum Adı (Örn: Merkez Hastanesi)" value={iName} onChange={e => setIName(e.target.value)} className="bg-slate-800 border-slate-600 rounded px-3 py-2 text-white text-sm focus:ring-blue-500 outline-none" />
+                   <input placeholder="Telefon / İletişim" value={iPhone} onChange={e => setIPhone(e.target.value)} className="bg-slate-800 border-slate-600 rounded px-3 py-2 text-white text-sm focus:ring-blue-500 outline-none" />
+                   <input placeholder="Detaylı Adres Tarifi" value={iAddress} onChange={e => setIAddress(e.target.value)} className="bg-slate-800 border-slate-600 rounded px-3 py-2 text-white text-sm focus:ring-blue-500 outline-none" />
                    <input placeholder="Konum Linki (Google Maps vb.)" value={iLocationUrl} onChange={e => setILocationUrl(e.target.value)} className="bg-slate-800 border-slate-600 rounded px-3 py-2 text-white text-sm focus:ring-blue-500 outline-none" />
                    
                    <div className="md:col-span-2 mt-4 space-y-3 border-t border-slate-700/50 pt-4">
@@ -1368,31 +1368,31 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                          className="w-4 h-4 rounded border-slate-600 text-blue-600 focus:ring-blue-500 bg-slate-800"
                        />
                        <div className="flex flex-col">
-                         <span className="text-sm font-bold text-slate-200">Personel Telefonuna WhatsApp MesajÄ± GÃ¶nder (Web)</span>
-                         <span className="text-xs text-slate-400">Bu kurum seÃ§ilip sevk kaydedildiÄŸinde, doÄŸrudan WhatsApp Web'e yÃ¶nlendirerek konum ve sevk bilgisini atmaya yarar.</span>
+                         <span className="text-sm font-bold text-slate-200">Personel Telefonuna WhatsApp Mesajı Gönder (Web)</span>
+                         <span className="text-xs text-slate-400">Bu kurum seçilip sevk kaydedildiğinde, doğrudan WhatsApp Web'e yönlendirerek konum ve sevk bilgisini atmaya yarar.</span>
                        </div>
                      </label>
                      
                      {iSendWhatsapp && (
                        <div className="pl-6">
-                         <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">WhatsApp Mesaj TaslaÄŸÄ±</label>
+                         <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">WhatsApp Mesaj Taslağı</label>
                          <textarea 
                            value={iWhatsappTemplate}
                            onChange={(e) => setIWhatsappTemplate(e.target.value)}
                            className="w-full bg-slate-800 border-slate-600 rounded px-3 py-2 text-slate-200 text-sm focus:ring-blue-500 outline-none min-h-[80px]"
-                           placeholder="DeÄŸiÅŸkenler: {hasta_adi}, {tc_kimlik}, {dogum_tarihi}, {dogum_tarihi_bitisik}, {kurum_adi}, {konum_linki}"
+                           placeholder="Değişkenler: {hasta_adi}, {tc_kimlik}, {dogum_tarihi}, {dogum_tarihi_bitisik}, {kurum_adi}, {konum_linki}"
                          />
-                         <p className="text-xs text-slate-500 mt-1">KullanÄ±labilecek DeÄŸiÅŸkenler: <strong>{'{hasta_adi}'}</strong>, <strong>{'{tc_kimlik}'}</strong>, <strong>{'{dogum_tarihi}'}</strong>, <strong>{'{dogum_tarihi_bitisik}'}</strong>, <strong>{'{kurum_adi}'}</strong>, <strong>{'{konum_linki}'}</strong></p>
+                         <p className="text-xs text-slate-500 mt-1">Kullanılabilecek Değişkenler: <strong>{'{hasta_adi}'}</strong>, <strong>{'{tc_kimlik}'}</strong>, <strong>{'{dogum_tarihi}'}</strong>, <strong>{'{dogum_tarihi_bitisik}'}</strong>, <strong>{'{kurum_adi}'}</strong>, <strong>{'{konum_linki}'}</strong></p>
                        </div>
                      )}
                    </div>
                 </div>
                 <div className="flex justify-end space-x-3">
                   {editingInstitutionId && (
-                    <button type="button" onClick={handleCancelInstitutionEdit} className="text-slate-400 hover:text-white px-4 py-2 rounded text-sm">VazgeÃ§</button>
+                    <button type="button" onClick={handleCancelInstitutionEdit} className="text-slate-400 hover:text-white px-4 py-2 rounded text-sm">Vazgeç</button>
                   )}
                   <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-sm">
-                    {editingInstitutionId ? 'GÃ¼ncelle' : 'Ekle'}
+                    {editingInstitutionId ? 'Güncelle' : 'Ekle'}
                   </button>
                 </div>
              </form>
@@ -1411,7 +1411,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                        </div>
                     </div>
                     <div className="flex items-center space-x-1">
-                      <button onClick={() => handleEditInstitution(inst)} className="text-slate-500 hover:text-blue-400 p-1.5 hover:bg-blue-500/10 rounded transition-colors" title="DÃ¼zenle">
+                      <button onClick={() => handleEditInstitution(inst)} className="text-slate-500 hover:text-blue-400 p-1.5 hover:bg-blue-500/10 rounded transition-colors" title="Düzenle">
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button onClick={() => onDeleteInstitution(inst.id)} className="text-slate-500 hover:text-red-400 p-1.5 hover:bg-red-500/10 rounded transition-colors" title="Sil">
@@ -1420,7 +1420,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     </div>
                  </div>
                ))}
-               {institutions.length === 0 && <p className="text-slate-500 text-sm col-span-2 text-center py-4">KayÄ±tlÄ± kurum bulunamadÄ±.</p>}
+               {institutions.length === 0 && <p className="text-slate-500 text-sm col-span-2 text-center py-4">Kayıtlı kurum bulunamadı.</p>}
              </div>
           </div>
         )}
@@ -1430,7 +1430,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 text-xs text-blue-300 leading-relaxed flex items-start gap-2.5">
                 <Sliders className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
                 <div>
-                   <strong>Ä°pucu:</strong> Tetkiklerin adÄ±nÄ±, kodunu, satÄ±ÅŸ fiyatÄ±nÄ± veya maliyetini doÄŸrudan altÄ±sÄ±ra listesindeki kutulara tÄ±klayarak gÃ¼ncelleyebilirsiniz. YapÄ±lan deÄŸiÅŸiklikler otomatik kaydedilecektir. Tetkik ismi gÃ¼ncellendiÄŸinde, o tetkiki varsayÄ±lan olarak kullanan firmalar ile geÃ§miÅŸ sevk kayÄ±tlarÄ±ndaki tetkik isimleri de veri bÃ¼tÃ¼nlÃ¼ÄŸÃ¼nÃ¼ korumak iÃ§in otomatik olarak gÃ¼ncellenecektir.
+                   <strong>İpucu:</strong> Tetkiklerin adını, kodunu, satış fiyatını veya maliyetini doğrudan altısıra listesindeki kutulara tıklayarak güncelleyebilirsiniz. Yapılan değişiklikler otomatik kaydedilecektir. Tetkik ismi güncellendiğinde, o tetkiki varsayılan olarak kullanan firmalar ile geçmiş sevk kayıtlarındaki tetkik isimleri de veri bütünlüğünü korumak için otomatik olarak güncellenecektir.
                 </div>
              </div>
 
@@ -1443,8 +1443,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <div className="w-full md:w-24">
                    <input required placeholder="Kod (101)" value={eCode} onChange={e => setECode(e.target.value)} className="w-full bg-slate-800 border-slate-600 rounded px-3 py-2 text-white text-sm focus:ring-blue-500 outline-none" />
                 </div>
-                <input required placeholder="Tetkik AdÄ± (Ã–rn: PortÃ¶r)" value={eName} onChange={e => setEName(e.target.value)} className="flex-1 bg-slate-800 border-slate-600 rounded px-3 py-2 text-white text-sm focus:ring-blue-500 outline-none" />
-                <input required type="number" placeholder="SatÄ±ÅŸ (TL)" value={ePrice} onChange={e => setEPrice(e.target.value)} className="w-full md:w-32 bg-slate-800 border-slate-600 rounded px-3 py-2 text-white text-sm focus:ring-blue-500 outline-none" />
+                <input required placeholder="Tetkik Adı (Örn: Portör)" value={eName} onChange={e => setEName(e.target.value)} className="flex-1 bg-slate-800 border-slate-600 rounded px-3 py-2 text-white text-sm focus:ring-blue-500 outline-none" />
+                <input required type="number" placeholder="Satış (TL)" value={ePrice} onChange={e => setEPrice(e.target.value)} className="w-full md:w-32 bg-slate-800 border-slate-600 rounded px-3 py-2 text-white text-sm focus:ring-blue-500 outline-none" />
                 <input type="number" placeholder="Maliyet (TL)" value={eCost} onChange={e => setECost(e.target.value)} className="w-full md:w-32 bg-slate-800 border-slate-600 rounded px-3 py-2 text-white text-sm focus:ring-blue-500 outline-none" />
                 <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-sm whitespace-nowrap">Ekle</button>
               </div>
@@ -1469,16 +1469,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                (e.target as HTMLInputElement).blur();
                              }
                            }}
-                           title="Tetkik adÄ±nÄ± deÄŸiÅŸtirmek iÃ§in buraya tÄ±klayÄ±p yazabilirsiniz"
+                           title="Tetkik adını değiştirmek için buraya tıklayıp yazabilirsiniz"
                            className="bg-transparent border-b border-transparent hover:border-slate-500 hover:bg-slate-800/40 focus:border-blue-500 focus:bg-slate-800 text-sm font-medium text-white px-1.5 py-0.5 rounded outline-none w-full transition-all"
                        />
-                       <span className="text-[10px] text-slate-500 block pl-1.5">Maliyet: {exam.cost ? `â‚º${exam.cost}` : '-'}</span>
+                       <span className="text-[10px] text-slate-500 block pl-1.5">Maliyet: {exam.cost ? `₺${exam.cost}` : '-'}</span>
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
                     <div className="flex flex-col space-y-1 items-end">
                         <div className="relative">
-                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-500 text-[10px]">SatÄ±ÅŸ â‚º</span>
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-500 text-[10px]">Satış ₺</span>
                         <input 
                             type="number" 
                             defaultValue={exam.price} 
@@ -1487,7 +1487,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         />
                         </div>
                         <div className="relative">
-                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-red-500/50 text-[10px]">Mal. â‚º</span>
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-red-500/50 text-[10px]">Mal. ₺</span>
                         <input 
                             type="number" 
                             defaultValue={exam.cost || 0} 
@@ -1518,7 +1518,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 </div>
                 
                 <p className="text-slate-400 text-sm mb-6">
-                   Sistemdeki tÃ¼m verileri (firmalar, tetkikler, kurumlar, kasa hareketleri vb.) JSON formatÄ±nda bilgisayarÄ±nÄ±za indirebilir veya daha Ã¶nce aldÄ±ÄŸÄ±nÄ±z bir manuel yedeÄŸi sisteme doÄŸrudan geri yÃ¼kleyebilirsiniz.
+                   Sistemdeki tüm verileri (firmalar, tetkikler, kurumlar, kasa hareketleri vb.) JSON formatında bilgisayarınıza indirebilir veya daha önce aldığınız bir manuel yedeği sisteme doğrudan geri yükleyebilirsiniz.
                 </p>
 
                 <div className="flex flex-wrap gap-4 mt-6">
@@ -1527,12 +1527,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         className="flex items-center justify-center space-x-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white px-5 py-3 rounded-lg text-sm font-bold transition-colors shadow-lg cursor-pointer"
                     >
                         <Download className="w-4 h-4" />
-                        <span>TÃ¼m Verileri Bilgisayara Ä°ndir</span>
+                        <span>Tüm Verileri Bilgisayara İndir</span>
                     </button>
                     
                     <label className="flex items-center justify-center space-x-2 bg-orange-600 hover:bg-orange-500 border border-orange-500/50 text-white px-5 py-3 rounded-lg text-sm font-bold transition-colors shadow-lg shadow-orange-900/20 cursor-pointer">
                         <Upload className="w-4 h-4" />
-                        <span>Dosyadan Geri YÃ¼kle</span>
+                        <span>Dosyadan Geri Yükle</span>
                         <input 
                             type="file" 
                             accept=".json" 
@@ -1546,9 +1546,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <div className="mt-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start space-x-3">
                     <AlertTriangle className="w-5 h-5 text-red-100 shrink-0 mt-0.5" />
                     <div>
-                        <h4 className="text-sm font-bold text-red-400">Ã–nemli UyarÄ±</h4>
+                        <h4 className="text-sm font-bold text-red-400">Önemli Uyarı</h4>
                         <p className="text-xs text-red-300 mt-1 leading-relaxed">
-                            YedeÄŸi geri yÃ¼klediÄŸinizde <strong>mevcut sistemdeki tÃ¼m veriler tamamen silinir</strong> ve yerine yeni dosyadaki veriler yazÄ±lÄ±r. Bu iÅŸlem geri alÄ±namaz.
+                            Yedeği geri yüklediğinizde <strong>mevcut sistemdeki tüm veriler tamamen silinir</strong> ve yerine yeni dosyadaki veriler yazılır. Bu işlem geri alınamaz.
                         </p>
                     </div>
                 </div>
@@ -1564,7 +1564,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       <div>
                          <h3 className="text-lg font-bold text-white flex items-center">
                             Telegram Bot Bildirim Entegrasyonu
-                            <span className="ml-2 text-xs text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded-full font-normal border border-sky-500/20">AnlÄ±k Raporlama</span>
+                            <span className="ml-2 text-xs text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded-full font-normal border border-sky-500/20">Anlık Raporlama</span>
                          </h3>
                       </div>
                    </div>
@@ -1584,7 +1584,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 </div>
 
                 <p className="text-slate-400 text-sm mb-6 leading-relaxed">
-                   Her sevk (tetkik) iÅŸlemi yapÄ±ldÄ±ÄŸÄ±nda veya gÃ¼ncellendiÄŸinde tÃ¼m sevk detaylarÄ±nÄ± (Ã§alÄ±ÅŸan, firma, sevk edilen tetkikler vb.) anÄ±nda Ã¶zel Telegram botunuza bildirim olarak gÃ¶nderin.
+                   Her sevk (tetkik) işlemi yapıldığında veya güncellendiğinde tüm sevk detaylarını (çalışan, firma, sevk edilen tetkikler vb.) anında özel Telegram botunuza bildirim olarak gönderin.
                 </p>
 
                 <form onSubmit={handleSaveTelegramSettings} className="space-y-4">
@@ -1593,7 +1593,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                          <label className="text-xs font-bold text-slate-300 block">Telegram Bot Token (API Token)</label>
                          <input
                             type="text"
-                            placeholder="Ã–rn: 123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ"
+                            placeholder="Örn: 123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ"
                             className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-sky-500 outline-none transition-all placeholder-slate-600 font-mono"
                             value={telegramBotToken}
                             onChange={(e) => setTelegramBotToken(e.target.value)}
@@ -1601,10 +1601,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       </div>
 
                       <div className="space-y-2">
-                         <label className="text-xs font-bold text-slate-300 block">AlÄ±cÄ± Sohbet KimliÄŸi (Chat ID veya Grup ID)</label>
+                         <label className="text-xs font-bold text-slate-300 block">Alıcı Sohbet Kimliği (Chat ID veya Grup ID)</label>
                          <input
                             type="text"
-                            placeholder="Ã–rn: 987654321 veya -100123456789"
+                            placeholder="Örn: 987654321 veya -100123456789"
                             className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-sky-500 outline-none transition-all placeholder-slate-600 font-mono"
                             value={telegramChatId}
                             onChange={(e) => setTelegramChatId(e.target.value)}
@@ -1623,10 +1623,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                             value={telegramReportPeriod}
                             onChange={(e) => setTelegramReportPeriod(e.target.value as 'none' | 'daily' | 'weekly' | 'monthly_custom')}
                          >
-                            <option value="none">Otomatik Rapor GÃ¶nderme (Devre DÄ±ÅŸÄ±)</option>
-                            <option value="daily">GÃ¼nlÃ¼k Excel Raporu GÃ¶nder</option>
-                            <option value="weekly">HaftalÄ±k Excel Raporu GÃ¶nder (Her Pazar)</option>
-                            <option value="monthly_custom">Ã–zel AylÄ±k Periyot Raporu GÃ¶nder (Belirli GÃ¼nler ArasÄ±)</option>
+                            <option value="none">Otomatik Rapor Gönderme (Devre Dışı)</option>
+                            <option value="daily">Günlük Excel Raporu Gönder</option>
+                            <option value="weekly">Haftalık Excel Raporu Gönder (Her Pazar)</option>
+                            <option value="monthly_custom">Özel Aylık Periyot Raporu Gönder (Belirli Günler Arası)</option>
                          </select>
                       </div>
 
@@ -1634,7 +1634,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                          <div className="space-y-2">
                             <label className="text-xs font-bold text-slate-300 block flex items-center">
                                <Clock className="w-3.5 h-3.5 text-sky-400 mr-1.5" />
-                               Rapor GÃ¶nderim Saati - 1
+                               Rapor Gönderim Saati - 1
                             </label>
                             <select
                                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-sky-500 outline-none transition-all cursor-pointer font-mono"
@@ -1649,14 +1649,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       )}
                    </div>
                    <p className="text-slate-500 text-[10px] leading-relaxed mt-1 block">
-                      * Otomatik raporlama aktif edildiÄŸinde, sistem o dÃ¶neme ait sevk kayÄ±tlarÄ±nÄ± ve kasa hareketlerini Ã¶zetleyen detaylÄ± bir Excel (.xlsx) belgesini Telegram botu Ã¼zerinden otomatik olarak gÃ¶nderir.
+                      * Otomatik raporlama aktif edildiğinde, sistem o döneme ait sevk kayıtlarını ve kasa hareketlerini özetleyen detaylı bir Excel (.xlsx) belgesini Telegram botu üzerinden otomatik olarak gönderir.
                    </p>
 
                     {telegramReportPeriod === 'monthly_custom' && (
                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-800/60 pt-4">
                           <div className="space-y-2">
                              <label className="text-xs font-bold text-slate-300 block">
-                                DÃ¶nem BaÅŸlangÄ±Ã§ GÃ¼nÃ¼ (Her AyÄ±n GÃ¼nÃ¼)
+                                Dönem Başlangıç Günü (Her Ayın Günü)
                              </label>
                              <div className="flex items-center space-x-2">
                                 <input
@@ -1673,12 +1673,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                       setTelegramCustomReportStartDay(val);
                                    }}
                                 />
-                                <span className="text-slate-400 text-xs shrink-0">. GÃ¼nÃ¼</span>
+                                <span className="text-slate-400 text-xs shrink-0">. Günü</span>
                              </div>
                           </div>
                           <div className="space-y-2">
                              <label className="text-xs font-bold text-slate-300 block">
-                                DÃ¶nem BitiÅŸ GÃ¼nÃ¼ (Her AyÄ±n GÃ¼nÃ¼)
+                                Dönem Bitiş Günü (Her Ayın Günü)
                              </label>
                              <div className="flex items-center space-x-2">
                                 <input
@@ -1695,11 +1695,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                       setTelegramCustomReportEndDay(val);
                                    }}
                                 />
-                                <span className="text-slate-400 text-xs shrink-0">. GÃ¼nÃ¼</span>
+                                <span className="text-slate-400 text-xs shrink-0">. Günü</span>
                              </div>
                           </div>
                           <p className="col-span-1 md:col-span-2 text-[10px] text-slate-400 leading-relaxed">
-                             Bu ayar ile her ayÄ±n belirtilen gÃ¼nlerinde otomatik olarak, bir Ã¶nceki ayÄ±n <b>{telegramCustomReportStartDay}.</b> gÃ¼nÃ¼ ile bu ayÄ±n <b>{telegramCustomReportEndDay}.</b> gÃ¼nÃ¼ arasÄ±ndaki tÃ¼m kayÄ±tlarÄ± kapsayan Excel raporu gÃ¶nderilecektir. (Ã–rn: her ayÄ±n {telegramCustomReportStartDay}'sinden diÄŸer ayÄ±n {telegramCustomReportEndDay}'sine).
+                             Bu ayar ile her ayın belirtilen günlerinde otomatik olarak, bir önceki ayın <b>{telegramCustomReportStartDay}.</b> günü ile bu ayın <b>{telegramCustomReportEndDay}.</b> günü arasındaki tüm kayıtları kapsayan Excel raporu gönderilecektir. (Örn: her ayın {telegramCustomReportStartDay}'sinden diğer ayın {telegramCustomReportEndDay}'sine).
                           </p>
                        </div>
                     )}
@@ -1715,10 +1715,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                              value={telegramReportPeriod2}
                              onChange={(e) => setTelegramReportPeriod2(e.target.value as 'none' | 'daily' | 'weekly' | 'monthly_custom')}
                           >
-                             <option value="none">Otomatik Rapor GÃ¶nderme (Devre DÄ±ÅŸÄ±)</option>
-                             <option value="daily">GÃ¼nlÃ¼k Excel Raporu GÃ¶nder</option>
-                             <option value="weekly">HaftalÄ±k Excel Raporu GÃ¶nder (Her Pazar)</option>
-                             <option value="monthly_custom">Ã–zel AylÄ±k Periyot Raporu GÃ¶nder (Belirli GÃ¼nler ArasÄ±)</option>
+                             <option value="none">Otomatik Rapor Gönderme (Devre Dışı)</option>
+                             <option value="daily">Günlük Excel Raporu Gönder</option>
+                             <option value="weekly">Haftalık Excel Raporu Gönder (Her Pazar)</option>
+                             <option value="monthly_custom">Özel Aylık Periyot Raporu Gönder (Belirli Günler Arası)</option>
                           </select>
                        </div>
 
@@ -1726,7 +1726,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                           <div className="space-y-2">
                              <label className="text-xs font-bold text-slate-300 block flex items-center">
                                 <Clock className="w-3.5 h-3.5 text-sky-400 mr-1.5" />
-                                Rapor GÃ¶nderim Saati - 2
+                                Rapor Gönderim Saati - 2
                              </label>
                              <select
                                 className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-sky-500 outline-none transition-all cursor-pointer font-mono"
@@ -1741,14 +1741,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                        )}
                     </div>
                     <p className="text-slate-500 text-[10px] leading-relaxed mt-1 block">
-                       * Ä°kinci bir baÄŸÄ±msÄ±z raporlama periyodu tanÄ±mlayarak (Ã¶rneÄŸin hem haftalÄ±k hem aylÄ±k) aynÄ± anda iki farklÄ± periyotta rapor alabilirsiniz.
+                       * İkinci bir bağımsız raporlama periyodu tanımlayarak (örneğin hem haftalık hem aylık) aynı anda iki farklı periyotta rapor alabilirsiniz.
                     </p>
 
                     {telegramReportPeriod2 === 'monthly_custom' && (
                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-800/60 pt-4">
                           <div className="space-y-2">
                              <label className="text-xs font-bold text-slate-300 block">
-                                DÃ¶nem BaÅŸlangÄ±Ã§ GÃ¼nÃ¼ - 2 (Her AyÄ±n GÃ¼nÃ¼)
+                                Dönem Başlangıç Günü - 2 (Her Ayın Günü)
                              </label>
                              <div className="flex items-center space-x-2">
                                 <input
@@ -1765,12 +1765,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                       setTelegramCustomReportStartDay2(val);
                                    }}
                                 />
-                                <span className="text-slate-400 text-xs shrink-0">. GÃ¼nÃ¼</span>
+                                <span className="text-slate-400 text-xs shrink-0">. Günü</span>
                              </div>
                           </div>
                           <div className="space-y-2">
                              <label className="text-xs font-bold text-slate-300 block">
-                                DÃ¶nem BitiÅŸ GÃ¼nÃ¼ - 2 (Her AyÄ±n GÃ¼nÃ¼)
+                                Dönem Bitiş Günü - 2 (Her Ayın Günü)
                              </label>
                              <div className="flex items-center space-x-2">
                                 <input
@@ -1787,20 +1787,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                       setTelegramCustomReportEndDay2(val);
                                    }}
                                 />
-                                <span className="text-slate-400 text-xs shrink-0">. GÃ¼nÃ¼</span>
+                                <span className="text-slate-400 text-xs shrink-0">. Günü</span>
                              </div>
                           </div>
                           <p className="col-span-1 md:col-span-2 text-[10px] text-slate-400 leading-relaxed">
-                             Bu ayar ile her ayÄ±n belirtilen gÃ¼nlerinde otomatik olarak, bir Ã¶nceki ayÄ±n <b>{telegramCustomReportStartDay2}.</b> gÃ¼nÃ¼ ile bu ayÄ±n <b>{telegramCustomReportEndDay2}.</b> gÃ¼nÃ¼ arasÄ±ndaki tÃ¼m kayÄ±tlarÄ± kapsayan Excel raporu gÃ¶nderilecektir. (Ã–rn: her ayÄ±n {telegramCustomReportStartDay2}'sinden diÄŸer ayÄ±n {telegramCustomReportEndDay2}'sine).
+                             Bu ayar ile her ayın belirtilen günlerinde otomatik olarak, bir önceki ayın <b>{telegramCustomReportStartDay2}.</b> günü ile bu ayın <b>{telegramCustomReportEndDay2}.</b> günü arasındaki tüm kayıtları kapsayan Excel raporu gönderilecektir. (Örn: her ayın {telegramCustomReportStartDay2}'sinden diğer ayın {telegramCustomReportEndDay2}'sine).
                           </p>
                        </div>
                     )}
 
                    <div className="bg-slate-950/40 p-3 rounded-lg border border-slate-800/80 text-[11px] text-slate-400 space-y-1">
-                      <p className="font-semibold text-slate-300">ğŸ’¡ NasÄ±l Kurulur?</p>
-                      <p>1. Telegram'da <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline">@BotFather</a> aramasÄ± yapÄ±n ve <code className="bg-slate-900 px-1 py-0.5 rounded text-sky-300 font-mono">/newbot</code> komutuyla bir bot oluÅŸturup <b>Token</b> deÄŸerini kopyalayÄ±n.</p>
+                      <p className="font-semibold text-slate-300">💡 Nasıl Kurulur?</p>
+                      <p>1. Telegram'da <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline">@BotFather</a> araması yapın ve <code className="bg-slate-900 px-1 py-0.5 rounded text-sky-300 font-mono">/newbot</code> komutuyla bir bot oluşturup <b>Token</b> değerini kopyalayın.</p>
                       <p>2. Botunuza <code className="bg-slate-900 px-1 py-0.5 rounded text-sky-300 font-mono">/start</code> deyin veya kurye bildirim botunu bir gruba ekleyin.</p>
-                      <p>3. Kendi Chat ID'nizi veya Grubun Chat ID'sini Ã¶ÄŸrenmek iÃ§in <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline">@userinfobot</a> gibi bir botu kullanÄ±n.</p>
+                      <p>3. Kendi Chat ID'nizi veya Grubun Chat ID'sini öğrenmek için <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline">@userinfobot</a> gibi bir botu kullanın.</p>
                    </div>
 
                    <div className="flex justify-between items-center pt-2">
@@ -1818,7 +1818,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                          className="bg-sky-600 hover:bg-sky-500 text-white font-bold px-5 py-2 rounded-lg text-sm transition-colors cursor-pointer flex items-center space-x-2"
                       >
                          <Save className="w-4 h-4" />
-                         <span>Telegram AyarlarÄ±nÄ± Kaydet</span>
+                         <span>Telegram Ayarlarını Kaydet</span>
                       </button>
                    </div>
                 </form>
@@ -1840,10 +1840,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <div className="mt-6 pt-6 border-t border-slate-800 space-y-4">
                    <div className="flex items-center space-x-2">
                       <FileSpreadsheet className="w-5 h-5 text-emerald-400" />
-                      <h4 className="text-sm font-bold text-white">AnlÄ±k Excel Raporu GÃ¶nder (Åimdi Raporla)</h4>
+                      <h4 className="text-sm font-bold text-white">Anlık Excel Raporu Gönder (Şimdi Raporla)</h4>
                    </div>
                    <p className="text-slate-400 text-xs leading-relaxed">
-                      Sistemdeki tÃ¼m sevk hareketleri, tetkik Ã¼cretleri ve kasa durumunu anlÄ±k olarak derleyip bir Excel belgesi (.xlsx) olarak Telegram botunuza gÃ¶nderin:
+                      Sistemdeki tüm sevk hareketleri, tetkik ücretleri ve kasa durumunu anlık olarak derleyip bir Excel belgesi (.xlsx) olarak Telegram botunuza gönderin:
                    </p>
 
                    <div className="flex flex-wrap gap-2">
@@ -1854,7 +1854,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                          className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 disabled:opacity-50"
                       >
                          <FileSpreadsheet className="w-3.5 h-3.5" />
-                         <span>GÃ¼nlÃ¼k Raporu GÃ¶nder</span>
+                         <span>Günlük Raporu Gönder</span>
                       </button>
 
                       <button
@@ -1864,7 +1864,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                          className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 disabled:opacity-50"
                       >
                          <FileSpreadsheet className="w-3.5 h-3.5" />
-                         <span>HaftalÄ±k Raporu GÃ¶nder</span>
+                         <span>Haftalık Raporu Gönder</span>
                       </button>
 
                       <button
@@ -1874,7 +1874,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                           className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 disabled:opacity-50"
                        >
                           <FileSpreadsheet className="w-3.5 h-3.5" />
-                          <span>Ã–zel AylÄ±k Raporu GÃ¶nder ({telegramCustomReportDay}'den {telegramCustomReportDay}'ye)</span>
+                          <span>Özel Aylık Raporu Gönder ({telegramCustomReportDay}'den {telegramCustomReportDay}'ye)</span>
                        </button>
 
                        <button
@@ -1884,7 +1884,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                          className="bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 disabled:opacity-50"
                       >
                          <FileSpreadsheet className="w-3.5 h-3.5" />
-                         <span>TÃ¼m Zamanlar Raporunu GÃ¶nder</span>
+                         <span>Tüm Zamanlar Raporunu Gönder</span>
                       </button>
                    </div>
 
@@ -1914,21 +1914,21 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                    <div className="p-2 bg-blue-500/10 rounded mr-3">
                       <RefreshCw className={`w-5 h-5 text-blue-500 ${updateStatus === 'updating' ? 'animate-spin' : ''}`} />
                    </div>
-                   <h3 className="text-lg font-bold text-white">YazÄ±lÄ±m SÃ¼rÃ¼m GÃ¼ncelleme</h3>
+                   <h3 className="text-lg font-bold text-white">Yazılım Sürüm Güncelleme</h3>
                 </div>
                 
                 <p className="text-slate-400 text-sm mb-6 leading-relaxed">
-                  Sunucuda kurulu olan <strong>OSGB Tetkik Sevk Takip Sistemi</strong> yazÄ±lÄ±mÄ±nÄ± doÄŸrudan GitHub veya kurulduÄŸu repo Ã¼zerinden en son sÃ¼rÃ¼me gÃ¼venli bir ÅŸekilde gÃ¼ncelleyebilirsiniz. Bu iÅŸlem terminale baÄŸlanÄ±p manual git/build komutlarÄ± Ã§alÄ±ÅŸtÄ±rma zorunluluÄŸunu ortadan kaldÄ±rÄ±r.
+                  Sunucuda kurulu olan <strong>OSGB Tetkik Sevk Takip Sistemi</strong> yazılımını doğrudan GitHub veya kurulduğu repo üzerinden en son sürüme güvenli bir şekilde güncelleyebilirsiniz. Bu işlem terminale bağlanıp manual git/build komutları çalıştırma zorunluluğunu ortadan kaldırır.
                 </p>
 
                 {updateStatus === 'idle' && (
                   <div className="bg-slate-800 p-4 border border-slate-700 rounded-lg mb-6">
-                    <h5 className="font-bold text-white text-xs mb-2 uppercase tracking-wide">YÃ¼rÃ¼tÃ¼lecek Ä°ÅŸlemler SÄ±rasÄ±yla:</h5>
+                    <h5 className="font-bold text-white text-xs mb-2 uppercase tracking-wide">Yürütülecek İşlemler Sırasıyla:</h5>
                     <ul className="text-xs text-slate-300 space-y-2 list-decimal list-inside pl-1">
-                      <li>Uzak Git deposundan (git pull) en son kaynak kodlar Ã§ekilir.</li>
-                      <li>BaÄŸÄ±mlÄ±lÄ±klar (npm install) kontrol edilir ve gÃ¼ncellenir.</li>
-                      <li>Proje Ã¼retim modunda (npm run build) sÄ±fÄ±rdan yeniden derlenir.</li>
-                      <li>Mevcut sunucu yeni kararlÄ± dosyalarla otomatik yeniden baÅŸlatÄ±lÄ±r.</li>
+                      <li>Uzak Git deposundan (git pull) en son kaynak kodlar çekilir.</li>
+                      <li>Bağımlılıklar (npm install) kontrol edilir ve güncellenir.</li>
+                      <li>Proje üretim modunda (npm run build) sıfırdan yeniden derlenir.</li>
+                      <li>Mevcut sunucu yeni kararlı dosyalarla otomatik yeniden başlatılır.</li>
                     </ul>
                   </div>
                 )}
@@ -1937,10 +1937,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <div className="bg-slate-900/50 p-6 border border-blue-500/30 rounded-lg mb-6 space-y-4">
                      <div className="flex items-center space-x-3 text-blue-400">
                         <RefreshCw className="w-5 h-5 animate-spin" />
-                        <span className="text-sm font-semibold">GÃ¼ncelleme yÃ¼rÃ¼tÃ¼lÃ¼yor, lÃ¼tfen bekleyiniz...</span>
+                        <span className="text-sm font-semibold">Güncelleme yürütülüyor, lütfen bekleyiniz...</span>
                      </div>
                      <p className="text-xs text-slate-400">
-                       Bu iÅŸlem internet hÄ±zÄ±na ve sunucu kaynaklarÄ±na baÄŸlÄ± olarak 15-45 saniye sÃ¼rebilir. LÃ¼tfen sayfayÄ± kapatmayÄ±n veya yenilemeyin.
+                       Bu işlem internet hızına ve sunucu kaynaklarına bağlı olarak 15-45 saniye sürebilir. Lütfen sayfayı kapatmayın veya yenilemeyin.
                      </p>
                      <div className="h-1 w-full bg-slate-800 overflow-hidden rounded relative">
                         <div className="h-full bg-blue-500 animate-pulse w-3/4 duration-1000 rounded"></div>
@@ -1952,10 +1952,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <div className="bg-emerald-500/10 p-6 border border-emerald-500/30 rounded-lg mb-6 space-y-3">
                      <div className="flex items-center space-x-3 text-emerald-400">
                         <Check className="w-5 h-5 text-emerald-400 bg-emerald-500/20 rounded p-0.5" />
-                        <span className="text-sm font-bold">Harika! YazÄ±lÄ±m BaÅŸarÄ±yla GÃ¼ncellendi.</span>
+                        <span className="text-sm font-bold">Harika! Yazılım Başarıyla Güncellendi.</span>
                      </div>
                      <p className="text-xs text-emerald-300 leading-relaxed">
-                       TÃ¼m gÃ¼ncellemeler baÅŸarÄ±yla sunucuya kuruldu, yeni build baÅŸarÄ±yla oluÅŸturuldu ve sunucu servis arka planÄ±nda yeniden baÅŸlatÄ±ldÄ±. TarayÄ±cÄ±nÄ±z birkaÃ§ saniye iÃ§inde otomatik olarak taze sayfayÄ± yÃ¼kleyecektir...
+                       Tüm güncellemeler başarıyla sunucuya kuruldu, yeni build başarıyla oluşturuldu ve sunucu servis arka planında yeniden başlatıldı. Tarayıcınız birkaç saniye içinde otomatik olarak taze sayfayı yükleyecektir...
                      </p>
                   </div>
                 )}
@@ -1964,10 +1964,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <div className="bg-red-500/10 p-6 border border-red-500/30 rounded-lg mb-6 space-y-3">
                      <div className="flex items-center space-x-3 text-red-400">
                         <AlertTriangle className="w-5 h-5 text-red-400 bg-red-500/20 rounded p-0.5" />
-                        <span className="text-sm font-bold">GÃ¼ncelleme SÄ±rasÄ±nda Hata OluÅŸtu!</span>
+                        <span className="text-sm font-bold">Güncelleme Sırasında Hata Oluştu!</span>
                      </div>
                      <p className="text-xs text-red-300 font-medium">
-                       Hata MesajÄ±: {updateError}
+                       Hata Mesajı: {updateError}
                      </p>
                      {updateDetails && (
                        <pre className="text-[10px] p-3 bg-black/40 border border-red-500/10 rounded text-red-400 font-mono max-h-40 overflow-auto whitespace-pre-wrap leading-relaxed">
@@ -1976,7 +1976,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                      )}
                      <div className="pt-2">
                         <p className="text-[11px] text-slate-400">
-                          Not: EÄŸer yerel deÄŸiÅŸiklikler yaptÄ±ysanÄ±z git pull Ã§akÄ±ÅŸma yapmÄ±ÅŸ olabilir veya sunucu aÄŸ baÄŸlantÄ±sÄ±nda bir problem oluÅŸmuÅŸ olabilir.
+                          Not: Eğer yerel değişiklikler yaptıysanız git pull çakışma yapmış olabilir veya sunucu ağ bağlantısında bir problem oluşmuş olabilir.
                         </p>
                      </div>
                   </div>
@@ -1989,7 +1989,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                          className="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-3 rounded-lg text-sm font-bold transition-all shadow-lg shadow-blue-900/20 active:scale-95"
                      >
                          <RefreshCw className="w-4 h-4" />
-                         <span>SÃ¼rÃ¼mÃ¼ Resmi Repodan Åimdi GÃ¼ncelle</span>
+                         <span>Sürümü Resmi Repodan Şimdi Güncelle</span>
                      </button>
                   </div>
                 )}
