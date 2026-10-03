@@ -29,6 +29,7 @@ import { ReferralPrintTemplate } from './components/ReferralPrintTemplate';
 import { Auth } from './components/Auth';
 import { BulkImportModal } from './components/BulkImportModal';
 import { MobileReferralPreviewModal } from './components/MobileReferralPreviewModal';
+import { AdminAuthModal } from './components/AdminAuthModal';
 import { Referral, Status, Company, ExamDefinition, SafeTransaction, MedicalInstitution, AppSettings, turkishIncludes } from './types';
 import { 
   useServerData,
@@ -55,7 +56,13 @@ const PageLoader = () => (
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'referrals' | 'finance' | 'settings' | 'create_referral'>('dashboard');
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+    // Admin Verified State
+    const [isAdminVerified, setIsAdminVerified] = useState<boolean>(() => {
+      return sessionStorage.getItem('admin_verified') === 'true';
+    });
+    const [pendingAdminTab, setPendingAdminTab] = useState<'dashboard' | 'referrals' | 'finance' | 'settings' | 'create_referral' | null>(null);
 
   // Authentication State
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
@@ -331,13 +338,20 @@ const App: React.FC = () => {
     }
   };
 
-  const handleNavClick = (tab: typeof activeTab) => {
-      if (tab === 'create_referral') {
-          setEditingReferral(null); 
-      }
-      setActiveTab(tab);
-      setIsMobileMenuOpen(false);
-  };
+    const handleNavClick = (tab: typeof activeTab) => {
+        if (tab === 'finance' || tab === 'settings') {
+            if (!isAdminVerified) {
+                setPendingAdminTab(tab);
+                setIsMobileMenuOpen(false);
+                return;
+            }
+        }
+        if (tab === 'create_referral') {
+            setEditingReferral(null); 
+        }
+        setActiveTab(tab);
+        setIsMobileMenuOpen(false);
+    };
 
   return (
     <div className="flex h-screen bg-slate-950 text-slate-200 overflow-hidden print:h-auto print:overflow-visible print:block print:bg-white">
@@ -629,7 +643,20 @@ const App: React.FC = () => {
         />
       )}
 
-      {printingReferral && isMobile && (
+        {pendingAdminTab && (
+          <AdminAuthModal 
+             apiToken={getApiToken() || ''}
+             onSuccess={() => {
+                 setIsAdminVerified(true);
+                 sessionStorage.setItem('admin_verified', 'true');
+                 setActiveTab(pendingAdminTab);
+                 setPendingAdminTab(null);
+             }}
+             onCancel={() => setPendingAdminTab(null)}
+          />
+        )}
+
+        {printingReferral && isMobile && (
         <MobileReferralPreviewModal
           referral={printingReferral}
           institution={institutions.find(i => i.id === printingReferral.targetInstitutionId)}

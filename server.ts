@@ -975,6 +975,45 @@ async function startServer() {
     res.json({ success: true });
   });
 
+  // --- ADMIN OTP ENDPOINTS ---
+  let adminOTP = '';
+  let otpExpiry = 0;
+
+  app.post('/api/admin/request-otp', authMiddleware, async (req, res) => {
+      try {
+          if (!waReady || !sock || !sock.user || !sock.user.id) {
+              return res.status(400).json({ error: 'WhatsApp baglantisi hazir degil.' });
+          }
+          
+          adminOTP = Math.floor(100000 + Math.random() * 900000).toString();
+          otpExpiry = Date.now() + 5 * 60 * 1000; // 5 minutes
+          
+          const ownJid = sock.user.id.split(':')[0] + '@s.whatsapp.net';
+          await sock.sendMessage(ownJid, { text: '*OSGB Sistem Yonetici Paneli*\n\nGiris sifreniz: *' + adminOTP + '*\n\nBu sifre 5 dakika gecerlidir.' });
+          
+          res.json({ success: true, message: 'OTP gonderildi.' });
+      } catch (err) {
+          console.error('OTP send error:', err);
+          res.status(500).json({ error: 'Sifre gonderilemedi.' });
+      }
+  });
+
+  app.post('/api/admin/verify-otp', authMiddleware, (req, res) => {
+      const { otp } = req.body;
+      if (!otp) return res.status(400).json({ error: 'OTP gerekli.' });
+      
+      if (Date.now() > otpExpiry) {
+          return res.status(400).json({ error: 'Sifrenin suresi dolmus. Lutfen yeni sifre isteyin.' });
+      }
+      
+      if (otp === adminOTP) {
+          adminOTP = ''; // Invalidate after success
+          res.json({ success: true });
+      } else {
+          res.status(400).json({ error: 'Hatali sifre.' });
+      }
+  });
+
   // --- WHATSAPP ENDPOINTS ---
   app.get("/api/whatsapp/status", authMiddleware, (req, res) => {
       res.json({ ready: waReady, qr: waQr });
