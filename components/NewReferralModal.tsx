@@ -39,6 +39,9 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
   const [fullName, setFullName] = useState('');
   const [tcNo, setTcNo] = useState('');
   const [birthDate, setBirthDate] = useState('');
+  const [city, setCity] = useState('Bursa');
+  const [town, setTown] = useState('Mudanya');
+  const [address, setAddress] = useState('Belirtilmedi');
   const [phone, setPhone] = useState('');
 
   
@@ -78,6 +81,9 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
         setTcNo(initialData.employee.tcNo);
         setBirthDate(initialData.employee.birthDate || '');
         setPhone(initialData.employee.phone || '');
+        setCity(initialData.employee.city || 'Bursa');
+        setTown(initialData.employee.town || 'Mudanya');
+        setAddress(initialData.employee.address || 'Belirtilmedi');
         
         // Firma Bilgileri (İsimden objeyi bul)
         const foundCompany = companies.find(c => c.name === initialData.employee.company);
@@ -270,6 +276,9 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
         tcNo,
         birthDate,
         phone,
+        city,
+        town,
+        address,
         company: selectedCompanyData ? selectedCompanyData.name : companySearchTerm, // Firma silinmişse text olarak al
       },
       exams: selectedExamIds,
@@ -294,17 +303,7 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
     if (!isFormValid) return;
     
     if (isExternalRecord) shouldPrint = false;
-
-    if (paymentMethod !== 'INVOICE') {
-      setPendingPrint(shouldPrint);
-      if (isExternalRecord) {
-          executeSubmit(paymentMethod, shouldPrint, isExternalRecord);
-      } else {
-          setShowPaymentReminder(true);
-      }
-    } else {
-      executeSubmit('INVOICE', shouldPrint, isExternalRecord);
-    }
+    executeSubmit(paymentMethod, shouldPrint, isExternalRecord);
   };
 
   const getHazardBadge = (hazard: HazardClass) => {
@@ -527,6 +526,8 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
                         <label className="text-[10px] uppercase font-bold text-slate-500 mb-1 block ml-1">Ad Soyad <span className="text-red-500">*</span></label>
                         <input type="text" value={fullName} onChange={e => setFullName(e.target.value)} className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-base focus:border-emerald-500 outline-none placeholder-slate-600" placeholder="Örn: Ahmet Yılmaz" />
                       </div>
+                      
+                      
                       
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
@@ -912,6 +913,8 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
                     <label className="text-[10px] uppercase font-bold text-slate-500 mb-1 block ml-1">Ad Soyad <span className="text-red-500">*</span></label>
                     <input type="text" value={fullName} onChange={e => setFullName(e.target.value)} className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-sm focus:border-emerald-500 outline-none placeholder-slate-600" placeholder="Örn: Ahmet Yılmaz" />
                   </div>
+                      
+                      
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="text-[10px] uppercase font-bold text-slate-500 mb-1 block ml-1">TC Kimlik <span className="text-red-500">*</span></label>
@@ -1165,7 +1168,7 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
       )}
 
       {/* Ödeme Tipi Hatırlatma / Onay Pop-up'ı */}
-      {showPaymentReminder && (
+      {false && (
         <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative overflow-hidden animate-in fade-in zoom-in duration-200">
             {/* Background Accent Deco */}

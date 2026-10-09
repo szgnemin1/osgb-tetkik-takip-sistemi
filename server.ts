@@ -1,3 +1,7 @@
+// Fetch polyfill for older Node versions (Windows Server 2012)
+if (typeof fetch === 'undefined') {
+  global.fetch = require('node-fetch');
+}
 ﻿/*
  * Project: OSGB Tetkik Takip Sistemi
  * Copyright (C) 2026 szgn_emin
@@ -12,49 +16,49 @@ import path from "path";
 import makeWASocket, { DisconnectReason, useMultiFileAuthState } from '@whiskeysockets/baileys';
 import pino from 'pino';
 
+
 // --- WHATSAPP CLIENT SETUP ---
 let waReady = false;
 let waQr = '';
 let sock: any = null;
 
 async function connectToWhatsApp() {
-    const { state, saveCreds } = await useMultiFileAuthState('baileys_auth_info');
-    
+  try {
+    const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
     sock = makeWASocket({
-        auth: state,
-        logger: pino({ level: 'silent' }) as any,
-        printQRInTerminal: false
+      auth: state,
+      printQRInTerminal: true,
+      logger: pino({ level: 'silent' })
     });
-    
-    sock.ev.on('connection.update', (update: any) => {
-        const { connection, lastDisconnect, qr } = update;
-        
-        if (qr) {
-            waQr = qr;
-            waReady = false;
-            console.log('WhatsApp QR Created');
+
+    sock.ev.on('connection.update', (update) => {
+      const { connection, lastDisconnect, qr } = update;
+      if (qr) {
+        waQr = qr;
+      }
+      if (connection === 'close') {
+        const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+        console.log('WhatsApp connection closed, reconnecting:', shouldReconnect);
+        waReady = false;
+        waQr = '';
+        if (shouldReconnect) {
+          connectToWhatsApp();
         }
-        
-        if (connection === 'close') {
-            waReady = false;
-            waQr = '';
-            const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-            if (shouldReconnect) {
-                connectToWhatsApp();
-            } else {
-                console.log('WhatsApp Client disconnected/logged out');
-            }
-        } else if (connection === 'open') {
-            waReady = true;
-            waQr = '';
-            console.log('WhatsApp Client is ready!');
-        }
+      } else if (connection === 'open') {
+        console.log('WhatsApp connection opened');
+        waReady = true;
+        waQr = '';
+      }
     });
-    
+
     sock.ev.on('creds.update', saveCreds);
+  } catch (err) {
+    console.error('WhatsApp Error:', err);
+  }
 }
 
 connectToWhatsApp();
+
 
 import fs from "fs";
 import { createServer as createViteServer } from "vite";
@@ -905,6 +909,22 @@ async function startServer() {
   });
 
   // Data endpoints
+  
+  app.get("/api/whatsapp/status", authMiddleware, (req, res) => {
+    res.json({ ready: waReady, qr: waQr });
+  });
+
+  app.post("/api/whatsapp/logout", authMiddleware, async (req, res) => {
+    if (sock) {
+      await sock.logout();
+      waReady = false;
+      waQr = '';
+      sock = null;
+      connectToWhatsApp();
+    }
+    res.json({ success: true });
+  });
+
   app.get("/api/data", authMiddleware, (req, res) => {
     res.json(readData());
   });
@@ -975,87 +995,166 @@ async function startServer() {
     res.json({ success: true });
   });
 
-  // --- ADMIN OTP ENDPOINTS ---
-  let adminOTP = '';
-  let otpExpiry = 0;
-
-  app.post('/api/admin/request-otp', authMiddleware, async (req, res) => {
-      try {
-          if (!waReady || !sock || !sock.user || !sock.user.id) {
-              return res.json({ fallback: true, message: 'WhatsApp baglantisi hazir degil.' });
-          }
-          
-          adminOTP = Math.floor(100000 + Math.random() * 900000).toString();
-          otpExpiry = Date.now() + 5 * 60 * 1000; // 5 minutes
-          
-          const ownJid = sock.user.id.split(':')[0] + '@s.whatsapp.net';
-          await sock.sendMessage(ownJid, { text: '*OSGB Sistem Yonetici Paneli*\n\nGiris sifreniz: *' + adminOTP + '*\n\nBu sifre 5 dakika gecerlidir.' });
-          
-          res.json({ success: true, message: 'OTP gonderildi.' });
-      } catch (err) {
-          console.error('OTP send error:', err);
-          res.status(500).json({ error: 'Sifre gonderilemedi.' });
-      }
-  });
-
-  app.post('/api/admin/verify-fallback', authMiddleware, (req, res) => {
-      const { password } = req.body;
-      const currentHash = getAppPasswordHash();
-      if (bcrypt.compareSync(password, currentHash)) {
-          res.json({ success: true });
-      } else {
-          res.status(400).json({ error: 'Hatali ana sistem sifresi.' });
-      }
-  });
-
-  app.post('/api/admin/verify-otp', authMiddleware, (req, res) => {
-      const { otp } = req.body;
-      if (!otp) return res.status(400).json({ error: 'OTP gerekli.' });
+﻿  // --- ODEAL ENTEGRASYONU ---
+  app.post("/api/odeal/profile/update", authMiddleware, async (req, res) => {
+    try {
+      const { profileType, merchantKey, secretKey } = req.body;
       
-      if (Date.now() > otpExpiry) {
-          return res.status(400).json({ error: 'Sifrenin suresi dolmus. Lutfen yeni sifre isteyin.' });
+      const response = await fetch("https://api.odeal.com/api/v1/profile/update", {
+        method: 'PATCH',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json; charset=utf-8',
+          'X-ODEAL-MERCHANT-KEY': merchantKey,
+          'X-ODEAL-SECRET-KEY': secretKey
+        },
+        body: JSON.stringify({ profileType })
+      });
+      
+      if (!response.ok) {
+        const text = await response.text();
+        return res.status(400).json({ success: false, error: "API Hatası: " + response.status + " - " + text });
       }
       
-      if (otp === adminOTP) {
-          adminOTP = ''; // Invalidate after success
-          res.json({ success: true });
-      } else {
-          res.status(400).json({ error: 'Hatali sifre.' });
-      }
+      const data = await response.json();
+      res.json({ success: true, data });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
   });
 
-  // --- WHATSAPP ENDPOINTS ---
-  app.get("/api/whatsapp/status", authMiddleware, (req, res) => {
-      res.json({ ready: waReady, qr: waQr });
+  app.post("/api/odeal/basket", authMiddleware, async (req, res) => {
+    console.log("=== BASKET ISTEGI GELDI ===", req.body);
+      
+    try {
+      const { amount, referralId, deviceKey, employeeName, employeeTc, city, town, address } = req.body;
+      if (!deviceKey) {
+        return res.status(400).json({ error: "Ödeal Cihaz Kodu eksik." });
+      }
+      
+      const db = readData();
+      const settings = db.appSettings || {};
+      const merchantKey = settings.odealMerchantKey;
+      const secretKey = settings.odealSecretKey;
+      
+      if (!merchantKey || !secretKey) {
+          return res.status(400).json({ error: "Ödeal API anahtarları tanımlı değil." });
+      }
+      
+      const publicUrl = settings.webhookUrl || `http://${req.headers.host}`;
+      
+              const payload = {
+          referenceCode: referralId,
+          externalDeviceKey: deviceKey,
+          basketType: "SIMPLE",
+          customer: {
+            type: "INDIVIDUAL",
+            name: "Nihai",
+            surname: "Tüketici",
+            identityNumber: "11111111111",
+            city: "bursa",
+            town: "mudanya",
+            address: "Belirtilmedi",
+            email: "test@test.com",
+            gsmNumber: "5555555555"
+          },
+          price: {
+            grossPrice: parseFloat(amount)
+          },
+          items: [
+            {
+              quantity: 1,
+              product: {
+                  unitCode: "C62",
+                  name: "SAĞLIK HİZMETİ",
+                  referenceCode: "196355",
+                  price: {
+                      grossPrice: parseFloat(amount),
+                      vatRatio: 10
+                  }
+              }
+            }
+          ],
+          paymentOptions: [
+            {
+              amount: parseFloat(amount),
+              type: "CREDITCARD"
+            }
+          ]
+        };
+        
+        console.log("=== ODL PAYLOAD ===", JSON.stringify(payload, null, 2));
+      const response = await fetch(`https://api.odeal.com/api/v1/basket`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-ODEAL-MERCHANT-KEY": merchantKey,
+          "X-ODEAL-SECRET-KEY": secretKey,
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Ödeal Sepet Hatası:", errorText);
+        return res.status(response.status).json({ error: "Ödeal başlatılamadı", details: errorText });
+      }
+      const rawText = await response.text();
+      let responseData = {};
+      if (rawText) {
+          try { responseData = JSON.parse(rawText); } catch(e){}
+      }
+      
+      const referral = db.referrals?.find((r) => r.id === referralId);
+      if (referral) {
+          referral.odealTransactionId = responseData.id || "PENDING";
+          referral.odealStatus = "BASKET_SENT";
+          writeData(db);
+      }
+      
+      res.json({ success: true, odealResponse: responseData });
+    } catch (err) {
+      console.error("Odeal API Error:", err);
+      res.status(500).json({ error: err.message });
+    }
   });
 
-  app.post("/api/whatsapp/logout", authMiddleware, async (req, res) => {
-      try {
-          if (sock) sock.logout();
-            waReady = false;
-            waQr = '';
-            connectToWhatsApp();
-          waReady = false;
-          waQr = '';
-          res.json({ success: true });
-      } catch (error) {
-          res.status(500).json({ error: 'Logout failed' });
+  app.post("/api/odeal/webhook", express.json(), async (req, res) => {
+    try {
+      const payload = req.body;
+      console.log("[Ödeal Webhook] Gelen Veri:", payload);
+      const referralId = payload.referenceCode;
+      
+      if (payload.status === 'SUCCESS' && referralId) {
+        const db = readData();
+        const referral = db.referrals?.find((r) => r.id === referralId);
+        if (referral) {
+            referral.paymentMethod = 'POS';
+            referral.status = 'COMPLETED';
+            referral.odealStatus = 'SUCCESS';
+            const existingTx = db.transactions?.find((t) => t.referralId === referral.id && t.description.includes('Ödeal'));
+            if (!existingTx) {
+                const transaction = {
+                    id: Math.random().toString(36).substr(2, 9),
+                    type: 'INCOME',
+                    amount: payload.amount || referral.totalPrice,
+                    description: `Ödeal POS Tahsilat: ${referral.employee.fullName}`,
+                    date: new Date().toISOString(),
+                    paymentMethod: 'POS',
+                    referralId: referral.id
+                };
+                if (!db.transactions) db.transactions = [];
+                db.transactions.push(transaction);
+                writeData(db);
+                console.log("[Ödeal Webhook] Kasa kaydı başarılı.");
+            }
+        }
       }
-  });
-
-  app.post("/api/whatsapp/send", authMiddleware, async (req, res) => {
-      const { phone, message } = req.body;
-      if (!waReady) {
-          return res.status(400).json({ error: 'WhatsApp is not connected' });
-      }
-      try {
-          const chatId = phone.includes('@s.whatsapp.net') ? phone : phone + '@s.whatsapp.net';
-            await sock.sendMessage(chatId, { text: message });
-          res.json({ success: true });
-      } catch (error) {
-          console.error("WA Send Error:", error);
-          res.status(500).json({ error: 'Failed to send message' });
-      }
+      res.status(200).send("OK");
+    } catch (err) {
+      console.error("Webhook hatası", err);
+      res.status(500).send("ERROR");
+    }
   });
 
   const fs = require('fs');

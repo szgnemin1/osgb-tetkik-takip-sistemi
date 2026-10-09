@@ -1,0 +1,117 @@
+﻿  // --- ODEAL ENTEGRASYONU ---
+  app.post("/api/odeal/basket", authMiddleware, async (req, res) => {
+    try {
+      const { amount, referralId, deviceKey, employeeName, employeeTc, city, town } = req.body;
+      if (!deviceKey) {
+        return res.status(400).json({ error: "Ödeal Cihaz Kodu eksik." });
+      }
+      
+      const db = readData();
+      const settings = db.appSettings || {};
+      const merchantKey = settings.odealMerchantKey;
+      const secretKey = settings.odealSecretKey;
+      
+      if (!merchantKey || !secretKey) {
+          return res.status(400).json({ error: "Ödeal API anahtarları tanımlı değil." });
+      }
+      
+      const publicUrl = settings.webhookUrl || `http://${req.headers.host}`;
+      
+      const payload = {
+        referenceCode: referralId,
+        externalDeviceKey: deviceKey,
+        basketType: "SIMPLE",
+        customer: {
+          type: "INDIVIDUAL",
+          name: employeeName?.split(" ")[0] || "Musteri",
+          surname: employeeName?.split(" ").slice(1).join(" ") || "Soyadi",
+          identityNumber: employeeTc || "11111111111",
+          city: city || "İstanbul",
+          town: town || "Şişli"
+        },
+        price: {
+          grossPrice: parseFloat(amount)
+        },
+        items: [
+          {
+            name: "Sevk Ucreti",
+            quantity: 1,
+            price: {
+                grossPrice: parseFloat(amount)
+            }
+          }
+        ]
+      };
+      
+      const response = await fetch(`https://api.odeal.com/api/v1/basket`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-ODEAL-MERCHANT-KEY": merchantKey,
+          "X-ODEAL-SECRET-KEY": secretKey,
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Ödeal Sepet Hatası:", errorText);
+        return res.status(response.status).json({ error: "Ödeal başlatılamadı", details: errorText });
+      }
+      const rawText = await response.text();
+      let responseData = {};
+      if (rawText) {
+          try { responseData = JSON.parse(rawText); } catch(e){}
+      }
+      
+      const referral = db.referrals?.find((r) => r.id === referralId);
+      if (referral) {
+          referral.odealTransactionId = responseData.id || "PENDING";
+          referral.odealStatus = "BASKET_SENT";
+          writeData(db);
+      }
+      
+      res.json({ success: true, odealResponse: responseData });
+    } catch (err) {
+      console.error("Odeal API Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/odeal/webhook", express.json(), async (req, res) => {
+    try {
+      const payload = req.body;
+      console.log("[Ödeal Webhook] Gelen Veri:", payload);
+      const referralId = payload.referenceCode;
+      
+      if (payload.status === 'SUCCESS' && referralId) {
+        const db = readData();
+        const referral = db.referrals?.find((r) => r.id === referralId);
+        if (referral) {
+            referral.paymentMethod = 'POS';
+            referral.status = 'COMPLETED';
+            referral.odealStatus = 'SUCCESS';
+            const existingTx = db.transactions?.find((t) => t.referralId === referral.id && t.description.includes('Ödeal'));
+            if (!existingTx) {
+                const transaction = {
+                    id: Math.random().toString(36).substr(2, 9),
+                    type: 'INCOME',
+                    amount: payload.amount || referral.totalPrice,
+                    description: `Ödeal POS Tahsilat: ${referral.employee.fullName}`,
+                    date: new Date().toISOString(),
+                    paymentMethod: 'POS',
+                    referralId: referral.id
+                };
+                if (!db.transactions) db.transactions = [];
+                db.transactions.push(transaction);
+                writeData(db);
+                console.log("[Ödeal Webhook] Kasa kaydı başarılı.");
+            }
+        }
+      }
+      res.status(200).send("OK");
+    } catch (err) {
+      console.error("Webhook hatası", err);
+      res.status(500).send("ERROR");
+    }
+  });

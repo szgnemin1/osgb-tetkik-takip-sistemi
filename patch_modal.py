@@ -1,93 +1,43 @@
-﻿import re
+﻿with open('components/NewReferralModal.tsx', 'r', encoding='utf-8') as f:
+    text = f.read()
 
-with open('components/AdminAuthModal.tsx', 'r', encoding='utf-8') as f:
-    code = f.read()
+import re
 
-# Replace states
-code = code.replace("const [step, setStep] = useState<'REQUEST' | 'VERIFY'>('REQUEST');", "const [step, setStep] = useState<'REQUEST' | 'VERIFY' | 'FALLBACK'>('REQUEST');\n  const [fallbackPassword, setFallbackPassword] = useState('');")
+# We will just replace the specific <input type="text" value={town} ... /> with a select
+# And <input type="text" value={city} ... /> with a select
 
-# Replace requestOTP logic
-old_request = r'''      if (!res.ok) throw new Error(data.error || 'Şifre gönderilemedi.');
-      setStep('VERIFY');'''
-new_request = r'''      if (!res.ok) throw new Error(data.error || 'Şifre gönderilemedi.');
-      if (data.fallback) {
-          setStep('FALLBACK');
-          setError('WhatsApp bağlı olmadığı için OTP gönderilemedi. Güvenlik için ana sistem şifrenizi girin.');
-      } else {
-          setStep('VERIFY');
-      }'''
-code = code.replace(old_request, new_request)
+old_town_input = r'<input type="text" value=\{town\} onChange=\{e => setTown\(e\.target\.value\)\} className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none transition-all placeholder:text-slate-600" placeholder="le" />'
 
-# Insert verifyFallback method
-verify_fallback = r'''  const verifyFallback = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    try {
-      const baseUrl = import.meta.env.BASE_URL || '/';
-      const res = await fetch(${baseUrl}api/admin/verify-fallback, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': Bearer 
-        },
-        body: JSON.stringify({ password: fallbackPassword })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Hatalı şifre.');
-      onSuccess();
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };'''
+new_town_input = """<select value={town} onChange={e => setTown(e.target.value)} className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none transition-all appearance-none">
+  <option value="Nilüfer">Nilüfer</option>
+  <option value="Osmangazi">Osmangazi</option>
+  <option value="Yıldırım">Yıldırım</option>
+  <option value="Büyükorhan">Büyükorhan</option>
+  <option value="Gemlik">Gemlik</option>
+  <option value="Gürsu">Gürsu</option>
+  <option value="Harmancık">Harmancık</option>
+  <option value="İnegöl">İnegöl</option>
+  <option value="İznik">İznik</option>
+  <option value="Karacabey">Karacabey</option>
+  <option value="Keles">Keles</option>
+  <option value="Kestel">Kestel</option>
+  <option value="Mudanya">Mudanya</option>
+  <option value="Mustafakemalpaşa">Mustafakemalpaşa</option>
+  <option value="Orhaneli">Orhaneli</option>
+  <option value="Orhangazi">Orhangazi</option>
+  <option value="Yenişehir">Yenişehir</option>
+</select>"""
 
-code = code.replace("  const verifyOTP", verify_fallback + "\n\n  const verifyOTP")
+# Because of encoding issues with  in the source file, I'll use a more robust regex
+text = re.sub(r'<input type="text" value=\{town\}.*?placeholder="[^"]+" />', new_town_input, text, flags=re.DOTALL)
 
-# Add Lock import
-code = code.replace("KeyRound, Loader2, Send }", "KeyRound, Loader2, Send, Lock }")
+new_city_input = """<select value={city} onChange={e => setCity(e.target.value)} className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none transition-all appearance-none">
+  <option value="Bursa">Bursa</option>
+</select>"""
 
-# Insert UI for Fallback
-old_ui = r'''        ) : (
-          <form onSubmit={verifyOTP} className="space-y-4">'''
-new_ui = r'''        ) : step === 'FALLBACK' ? (
-          <form onSubmit={verifyFallback} className="space-y-4">
-            <div>
-              <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Ana Sistem Şifresi</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
-                <input
-                  type="password"
-                  required
-                  autoFocus
-                  value={fallbackPassword}
-                  onChange={(e) => setFallbackPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-lg text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
-                  placeholder="Şifrenizi girin..."
-                />
-              </div>
-            </div>
-            <button
-              type="submit"
-              disabled={loading || !fallbackPassword}
-              className="w-full flex items-center justify-center py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold transition-all disabled:opacity-50"
-            >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Giriş Yap'}
-            </button>
-            <button
-              type="button"
-              onClick={onCancel}
-              disabled={loading}
-              className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-bold transition-all disabled:opacity-50"
-            >
-              Vazgeç
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={verifyOTP} className="space-y-4">'''
+text = re.sub(r'<input type="text" value=\{city\}.*?placeholder="[^"]+" />', new_city_input, text, flags=re.DOTALL)
 
-code = code.replace(old_ui, new_ui)
+with open('components/NewReferralModal.tsx', 'w', encoding='utf-8') as f:
+    f.write(text)
 
-with open('components/AdminAuthModal.tsx', 'w', encoding='utf-8') as f:
-    f.write(code)
+print("Patched NewReferralModal")

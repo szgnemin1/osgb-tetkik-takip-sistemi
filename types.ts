@@ -66,6 +66,9 @@ export interface Employee {
   id: string;
   fullName: string;
   tcNo: string;
+  city?: string;
+  town?: string;
+  address?: string;
   birthDate?: string; // New field added
   phone?: string; // Added for WhatsApp integration
   company: string;
@@ -89,6 +92,8 @@ export interface Referral {
   targetInstitutionId?: string; // Hangi kuruma sevk edildiği
   skipNotifications?: boolean; // Sadece kayıt yaparken bildirimleri atlamak için
   isExternalRecord?: boolean; // Disaridan gelen kayit
+  odealTransactionId?: string;
+  odealStatus?: string;
 }
 
 export interface Stats {
@@ -117,7 +122,11 @@ export interface AppSettings {
   defaultScannerId?: string; // Varsayılan tarayıcı cihaz ID'si
   isPasswordEnabled?: boolean;
   enableAdminOtp?: boolean; // Şifre koruması aktif mi
-  appPassword?: string; // Uygulama giriş şifresi
+  appPassword?: string;
+  odealEnabled?: boolean;
+  odealMerchantKey?: string;
+  odealSecretKey?: string;
+  odealDeviceKey?: string;
   webhookUrl?: string; // Webhook sync target URL
   backupApiKey?: string; // API key for external sync RSS feed
   telegramBotToken?: string;

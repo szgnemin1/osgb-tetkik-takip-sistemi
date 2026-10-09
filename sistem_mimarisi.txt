@@ -1,0 +1,40 @@
+﻿# OSGB Tetkik Takip Sistemi - Geliştirici Dokümantasyonu (Developer Guide)
+
+Bu doküman, projeyi devralacak olan veya geliştirme yapacak yeni yazılımcılar için hazırlanmıştır.
+
+## 1. Sistem Mimarisi ve Teknoloji Yığını
+- **Frontend (Kullanıcı Arayüzü):** React 19, TypeScript, Vite, Tailwind CSS. (SPA olarak çalışır)
+- **Backend (Sunucu):** Node.js (v14/v16 uyumlu - Windows Server 2012'de çalıştığı için `node-fetch` kullanılarak polyfill eklendi), Express.js.
+- **Veritabanı:** Yerel JSON tabanlı `lowdb` (Veriler root dizinindeki `data.json` dosyasında tutulur).
+- **Çalışma Ortamı:** Sistem, Windows Server 2012 üzerinde Localhost (3000 portu) olarak çalıştırılmaktadır.
+- **Whatsapp Entegrasyonu:** `@whiskeysockets/baileys` (MD - Multi-Device desteği) kullanılmıştır. WhatsApp oturum dosyaları kök dizindeki `auth_info_baileys` klasörüne kaydedilir. (Not: v24 Node.js uyumsuzluğu için `whatsapp-rust-bridge` paketinin `exports` kısımları `package.json` üzerinden özel olarak patchlenmiştir.)
+
+## 2. Klasör ve Dosya Yapısı
+- `server.ts`: Backend'in ana giriş dosyası. Express API route'larını, WhatsApp Baileys bağlantısını ve veri kaydetme (`data.json`) işlemlerini içerir. Aynı zamanda `isProduction` flag'i ile Vite'ın derlediği `dist` klasöründeki statik dosyaları sunar.
+- `src/` & `components/`: React component'lerinin bulunduğu yer.
+  - `App.tsx`: Ana React Router yönlendirmeleri.
+  - `NewReferralModal.tsx`: Yeni tetkik / sevk oluşturma modalı. (POS ve WhatsApp entegrasyonu buradan tetiklenir).
+  - `SettingsView.tsx`: Ayarlar paneli (Genel, Telegram, WhatsApp, Kurumlar, Ödeal vb. sekmeleri).
+  - `FinanceView.tsx`: Kasa ve finans geçmişinin görüntülendiği tablo paneli.
+- `data.json`: Veritabanı dosyası (Hastalar, kurumlar, geçmiş tahsilatlar ve ayarlar JSON objesi olarak burada tutulur).
+- `dist/`: Vite tarafından derlenmiş production-ready (canlı) React dosyalarının (HTML, JS, CSS) bulunduğu dizin.
+- `start-server.bat`: Windows Server'da sunucuyu tek tıklamayla `tsx server.ts` komutuyla ayağa kaldırmak için kullanılan başlatma betiği.
+
+## 3. Ödeal POS Entegrasyonu (Kritik)
+- Ödeal API bağlantıları direkt `server.ts` üzerinden `fetch` ile yapılır.
+- **Şehir/İlçe Bug'ı:** Ödeal uygulamasında (cihaz tarafında) yaşanan şehir seçimi hatasını by-pass etmek için sisteme hasta bilgisi ne girilirse girilsin, Ödeal'e sepet gönderilirken (POST `/api/odeal/basket`) zorunlu olarak Ad: "Nihai", Soyad: "Tüketici", TCKN: "11111111111" olarak gönderilmektedir. Bu sayede cihaz tarafındaki şehir hatası tamamen atlatılmıştır.
+- **Profil Yönetimi (D2D / Standalone):** `SettingsView.tsx` içindeki "Ödeal POS" sekmesinden cihazın profili güncellenebilmektedir. Bu butonlar `/api/odeal/profile/update` backend route'unu çağırarak cihazı `EXTERNAL_DEVICE_TO_DEVICE` veya `INTERNAL_BASKET` moduna geçirir. API'nin boş (empty body) 200 response dönmesi durumu handle edilmiştir (JSON.parse çökmesi engellenmiştir).
+
+## 4. Telegram & WhatsApp Logları
+- **WhatsApp:** Z Raporu (Gün sonu özeti) WhatsApp üzerinden gönderilir. Barkod ve yetkilendirme işlemleri `SettingsView` altındaki WhatsApp sekmesinden QR okutularak yapılır. QR kodu `server.ts` içerisinde Base64 formatına çevrilip frontend'e iletilir.
+- **Telegram:** Hata veya işlem logları (isteğe bağlı) Telegram botu üzerinden `/api/settings`'te belirtilen Chat ID'ye atılır.
+
+## 5. Development (Geliştirme) Komutları
+- `npm run dev`: Hem backend'i hem de Vite Hot-Reload dev sunucusunu aynı anda başlatır. (Geliştirme yaparken kullanılır).
+- `npm run build`: Frontend React dosyalarını `/dist` klasörüne statik assetler olarak derler.
+- `npm start`: `tsx server.ts` komutunu çalıştırarak Production ortamında sistemi ayağa kaldırır (Derlenmiş `dist` klasörünü kullanarak sunar).
+
+## 6. Önemli Uyarılar
+- Eğer Node.js sürümü güncellenirse (özellikle v18 ve üzerine), `node-fetch@2` bağımlılığı kaldırılıp native `fetch` API'sine geçilebilir. Ancak şu an Windows Server 2012 desteği için global polyfill (`global.fetch = require('node-fetch');`) eklenmiştir.
+- Yeni bir ayar eklenirken `types.ts` içerisindeki `AppSettings` interface'ine ilgili değişkenin eklenmesi zorunludur.
+

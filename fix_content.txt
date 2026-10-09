@@ -1,0 +1,43 @@
+﻿    if ((referral.paymentMethod === 'CASH' || referral.paymentMethod === 'POS') && referral.totalPrice && referral.totalPrice > 0) {
+        if (referral.paymentMethod === 'POS' && appSettings.odealMerchantKey) {
+            try {
+                const token = localStorage.getItem('token');
+                const res = await fetch('/api/odeal/basket', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        amount: referral.totalPrice,
+                        referralId: referral.id,
+                        deviceKey: appSettings.odealDeviceKey || 'POS-01',
+                        employeeName: referral.employee.fullName,
+                        employeeTc: referral.employee.tcNo,
+                        city: referral.employee.city || 'İstanbul',
+                        town: referral.employee.town || 'Şişli'
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('Ödeal POS cihazı uyandırıldı! Lütfen cihaz üzerinden ödemeyi tamamlayın.');
+                } else {
+                    alert('Ödeal Başlatılamadı: ' + (data.error || 'Bilinmeyen hata'));
+                }
+            } catch (err) {
+                alert('Ödeal sunucusuna bağlanılamadı.');
+            }
+        } else {
+            const typeLabel = referral.paymentMethod === 'CASH' ? 'Nakit' : 'Pos';
+            const newTransaction: SafeTransaction = {
+                id: Math.random().toString(36).substr(2, 9),
+                type: 'INCOME',
+                amount: referral.totalPrice,
+                description: `Sevk Geliri (${typeLabel}): ${referral.employee.fullName} (${referral.employee.company})`,
+                date: referral.referralDate,
+                paymentMethod: referral.paymentMethod,
+                referralId: referral.id
+            };
+            await saveTransactionToDb(newTransaction);
+        }
+    }

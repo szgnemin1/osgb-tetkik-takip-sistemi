@@ -27,6 +27,10 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ onSuccess, onCan
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Sifre gonderilemedi.');
+      if (data.fallback) {
+          setStep('FALLBACK');
+          return;
+      }
       setStep('VERIFY');
     } catch (err: any) {
       setError(err.message);

@@ -1,13 +1,11 @@
-﻿import re
+﻿with open('App.tsx', 'r', encoding='utf-8') as f:
+    text = f.read()
 
-with open('components/AdminAuthModal.tsx', 'r', encoding='utf-8') as f:
-    code = f.read()
+old = "                const res = await fetch('/api/odeal/basket', {\n                    method: 'POST',\n                    headers: { 'Content-Type': 'application/json' },"
+new = "                const res = await fetch('/api/odeal/basket', {\n                    method: 'POST',\n                    headers: {\n                        'Content-Type': 'application/json',\n                        'Authorization': Bearer \n                    },"
 
-code = code.replace("fetch(pi/admin/request-otp, {", "fetch(${baseUrl}api/admin/request-otp, {")
-code = code.replace("fetch(pi/admin/verify-otp, {", "fetch(${baseUrl}api/admin/verify-otp, {")
+text = text.replace(old, new)
 
-# Also fix authorization headers missing backticks!
-code = code.replace("'Authorization': Bearer ", "'Authorization': Bearer ")
-
-with open('components/AdminAuthModal.tsx', 'w', encoding='utf-8') as f:
-    f.write(code)
+with open('App.tsx', 'w', encoding='utf-8') as f:
+    f.write(text)
+print('Patched fetch auth')
