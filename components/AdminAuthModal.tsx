@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Shield, KeyRound, Loader2, Send, Lock } from 'lucide-react';
 
 interface AdminAuthModalProps {
@@ -25,8 +25,8 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ onSuccess, onCan
           'Authorization': 'Bearer ' + apiToken
         }
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Sifre gonderilemedi.');
+      const data = await res.json().catch(() => ({ error: 'Sunucu yanıtı okunamadı.' }));
+      if (!res.ok) throw new Error(data.error || 'Şifre gönderilemedi.');
       if (data.fallback) {
           setStep('FALLBACK');
           return;
@@ -53,7 +53,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ onSuccess, onCan
         },
         body: JSON.stringify({ password: fallbackPassword })
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({ error: 'Sunucu yanıtı okunamadı.' }));
       if (!res.ok) throw new Error(data.error || 'Hatalı şifre.');
       onSuccess();
     } catch (err: any) {
@@ -77,8 +77,8 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({ onSuccess, onCan
         },
         body: JSON.stringify({ otp })
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Hatali sifre.');
+      const data = await res.json().catch(() => ({ error: 'Sunucu yanıtı okunamadı.' }));
+      if (!res.ok) throw new Error(data.error || 'Hatalı şifre.');
       onSuccess();
     } catch (err: any) {
       setError(err.message);

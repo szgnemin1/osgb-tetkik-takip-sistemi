@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Project: OSGB Tetkik Takip Sistemi
  * Copyright (C) 2026 szgn_emin
  * 
@@ -20,7 +20,9 @@ import {
   Menu,
   X,
   Loader2,
-  LogOut
+  LogOut,
+  Building2,
+  ExternalLink
 } from 'lucide-react';
 import { ReferralList } from './components/ReferralList';
 import { StatsCards } from './components/StatsCards';
@@ -56,7 +58,20 @@ const PageLoader = () => (
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'referrals' | 'finance' | 'settings' | 'create_referral'>('dashboard');
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [isSidebarVisible, setIsSidebarVisible] = useState(false);
+  
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key.toLowerCase() === 'r') {
+        e.preventDefault();
+        setIsSidebarVisible(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+  
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     // Admin Verified State
     const [isAdminVerified, setIsAdminVerified] = useState<boolean>(() => {
@@ -121,6 +136,7 @@ const App: React.FC = () => {
 
   const filteredReferrals = useMemo(() => {
     return referrals
+      .filter(r => !r.isExternalRecord)
       .filter(r => 
         turkishIncludes(r?.employee?.fullName, searchTerm) ||
         turkishIncludes(r?.employee?.company, searchTerm) ||
@@ -131,14 +147,20 @@ const App: React.FC = () => {
 
   const stats = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
-    const totalIncome = transactions
-      .filter(t => t.type === 'INCOME')
+    const realReferrals = referrals.filter(r => !r.isExternalRecord);
+    const totalCash = transactions
+      .filter(t => t.type === 'INCOME' && (t.paymentMethod === 'CASH' || !t.paymentMethod))
+      .reduce((acc, curr) => acc + curr.amount, 0);
+      
+    const totalPos = transactions
+      .filter(t => t.type === 'INCOME' && t.paymentMethod === 'POS')
       .reduce((acc, curr) => acc + curr.amount, 0);
 
     return {
-      total: referrals.length,
-      today: referrals.filter(r => r.referralDate.startsWith(todayStr)).length,
-      totalIncome: totalIncome
+      total: realReferrals.length,
+      today: realReferrals.filter(r => r.referralDate.startsWith(todayStr)).length,
+      totalCash,
+      totalPos
     };
   }, [referrals, transactions]);
 
@@ -171,17 +193,34 @@ const App: React.FC = () => {
 
     if (referral.targetInstitutionId) {
       const inst = institutions.find(i => i.id === referral.targetInstitutionId);
-      if (inst && inst.sendWhatsapp && referral.employee.phone && !referral.skipNotifications) {
+      
+      let shouldSendWhatsapp = true;
+      if (editingReferral) {
+         if (editingReferral.employee.phone === referral.employee.phone && 
+             editingReferral.targetInstitutionId === referral.targetInstitutionId) {
+             shouldSendWhatsapp = false;
+         }
+      }
+      
+      if (inst && inst.sendWhatsapp && referral.employee.phone && !referral.skipNotifications && shouldSendWhatsapp) {
          let msg = inst.whatsappTemplate || 'Sayın {hasta_adi}, {kurum_adi} kurumuna sevkiniz oluşturulmuştur. Konum: {konum_linki}';
          
-         const birthDateStr = referral.employee.birthDate || '';
+         const birthDateStr = (referral.employee.birthDate || '').trim();
          let dogumTarihi = '';
          let dogumTarihiBitisik = '';
          if (birthDateStr) {
-            const parts = birthDateStr.split('-');
-            if (parts.length === 3) {
-              dogumTarihi = `${parts[2]}.${parts[1]}.${parts[0]}`;
-              dogumTarihiBitisik = `${parts[2]}${parts[1]}${parts[0]}`;
+            if (birthDateStr.includes('-')) {
+              const parts = birthDateStr.split('-');
+              if (parts.length === 3) {
+                dogumTarihi = `${parts[2]}.${parts[1]}.${parts[0]}`;
+                dogumTarihiBitisik = `${parts[2]}${parts[1]}${parts[0]}`;
+              }
+            } else if (birthDateStr.includes('.')) {
+              const parts = birthDateStr.split('.');
+              if (parts.length === 3) {
+                dogumTarihi = birthDateStr;
+                dogumTarihiBitisik = parts.join('');
+              }
             }
          }
          
@@ -199,21 +238,19 @@ const App: React.FC = () => {
              phoneFormatted = '90' + phoneFormatted;
          }
 
-         const encodedMsg = encodeURIComponent(msg);
-         
-         fetch('/api/whatsapp/send', {
+         const baseUrl = import.meta.env.BASE_URL || '/';
+         const token = sessionStorage.getItem('api_token') || '';
+         fetch(`${baseUrl}api/whatsapp/send`, {
              method: 'POST',
              headers: {
                  'Content-Type': 'application/json',
-                 'Authorization': `Bearer ${sessionStorage.getItem('api_token')}`
+                 'Authorization': `Bearer ${token}`
              },
              body: JSON.stringify({ phone: phoneFormatted, message: msg })
          }).catch(err => console.error('WhatsApp send error', err));
-
       }
     }
 
-    
     if (editingReferral) {
         // Find existing transaction and update/replace it if payment is involved
         const txToDelete = transactions.filter(t => t.referralId === referral.id);
@@ -222,11 +259,31 @@ const App: React.FC = () => {
         }
     } 
 
-﻿    if ((referral.paymentMethod === 'CASH' || referral.paymentMethod === 'POS') && referral.totalPrice && referral.totalPrice > 0) {
-        if (referral.paymentMethod === 'POS' && appSettings.odealMerchantKey) {
+    if ((referral.paymentMethod === 'CASH' || referral.paymentMethod === 'POS') && referral.totalPrice && referral.totalPrice > 0) {
+        const typeLabel = referral.paymentMethod === 'CASH' ? 'Nakit' : 'Pos';
+        const newTransaction: SafeTransaction = {
+            id: Math.random().toString(36).substr(2, 9),
+            type: 'INCOME',
+            amount: referral.totalPrice,
+            description: `Sevk Geliri (${typeLabel}): ${referral.employee.fullName} (${referral.employee.company})`,
+            date: referral.referralDate,
+            paymentMethod: referral.paymentMethod,
+            referralId: referral.id
+        };
+        await saveTransactionToDb(newTransaction);
+
+        const shouldTriggerOdealPos =
+            referral.paymentMethod === 'POS' &&
+            appSettings.odealEnabled !== false &&
+            Boolean(appSettings.odealMerchantKey) &&
+            !referral.skipNotifications &&
+            (!editingReferral || editingReferral.paymentMethod !== 'POS' || editingReferral.totalPrice !== referral.totalPrice);
+
+        if (shouldTriggerOdealPos) {
             try {
-                const token = sessionStorage.getItem('api_token');
-                const res = await fetch('/api/odeal/basket', {
+                const baseUrl = import.meta.env.BASE_URL || '/';
+                const token = sessionStorage.getItem('api_token') || '';
+                const res = await fetch(`${baseUrl}api/odeal/basket`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -252,18 +309,6 @@ const App: React.FC = () => {
             } catch (err) {
                 alert('Ödeal sunucusuna bağlanılamadı.');
             }
-        } else {
-            const typeLabel = referral.paymentMethod === 'CASH' ? 'Nakit' : 'Pos';
-            const newTransaction: SafeTransaction = {
-                id: Math.random().toString(36).substr(2, 9),
-                type: 'INCOME',
-                amount: referral.totalPrice,
-                description: `Sevk Geliri (${typeLabel}): ${referral.employee.fullName} (${referral.employee.company})`,
-                date: referral.referralDate,
-                paymentMethod: referral.paymentMethod,
-                referralId: referral.id
-            };
-            await saveTransactionToDb(newTransaction);
         }
     }
 
@@ -426,7 +471,7 @@ const App: React.FC = () => {
         />
       )}
 
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800 text-white flex flex-col shadow-xl transition-transform duration-300 md:relative md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} print:hidden`}>
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800 text-white flex flex-col shadow-xl transition-transform duration-300 print:hidden ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} ${isSidebarVisible ? 'md:relative md:translate-x-0 md:flex' : 'md:hidden'}`}>
         <div className="p-6 flex items-center justify-between border-b border-slate-800">
           <div 
             className="flex items-center space-x-3 cursor-pointer select-none"
@@ -491,6 +536,22 @@ const App: React.FC = () => {
             <Settings className="w-5 h-5" />
             <span className="font-medium">Ayarlar</span>
           </button>
+
+          <div className="pt-2 mt-2 border-t border-slate-800/80 space-y-1">
+            <a 
+              href="/sonuc" 
+              target="_blank" 
+              rel="noreferrer"
+              className="w-full flex items-center justify-between px-4 py-2.5 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-blue-400 transition-all text-xs"
+              title="Sonuç Portalını yeni sekmede aç (OSGB ve Firma Girişi)"
+            >
+              <div className="flex items-center space-x-2.5">
+                <Activity className="w-4 h-4 text-blue-500" />
+                <span className="font-medium">Sonuç Portalı</span>
+              </div>
+              <ExternalLink className="w-3 h-3 opacity-50" />
+            </a>
+          </div>
         </nav>
         
         <div className="p-4 border-t border-slate-800">
@@ -550,35 +611,32 @@ const App: React.FC = () => {
         <div className={`flex-1 ${activeTab === 'create_referral' ? 'overflow-hidden p-0' : 'overflow-auto p-4 md:p-8 custom-scrollbar'} print:p-0 print:overflow-visible`}>
           <Suspense fallback={<PageLoader />}>
             {activeTab === 'dashboard' && (
-              <div className="space-y-6">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3 md:gap-0">
-                  <h3 className="text-lg font-bold text-white hidden md:block">Günlük Özet</h3>
-                  <button 
-                    onClick={() => setIsReportModalOpen(true)}
-                    className="w-full md:w-auto flex items-center justify-center space-x-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-lg"
-                  >
-                    <FileText className="w-4 h-4" />
-                    <span>Gün Sonu Raporu Al (Z Raporu)</span>
-                  </button>
-                </div>
-
-                <StatsCards stats={stats} />
+              <div className="flex flex-col items-center justify-center h-full space-y-8 animate-fade-in pb-20">
+                {appSettings.companyLogo ? (
+                   <img 
+                     src={appSettings.companyLogo} 
+                     alt="Logo" 
+                     className="w-64 h-64 object-contain opacity-90 drop-shadow-2xl rounded-2xl bg-white/5 p-4 cursor-pointer hover:scale-105 transition-transform" 
+                     onClick={() => {
+                       setLogoClickCount(prev => {
+                         const next = prev + 1;
+                         if (next >= 5) { setIsBulkModalOpen(true); return 0; }
+                         return next;
+                       });
+                     }}
+                   />
+                ) : (
+                   <div className="p-12 bg-blue-600/10 rounded-3xl border border-blue-500/20 shadow-2xl cursor-pointer" onClick={() => {
+                       setLogoClickCount(prev => {
+                         const next = prev + 1;
+                         if (next >= 5) { setIsBulkModalOpen(true); return 0; }
+                         return next;
+                       });
+                     }}>
+                      <Stethoscope className="w-32 h-32 text-blue-500 opacity-80" />
+                   </div>
+                )}
                 
-                <div className="mt-8">
-                  <h3 className="text-lg font-bold text-white mb-4 flex items-center">
-                    <Activity className="w-5 h-5 mr-2 text-blue-500" />
-                    Son Hareketler
-                  </h3>
-                  <ReferralList 
-                    referrals={filteredReferrals.slice(0, 5)} 
-                    institutions={institutions}
-                    onUpdateStatus={handleUpdateStatus} 
-                    onDelete={handleDelete}
-                    onEdit={handleEditReferral}
-                    onPrint={handlePrintReferral}
-                    compact
-                  />
-                </div>
               </div>
             )}
 
@@ -604,6 +662,7 @@ const App: React.FC = () => {
                 institutions={institutions}
                 settings={appSettings}
                 initialData={editingReferral}
+                existingReferrals={referrals}
               />
             )}
 
@@ -657,6 +716,7 @@ const App: React.FC = () => {
           settings={appSettings}
           institutions={institutions}
           companies={companies}
+          exams={exams}
         />
       )}
 

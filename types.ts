@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Project: OSGB Tetkik Takip Sistemi
  * Copyright (C) 2026 szgn_emin
  * 
@@ -11,6 +11,7 @@ export enum Status {
   PENDING = 'PENDING',       // Bekliyor (Henüz gitmedi)
   AT_HOSPITAL = 'AT_HOSPITAL', // Hastanede / Tetkikte
   AWAITING_RESULT = 'AWAITING_RESULT', // Sonuç Bekleniyor
+  PARTIAL = 'PARTIAL',       // Kısmi Sonuç (Bazı tetkikler çıktı)
   COMPLETED = 'COMPLETED',   // Tamamlandı
   CANCELLED = 'CANCELLED'    // İptal
 }
@@ -43,6 +44,10 @@ export interface MedicalInstitution {
   locationUrl?: string; // QR code için konum linki
   sendWhatsapp?: boolean; // WhatsApp mesajı gönderilecek mi
   whatsappTemplate?: string; // Gönderilecek mesaj taslağı
+  portalType?: 'VETA' | 'INFOMED' | 'NONE';
+  portalUrl?: string;
+  portalUsername?: string;
+  portalPassword?: string;
 }
 
 export enum HazardClass {
@@ -60,6 +65,7 @@ export interface Company {
   defaultExams: string[];     // Changed from ExamType[] to string[] to support dynamic exams
   defaultPaymentMethod: 'CASH' | 'POS' | 'INVOICE'; // Firmanın varsayılan ödeme yöntemi (POS eklendi)
   forcedInstitutionId?: string; // Eğer varsa, bu firma sadece bu kuruma sevk edilebilir
+  portalPassword?: string;      // Firma portalı giriş şifresi
 }
 
 export interface Employee {
@@ -94,6 +100,10 @@ export interface Referral {
   isExternalRecord?: boolean; // Disaridan gelen kayit
   odealTransactionId?: string;
   odealStatus?: string;
+  resultPdfPath?: string;
+  lastCheckedAt?: string;
+  completedExams?: string[];
+  pendingExams?: string[];
 }
 
 export interface Stats {
@@ -123,6 +133,7 @@ export interface AppSettings {
   isPasswordEnabled?: boolean;
   enableAdminOtp?: boolean; // Şifre koruması aktif mi
   appPassword?: string;
+  sonucPortalPassword?: string;
   odealEnabled?: boolean;
   odealMerchantKey?: string;
   odealSecretKey?: string;

@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Project: OSGB Tetkik Takip Sistemi
  * Copyright (C) 2026 szgn_emin
  * 
@@ -115,7 +115,17 @@ export const ReferralList: React.FC<ReferralListProps> = ({
                     </div>
                     <div className="flex flex-col">
                       <span className="font-bold text-slate-200 text-sm">{referral.employee.fullName}</span>
-                      <span className="text-[11px] text-slate-500 font-mono tracking-wide">{referral.employee.tcNo}</span>
+                      <div className="flex items-center space-x-1.5 mt-0.5">
+                        <span className="text-[11px] text-slate-500 font-mono tracking-wide">{referral.employee.tcNo}</span>
+                        {referral.isExternalRecord && (
+                          <span 
+                            className="text-[9px] px-1.5 py-0.2 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                            title="Bu hasta için sistemde sevk kaydı oluşturulmamıştı. Kurum portalından doğrudan çekilerek indirildi."
+                          >
+                            ⚠️ Sevk Kaydı Yok
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </td>
@@ -149,17 +159,15 @@ export const ReferralList: React.FC<ReferralListProps> = ({
                 {/* Tetkikler (Full View Only) */}
                 {!compact && (
                     <td className="px-4 py-2.5">
-                        <div className="flex flex-wrap gap-1 max-w-[200px]">
-                            {referral.exams.slice(0, 3).map((exam, i) => (
-                            <span key={i} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-900 text-slate-400 border border-slate-700">
-                                {exam}
-                            </span>
+                        <div className="flex flex-wrap gap-1 max-w-[240px]">
+                            {referral.exams.map((exam, i) => (
+                                <span 
+                                    key={i} 
+                                    className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-slate-700/60 text-slate-300 border border-slate-600/50"
+                                >
+                                    {exam}
+                                </span>
                             ))}
-                            {referral.exams.length > 3 && (
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-800 text-slate-500">
-                                +{referral.exams.length - 3}
-                            </span>
-                            )}
                         </div>
                     </td>
                 )}
@@ -198,6 +206,17 @@ export const ReferralList: React.FC<ReferralListProps> = ({
                 {/* Actions */}
                 <td className="px-4 py-2.5 text-right">
                    <div className="flex items-center justify-end space-x-1">
+                      {referral.resultPdfPath && (
+                         <a 
+                            href={referral.resultPdfPath}
+                            target="_blank" 
+                            rel="noreferrer"
+                            className="text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 p-1.5 rounded-lg transition-all"
+                            title={referral.status === 'PARTIAL' ? 'Kısmi PDF Raporunu Aç' : 'Tamamlanan PDF Raporunu Aç'}
+                         >
+                            <FileText className="w-4 h-4 text-emerald-400" />
+                         </a>
+                      )}
                       {onPrint && (
                          <button 
                             onClick={() => onPrint(referral)}

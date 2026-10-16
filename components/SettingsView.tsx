@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Project: OSGB Tetkik Takip Sistemi
  * Copyright (C) 2026 szgn_emin
  * 
@@ -9,7 +9,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Company, ExamDefinition, HazardClass, MedicalInstitution, AppSettings, turkishIncludes } from '../types';
-import { Trash2, Plus, Building2, Save, Check, Receipt, Upload, FileDown, MapPin, Sliders, CheckSquare, Square, Image as ImageIcon, Edit2, XCircle, Database, Download, RefreshCw, AlertTriangle, CreditCard, Banknote, Search, Cloud, Globe, Lock, ShieldCheck, Activity, Link, Eye, Copy, Send, Bell, FileSpreadsheet, Clock, MessageSquare, Smartphone } from 'lucide-react';
+import { Trash2, Plus, Building2, Save, Check, Receipt, Upload, FileDown, MapPin, Sliders, CheckSquare, Square, Image as ImageIcon, Edit2, XCircle, Database, Download, RefreshCw, AlertTriangle, CreditCard, Banknote, Search, Cloud, Globe, Lock, ShieldCheck, Activity, Link, Eye, Copy, Send, Bell, FileSpreadsheet, Clock, MessageSquare, Smartphone, Key, ExternalLink } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 interface SettingsViewProps {
@@ -46,7 +46,53 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   settings,
   onUpdateSettings
 }) => {
-  const [activeTab, setActiveTab] = useState<'general' | 'companies' | 'exams' | 'institutions' | 'backup' | 'update' | 'odeal'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'companies' | 'company_passwords' | 'whatsapp' | 'exams' | 'institutions' | 'backup' | 'update' | 'odeal'>('general');
+
+  // Quick Company Password Management State
+  const [pwdSearchQuery, setPwdSearchQuery] = useState('');
+  const [pwdFilter, setPwdFilter] = useState<'all' | 'has_pwd' | 'no_pwd'>('all');
+  const [draftPasswords, setDraftPasswords] = useState<Record<string, string>>({});
+  const [savedCompanyId, setSavedCompanyId] = useState<string | null>(null);
+  const [copiedCompanyId, setCopiedCompanyId] = useState<string | null>(null);
+
+  const generateSmartPassword = (companyName: string) => {
+    const trMap: Record<string, string> = { 'ç': 'c', 'ğ': 'g', 'ı': 'i', 'ö': 'o', 'ş': 's', 'ü': 'u', 'Ç': 'C', 'Ğ': 'G', 'İ': 'I', 'Ö': 'O', 'Ş': 'S', 'Ü': 'U' };
+    const clean = (companyName || '')
+      .split('')
+      .map(ch => trMap[ch] || ch)
+      .join('')
+      .replace(/[^a-zA-Z]/g, '')
+      .toUpperCase();
+    const prefix = clean.slice(0, 3) || 'FRM';
+    const digits = Math.floor(1000 + Math.random() * 9000);
+    return `${prefix}${digits}`;
+  };
+
+  const handleQuickSavePassword = (company: Company, newPwd: string) => {
+    const trimmed = newPwd.trim();
+    onUpdateCompany({ ...company, portalPassword: trimmed || undefined });
+    setDraftPasswords(prev => {
+      const next = { ...prev };
+      delete next[company.id];
+      return next;
+    });
+    setSavedCompanyId(company.id);
+    setTimeout(() => {
+      setSavedCompanyId(prev => (prev === company.id ? null : prev));
+    }, 2000);
+  };
+
+  const handleCopyCompanyLoginInfo = (company: Company, pwd?: string) => {
+    const actualPwd = pwd ?? company.portalPassword;
+    if (!actualPwd) return;
+    const portalUrl = `${window.location.origin}/sonuc`;
+    const text = `🏢 *${company.name}* - Tetkik Sonuç Portalı\n🔗 Giriş Adresi: ${portalUrl}\n🔑 Giriş Şifreniz: ${actualPwd}\n\n(Şifreniz ile giriş yaptıktan sonra TC Kimlik No ile personel sonuçlarını görüntüleyebilir ve indirebilirsiniz.)`;
+    navigator.clipboard.writeText(text);
+    setCopiedCompanyId(company.id);
+    setTimeout(() => {
+      setCopiedCompanyId(prev => (prev === company.id ? null : prev));
+    }, 2000);
+  };
 
   // Software update state
   const [updateStatus, setUpdateStatus] = useState<'idle' | 'updating' | 'success' | 'error'>('idle');
@@ -60,6 +106,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [autoPrint, setAutoPrint] = useState(settings.autoPrintReferral);
   const [printPageSize, setPrintPageSize] = useState<'A4' | 'A5' | 'A6'>(settings.printPageSize || 'A4');
   const [isPasswordEnabled, setIsPasswordEnabled] = useState(settings.isPasswordEnabled || false);
+  const [sonucPortalPassword, setSonucPortalPassword] = useState(settings.sonucPortalPassword || '');
     const [enableAdminOtp, setEnableAdminOtp] = useState(settings.enableAdminOtp || false);
   const [appPassword, setAppPassword] = useState(settings.appPassword || '');
   const [odealDeviceKey, setOdealDeviceKey] = useState(settings.odealDeviceKey || '');
@@ -95,6 +142,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [cPaymentMethod, setCPaymentMethod] = useState<'CASH' | 'POS' | 'INVOICE'>('INVOICE');
   const [cSelectedExams, setCSelectedExams] = useState<string[]>([]);
   const [cPreferredInst, setCPreferredInst] = useState<string>(''); // For forced institution
+  const [cPortalPassword, setCPortalPassword] = useState<string>(''); // Firma Portalı Şifresi
   
   // Company Selection State (Bulk Delete)
   const [selectedCompanyIds, setSelectedCompanyIds] = useState<string[]>([]);
@@ -117,6 +165,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [iPhone, setIPhone] = useState('');
   const [iAddress, setIAddress] = useState('');
   const [iLocationUrl, setILocationUrl] = useState('');
+  const [iPortalType, setIPortalType] = useState<'VETA' | 'INFOMED' | 'NONE'>('NONE');
+  const [iPortalUrl, setIPortalUrl] = useState('');
+  const [iPortalUsername, setIPortalUsername] = useState('');
+  const [iPortalPassword, setIPortalPassword] = useState('');
+
   const [iSendWhatsapp, setISendWhatsapp] = useState(false);
   const [iWhatsappTemplate, setIWhatsappTemplate] = useState('Sayın {hasta_adi}, {kurum_adi} kurumuna sevkiniz oluşturulmuştur. Konum: {konum_linki}');
 
@@ -246,7 +299,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${getApiToken()}`
         },
-        body: JSON.stringify({ period })
+        body: JSON.stringify({
+          period,
+          token: telegramBotToken,
+          chatId: telegramChatId,
+          customStartDay: telegramCustomReportStartDay,
+          customEndDay: telegramCustomReportEndDay
+        })
       });
       const data = await res.json();
       if (res.ok) {
@@ -453,6 +512,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         autoPrintReferral: autoPrint,
         printPageSize: printPageSize,
         isPasswordEnabled: isPasswordEnabled,
+          sonucPortalPassword: sonucPortalPassword,
           enableAdminOtp: enableAdminOtp,
         appPassword: appPassword,
         odealDeviceKey: odealDeviceKey
@@ -510,6 +570,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setCPaymentMethod(company.defaultPaymentMethod);
     setCSelectedExams(company.defaultExams);
     setCPreferredInst(company.forcedInstitutionId || '');
+    setCPortalPassword(company.portalPassword || '');
     // Scroll to form (simple implementation)
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -522,6 +583,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setCPaymentMethod('INVOICE');
     setCSelectedExams([]);
     setCPreferredInst('');
+    setCPortalPassword('');
   };
 
   const handleCompanySubmit = (e: React.FormEvent) => {
@@ -538,7 +600,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         assignedSpecialist: cSpecialist || 'Belirlenmedi',
         defaultExams: cSelectedExams,
         defaultPaymentMethod: cPaymentMethod,
-        forcedInstitutionId: cPreferredInst || undefined
+        forcedInstitutionId: cPreferredInst || undefined,
+        portalPassword: cPortalPassword.trim() || undefined
       };
       onUpdateCompany(updatedCompany);
       handleCancelEdit(); // Reset form
@@ -554,7 +617,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         assignedSpecialist: cSpecialist || 'Belirlenmedi',
         defaultExams: cSelectedExams,
         defaultPaymentMethod: cPaymentMethod,
-        forcedInstitutionId: cPreferredInst || undefined
+        forcedInstitutionId: cPreferredInst || undefined,
+        portalPassword: cPortalPassword.trim() || undefined
       };
       onAddCompany(newCompany);
       handleCancelEdit(); // Reset form using same helper
@@ -567,6 +631,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setIPhone('');
     setIAddress('');
     setILocationUrl('');
+      setIPortalType('NONE');
+      setIPortalUrl('');
+      setIPortalUsername('');
+      setIPortalPassword('');
+
     setISendWhatsapp(false);
     setIWhatsappTemplate('Sayın {hasta_adi}, {kurum_adi} kurumuna sevkiniz oluşturulmuştur. Konum: {konum_linki}');
   };
@@ -577,12 +646,37 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setIPhone(inst.phone || '');
     setIAddress(inst.address || '');
     setILocationUrl(inst.locationUrl || '');
+      setIPortalType(inst.portalType || 'NONE');
+      setIPortalUrl(inst.portalUrl || '');
+      setIPortalUsername(inst.portalUsername || '');
+      setIPortalPassword(inst.portalPassword || '');
+
     setISendWhatsapp(inst.sendWhatsapp || false);
     setIWhatsappTemplate(inst.whatsappTemplate || 'Sayın {hasta_adi}, {kurum_adi} kurumuna sevkiniz oluşturulmuştur. Konum: {konum_linki}');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleInstitutionSubmit = (e: React.FormEvent) => {
+  
+    const handleTestScrape = async (instId: string) => {
+        if (!confirm('Bu işlem kurumdan son tetkikleri test amaçlı çekecektir. Onaylıyor musunuz?')) return;
+        try {
+            const { getApiToken } = await import('../services/useServerData');
+            const res = await fetch(`/api/public/test-scrape/${instId}`, {
+                headers: {
+                    'Authorization': `Bearer ${getApiToken()}`
+                }
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert(data.message);
+            } else {
+                alert('Hata: ' + data.error);
+            }
+        } catch (e) {
+            alert('Sunucu hatası');
+        }
+    };
+const handleInstitutionSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if(!iName) return;
 
@@ -594,7 +688,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         name: iName,
         phone: iPhone,
         address: iAddress,
-        locationUrl: iLocationUrl
+        locationUrl: iLocationUrl,
+          portalType: iPortalType,
+          portalUrl: iPortalUrl,
+          portalUsername: iPortalUsername,
+          portalPassword: iPortalPassword,
       });
     } else {
       onAddInstitution({
@@ -602,7 +700,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         name: iName,
         phone: iPhone,
         address: iAddress,
-        locationUrl: iLocationUrl
+        locationUrl: iLocationUrl,
+          portalType: iPortalType,
+          portalUrl: iPortalUrl,
+          portalUsername: iPortalUsername,
+          portalPassword: iPortalPassword,
       });
     }
     handleCancelInstitutionEdit();
@@ -853,6 +955,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           Firmalar
         </button>
         <button
+          onClick={() => setActiveTab('company_passwords')}
+          className={`px-6 py-4 text-center font-bold text-sm transition-colors whitespace-nowrap flex items-center gap-1.5 ${activeTab === 'company_passwords' ? 'bg-amber-500/10 text-amber-400 border-b-2 border-amber-500' : 'text-amber-400/80 hover:text-amber-300 hover:bg-slate-700'}`}
+        >
+          <Key className="w-4 h-4" />
+          <span>Firma Şifreleri</span>
+        </button>
+        <button
           onClick={() => setActiveTab('whatsapp')}
           className={`px-6 py-4 text-center font-medium text-sm transition-colors whitespace-nowrap ${activeTab === 'whatsapp' ? 'bg-slate-900/50 text-blue-400 border-b-2 border-blue-500' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
         >
@@ -995,6 +1104,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                    </div>
 
                    {/* Auto Print Toggle */}
+
+                     {/* Sonuc Portali Password */}
+                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-slate-800 rounded border border-slate-600 mb-4">
+                        <div>
+                           <label className="block text-sm font-medium text-white">Sonuç Portalı Şifresi (/sonuc)</label>
+                           <p className="text-xs text-slate-400 mt-1">Sonuç arama sayfasına girişte sorulacak şifre.</p>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <input 
+                            type="text" 
+                            value={sonucPortalPassword} 
+                            onChange={(e) => setSonucPortalPassword(e.target.value)}
+                            placeholder="Şifre belirleyin..."
+                            className="w-48 px-3 py-2 bg-slate-900 border border-slate-500 rounded text-white font-bold focus:ring-blue-500 outline-none" 
+                          />
+                        </div>
+                     </div>
                    <div className="flex items-center justify-between p-4 bg-slate-800 rounded border border-slate-600">
                       <div>
                          <label className="block text-sm font-medium text-white">Otomatik Yazdırma</label>
@@ -1128,6 +1254,43 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         {activeTab === 'companies' && (
           <div className="space-y-8">
             
+            {/* Firma Portalı Tanıtım ve Hızlı Erişim Bannerı */}
+            <div className="bg-blue-950/40 border border-blue-500/30 p-4 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center space-x-3">
+                <div className="p-2.5 bg-blue-500/20 rounded-xl text-blue-400 border border-blue-500/30">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+                <div>
+                  <h5 className="text-sm font-bold text-white flex items-center gap-2">
+                    <span>Firma Yetkilisi Girişi:</span>
+                    <span className="font-mono text-xs text-blue-300 bg-blue-900/50 px-2 py-0.5 rounded border border-blue-400/30">/sonuc</span>
+                  </h5>
+                  <p className="text-xs text-slate-300 mt-0.5">
+                    Şifre belirlediğiniz firmalar <strong>/sonuc</strong> portalından doğrudan bu şifre ile giriş yapabilir. Firma seçmelerine gerek yoktur; şifre girildiğinde sistem firmayı otomatik tanır ve ekranda <strong>yalnızca TC ile arama alanı</strong> açılır.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('company_passwords')}
+                  className="inline-flex items-center px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg text-xs font-bold transition-all shadow-md shadow-amber-500/20 whitespace-nowrap gap-1.5"
+                >
+                  <Key className="w-4 h-4" />
+                  <span>Hızlı Şifre Yönetimi</span>
+                </button>
+                <a
+                  href="/sonuc"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition-all shadow-md shadow-blue-600/30 whitespace-nowrap gap-1.5"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  <span>Sonuç Portalını Aç</span>
+                </a>
+              </div>
+            </div>
+            
             {/* Bulk Import Section */}
             {!editingCompanyId && (
                 <div className="bg-slate-900/50 p-4 rounded-lg border border-dashed border-slate-600 flex flex-col md:flex-row items-center justify-between gap-4">
@@ -1226,6 +1389,33 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                      <span>Pos</span>
                    </button>
                 </div>
+
+                {/* Firma Portalı Şifresi */}
+                <div className="relative md:col-span-2">
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Firma Portalı Giriş Şifresi (Firma yetkilisinin /sonuc adresinden TC ile sonuç sorgulaması için)
+                  </label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <input 
+                        type="text"
+                        placeholder="Portal Giriş Şifresi Belirleyin (Örn: CAN4821)" 
+                        value={cPortalPassword} 
+                        onChange={e => setCPortalPassword(e.target.value)} 
+                        className="bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white text-sm focus:ring-blue-500 outline-none w-full pr-10 font-mono" 
+                      />
+                      <Key className="w-4 h-4 text-amber-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setCPortalPassword(generateSmartPassword(cName))}
+                      className="px-3 py-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 rounded text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition-colors"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      <span>Otomatik Şifre Üret</span>
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {/* Exam Selection for Company */}
@@ -1309,9 +1499,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
             {/* Company List */}
             <div className="space-y-3">
-              {filteredCompanies.map(company => (
-                <div key={company.id} className={`flex flex-col md:flex-row items-start md:items-center justify-between p-4 border rounded-lg gap-4 transition-all ${selectedCompanyIds.includes(company.id) ? 'bg-blue-900/10 border-blue-500/50' : 'bg-slate-700/30 border-slate-700'}`}>
-                  <div className="flex items-center space-x-4 w-full md:w-auto">
+              {filteredCompanies.map(company => {
+                const currentPwdValue = draftPasswords[company.id] !== undefined ? draftPasswords[company.id] : (company.portalPassword || '');
+                const isModified = draftPasswords[company.id] !== undefined && draftPasswords[company.id] !== (company.portalPassword || '');
+                return (
+                <div key={company.id} className={`flex flex-col lg:flex-row items-start lg:items-center justify-between p-4 border rounded-lg gap-4 transition-all ${selectedCompanyIds.includes(company.id) ? 'bg-blue-900/10 border-blue-500/50' : 'bg-slate-700/30 border-slate-700'}`}>
+                  <div className="flex items-center space-x-4 w-full lg:w-auto">
                     {/* Checkbox */}
                     <div 
                       onClick={(e) => { e.stopPropagation(); handleToggleSelectCompany(company.id); }}
@@ -1325,17 +1518,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     </div>
                     
                     <div>
-                      <h5 className="font-medium text-white flex items-center">
-                        {company.name}
+                      <h5 className="font-medium text-white flex flex-wrap items-center gap-1.5">
+                        <span>{company.name}</span>
                         {company.defaultPaymentMethod === 'CASH' ? (
-                          <span className="ml-2 px-1.5 py-0.5 text-[10px] bg-emerald-900/30 text-emerald-400 border border-emerald-500/20 rounded uppercase">Nakit</span>
+                          <span className="px-1.5 py-0.5 text-[10px] bg-emerald-900/30 text-emerald-400 border border-emerald-500/20 rounded uppercase">Nakit</span>
                         ) : company.defaultPaymentMethod === 'POS' ? (
-                          <span className="ml-2 px-1.5 py-0.5 text-[10px] bg-purple-900/30 text-purple-400 border border-purple-500/20 rounded uppercase">Pos</span>
+                          <span className="px-1.5 py-0.5 text-[10px] bg-purple-900/30 text-purple-400 border border-purple-500/20 rounded uppercase">Pos</span>
                         ) : (
-                          <span className="ml-2 px-1.5 py-0.5 text-[10px] bg-blue-900/30 text-blue-400 border border-blue-500/20 rounded uppercase">Fatura</span>
+                          <span className="px-1.5 py-0.5 text-[10px] bg-blue-900/30 text-blue-400 border border-blue-500/20 rounded uppercase">Fatura</span>
                         )}
                         {company.forcedInstitutionId && (
-                           <span className="ml-2 px-1.5 py-0.5 text-[10px] bg-purple-900/30 text-purple-400 border border-purple-500/20 rounded uppercase flex items-center">
+                           <span className="px-1.5 py-0.5 text-[10px] bg-purple-900/30 text-purple-400 border border-purple-500/20 rounded uppercase flex items-center">
                              <MapPin className="w-3 h-3 mr-1" />
                              {institutions.find(i => i.id === company.forcedInstitutionId)?.name || 'Kurum'}
                            </span>
@@ -1349,8 +1542,60 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2 w-full md:w-auto justify-end">
-                    <span className="text-xs bg-slate-800 px-2 py-1 rounded border border-slate-600 text-slate-300 mr-2">{company.hazardClass}</span>
+                  <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-end">
+                    {/* Inline Quick Password Input */}
+                    <div className="flex items-center bg-slate-900/90 border border-slate-600 rounded-lg px-2 py-1 gap-1.5">
+                      <Key className={`w-3.5 h-3.5 ${company.portalPassword ? 'text-amber-400' : 'text-slate-500'}`} />
+                      <input
+                        type="text"
+                        placeholder="Portal şifresi..."
+                        value={currentPwdValue}
+                        onChange={e => setDraftPasswords(prev => ({ ...prev, [company.id]: e.target.value }))}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleQuickSavePassword(company, currentPwdValue);
+                          }
+                        }}
+                        className="bg-transparent text-xs font-mono text-white outline-none w-28 placeholder-slate-500"
+                      />
+                      {isModified ? (
+                        <button
+                          type="button"
+                          onClick={() => handleQuickSavePassword(company, currentPwdValue)}
+                          className="px-2 py-0.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[11px] font-bold transition-colors"
+                        >
+                          Kaydet
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const generated = generateSmartPassword(company.name);
+                            handleQuickSavePassword(company, generated);
+                          }}
+                          className="px-2 py-0.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 rounded text-[10px] font-bold transition-colors"
+                          title="Tek tıkla otomatik şifre oluştur ve kaydet"
+                        >
+                          Otomatik
+                        </button>
+                      )}
+                      {company.portalPassword && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopyCompanyLoginInfo(company)}
+                          className="p-1 text-slate-400 hover:text-sky-400 transition-colors"
+                          title="Giriş linkini ve şifresini kopyala"
+                        >
+                          {copiedCompanyId === company.id ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                        </button>
+                      )}
+                      {savedCompanyId === company.id && (
+                        <span className="text-[10px] font-bold text-emerald-400 px-1">✓</span>
+                      )}
+                    </div>
+
+                    <span className="text-xs bg-slate-800 px-2 py-1 rounded border border-slate-600 text-slate-300">{company.hazardClass}</span>
                     <button 
                         onClick={() => handleEditCompany(company)} 
                         className="text-slate-500 hover:text-blue-400 p-1.5 hover:bg-blue-500/10 rounded transition-colors"
@@ -1367,7 +1612,224 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     </button>
                   </div>
                 </div>
-              ))}
+              )})}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'company_passwords' && (
+          <div className="space-y-6">
+            {/* Top Info & Bulk Action Header */}
+            <div className="bg-gradient-to-r from-amber-950/40 via-slate-900 to-blue-950/40 border border-amber-500/30 rounded-xl p-5 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+              <div className="flex items-start space-x-3.5">
+                <div className="p-3 bg-amber-500/20 border border-amber-500/30 rounded-xl text-amber-400 shrink-0">
+                  <Key className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <span>Firma Portal Şifre Yönetimi</span>
+                    <span className="text-xs font-mono px-2 py-0.5 bg-amber-500/20 text-amber-300 rounded border border-amber-500/30">
+                      {companies.filter(c => !!c.portalPassword).length} / {companies.length} Firma Şifreli
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                    Listeden istediğiniz firmanın karşısına şifre yazıp <strong>Enter</strong> tuşuna basabilir veya <strong>"Otomatik Üret"</strong> butonuyla tek tıkla şifre atayabilirsiniz. <strong>"Bilgiyi Kopyala"</strong> butonuyla firma yetkilisine WhatsApp'tan göndereceğiniz hazır mesajı kopyalayabilirsiniz.
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                {companies.some(c => !c.portalPassword) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const withoutPwd = companies.filter(c => !c.portalPassword);
+                      if (!window.confirm(`Şifresi olmayan ${withoutPwd.length} firmaya otomatik şifre oluşturulsun mu?`)) return;
+                      withoutPwd.forEach(c => {
+                        onUpdateCompany({ ...c, portalPassword: generateSmartPassword(c.name) });
+                      });
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-lg transition-all shadow-md shadow-amber-500/20"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Şifresiz Firmalara Otomatik Ata ({companies.filter(c => !c.portalPassword).length})</span>
+                  </button>
+                )}
+                <a
+                  href="/sonuc"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-lg transition-all shadow-md shadow-blue-600/20"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Sonuç Portalını Aç (/sonuc)</span>
+                </a>
+              </div>
+            </div>
+
+            {/* Search & Filter Bar */}
+            <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Firma adı veya mevcut şifre ile ara..."
+                  value={pwdSearchQuery}
+                  onChange={e => setPwdSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-sm text-white focus:ring-2 focus:ring-amber-500 outline-none"
+                />
+              </div>
+              <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-700 gap-1">
+                <button
+                  type="button"
+                  onClick={() => setPwdFilter('all')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${pwdFilter === 'all' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'}`}
+                >
+                  Tümü ({companies.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPwdFilter('has_pwd')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${pwdFilter === 'has_pwd' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'text-slate-400 hover:text-white'}`}
+                >
+                  Şifreli ({companies.filter(c => !!c.portalPassword).length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPwdFilter('no_pwd')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${pwdFilter === 'no_pwd' ? 'bg-slate-700 text-slate-200' : 'text-slate-400 hover:text-white'}`}
+                >
+                  Şifresiz ({companies.filter(c => !c.portalPassword).length})
+                </button>
+              </div>
+            </div>
+
+            {/* Companies Password Table/List */}
+            <div className="space-y-2.5">
+              {companies
+                .filter(c => {
+                  if (pwdFilter === 'has_pwd' && !c.portalPassword) return false;
+                  if (pwdFilter === 'no_pwd' && c.portalPassword) return false;
+                  if (!pwdSearchQuery.trim()) return true;
+                  return turkishIncludes(c.name, pwdSearchQuery) || turkishIncludes(c.portalPassword || '', pwdSearchQuery);
+                })
+                .map(company => {
+                  const currentVal = draftPasswords[company.id] !== undefined ? draftPasswords[company.id] : (company.portalPassword || '');
+                  const isDirty = draftPasswords[company.id] !== undefined && draftPasswords[company.id] !== (company.portalPassword || '');
+                  return (
+                    <div
+                      key={company.id}
+                      className={`flex flex-col md:flex-row items-start md:items-center justify-between p-3.5 rounded-xl border transition-all gap-3 ${
+                        company.portalPassword
+                          ? 'bg-slate-900/70 border-amber-500/30'
+                          : 'bg-slate-900/30 border-slate-700/80'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className={`p-2 rounded-lg ${company.portalPassword ? 'bg-amber-500/15 text-amber-400' : 'bg-slate-800 text-slate-500'}`}>
+                          <Building2 className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-white">{company.name}</h4>
+                          <p className="text-xs text-slate-400">
+                            {company.portalPassword ? (
+                              <span className="text-emerald-400 font-medium">● Aktif Portal Şifresi: <strong className="font-mono text-amber-300">{company.portalPassword}</strong></span>
+                            ) : (
+                              <span className="text-slate-500">Henüz şifre belirlenmedi</span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
+                        <div className="relative flex-1 md:flex-initial">
+                          <input
+                            type="text"
+                            placeholder="Şifre yazın..."
+                            value={currentVal}
+                            onChange={e => setDraftPasswords(prev => ({ ...prev, [company.id]: e.target.value }))}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleQuickSavePassword(company, currentVal);
+                              }
+                            }}
+                            className="w-full md:w-44 bg-slate-950 border border-slate-700 focus:border-amber-500 rounded-lg px-3 py-2 text-sm font-mono text-white outline-none"
+                          />
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleQuickSavePassword(company, currentVal)}
+                          disabled={!isDirty && !currentVal}
+                          className={`px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+                            savedCompanyId === company.id
+                              ? 'bg-emerald-600 text-white'
+                              : isDirty
+                              ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-600/20'
+                              : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
+                          }`}
+                        >
+                          {savedCompanyId === company.id ? (
+                            <>
+                              <Check className="w-3.5 h-3.5" />
+                              <span>Kaydedildi</span>
+                            </>
+                          ) : (
+                            <>
+                              <Save className="w-3.5 h-3.5" />
+                              <span>Kaydet</span>
+                            </>
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const autoPwd = generateSmartPassword(company.name);
+                            handleQuickSavePassword(company, autoPwd);
+                          }}
+                          className="px-3 py-2 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all"
+                          title="Otomatik şifre oluştur ve anında kaydet"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5" />
+                          <span>Otomatik Üret</span>
+                        </button>
+
+                        {company.portalPassword && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleCopyCompanyLoginInfo(company)}
+                              className="px-3 py-2 bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all"
+                              title="WhatsApp/Mail için giriş mesajını kopyala"
+                            >
+                              {copiedCompanyId === company.id ? (
+                                <>
+                                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                  <span className="text-emerald-400">Kopyalandı!</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-3.5 h-3.5" />
+                                  <span>Bilgiyi Kopyala</span>
+                                </>
+                              )}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleQuickSavePassword(company, '')}
+                              className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                              title="Şifreyi Kaldır"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
             </div>
           </div>
         )}
@@ -1456,6 +1918,39 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                          <p className="text-xs text-slate-500 mt-1">Kullanılabilecek Değişkenler: <strong>{'{hasta_adi}'}</strong>, <strong>{'{tc_kimlik}'}</strong>, <strong>{'{dogum_tarihi}'}</strong>, <strong>{'{dogum_tarihi_bitisik}'}</strong>, <strong>{'{kurum_adi}'}</strong>, <strong>{'{konum_linki}'}</strong></p>
                        </div>
                      )}
+
+                     {/* PORTAL ENTEGRASYONU */}
+                     <div className="mt-6 pt-4 border-t border-slate-700">
+                        <h4 className="text-sm font-semibold text-slate-300 mb-4 flex items-center">PDF Bot Entegrasyonu</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                           <div>
+                              <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Yazılım Altyapısı</label>
+                              <select value={iPortalType} onChange={(e:any) => setIPortalType(e.target.value)} className="w-full bg-slate-800 border-slate-600 rounded px-3 py-2 text-slate-200 text-sm focus:ring-blue-500 outline-none">
+                                <option value="NONE">Bot Kullanma (Manuel)</option>
+                                <option value="VETA">Yönetim Akademi (Veta)</option>
+                                <option value="INFOMED">Infomed (Burverta vb.)</option>
+                              </select>
+                           </div>
+                           {iPortalType !== 'NONE' && (
+                             <div>
+                                <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Portal Giriş Linki</label>
+                                <input type="text" value={iPortalUrl} onChange={e => setIPortalUrl(e.target.value)} placeholder="https://..." className="w-full bg-slate-800 border-slate-600 rounded px-3 py-2 text-slate-200 text-sm focus:ring-blue-500 outline-none" />
+                             </div>
+                           )}
+                           {iPortalType !== 'NONE' && (
+                             <div>
+                                <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Kullanıcı Adı</label>
+                                <input type="text" value={iPortalUsername} onChange={e => setIPortalUsername(e.target.value)} className="w-full bg-slate-800 border-slate-600 rounded px-3 py-2 text-slate-200 text-sm focus:ring-blue-500 outline-none" />
+                             </div>
+                           )}
+                           {iPortalType !== 'NONE' && (
+                             <div>
+                                <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Şifre</label>
+                                <input type="password" value={iPortalPassword} onChange={e => setIPortalPassword(e.target.value)} className="w-full bg-slate-800 border-slate-600 rounded px-3 py-2 text-slate-200 text-sm focus:ring-blue-500 outline-none" />
+                             </div>
+                           )}
+                        </div>
+                     </div>
                    </div>
                 </div>
                 <div className="flex justify-end space-x-3">
@@ -1479,6 +1974,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                          <h5 className="font-medium text-white text-sm">{inst.name}</h5>
                          <p className="text-xs text-slate-400">{inst.phone}</p>
                          {inst.address && <p className="text-xs text-slate-500 mt-1 line-clamp-1">{inst.address}</p>}
+                           {inst.portalType && inst.portalType !== 'NONE' && (
+                               <button onClick={() => handleTestScrape(inst.id)} className="mt-2 text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 transition-colors">
+                                   Test: Son 10'u Çek
+                               </button>
+                           )}
+
                        </div>
                     </div>
                     <div className="flex items-center space-x-1">
@@ -1945,7 +2446,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                           className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 disabled:opacity-50"
                        >
                           <FileSpreadsheet className="w-3.5 h-3.5" />
-                          <span>Özel Aylık Raporu Gönder ({telegramCustomReportDay}'den {telegramCustomReportDay}'ye)</span>
+                          <span>Özel Aylık Raporu Gönder ({telegramCustomReportStartDay}'den {telegramCustomReportEndDay}'ye)</span>
                        </button>
 
                        <button

@@ -13,7 +13,9 @@
     "start": "node dist/server.cjs"
   },
   "dependencies": {
+    "@types/adm-zip": "^0.5.8",
     "@whiskeysockets/baileys": "^7.0.0-rc14",
+    "adm-zip": "^0.6.1",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "express": "^4.21.2",
@@ -22,8 +24,11 @@
     "html-to-image": "^1.11.13",
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^0.562.0",
+    "node-cron": "^4.6.0",
     "node-fetch": "^2.7.0",
     "pino": "^10.3.1",
+    "playwright": "^1.64.0",
+    "puppeteer": "^25.13.0",
     "qrcode-terminal": "^0.12.0",
     "qrcode.react": "^4.2.0",
     "react": "^18.3.1",

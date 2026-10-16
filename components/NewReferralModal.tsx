@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Project: OSGB Tetkik Takip Sistemi
  * Copyright (C) 2026 szgn_emin
  * 
@@ -18,9 +18,19 @@ interface NewReferralViewProps {
   institutions: MedicalInstitution[];
   settings: AppSettings;
   initialData?: Referral | null; // Düzenleme için eklendi
+  existingReferrals?: Referral[];
 }
 
-export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSubmit, companies, exams, institutions, settings, initialData }) => {
+export const NewReferralView: React.FC<NewReferralViewProps> = ({ 
+  onClose, 
+  onSubmit, 
+  companies, 
+  exams, 
+  institutions, 
+  settings, 
+  initialData,
+  existingReferrals = []
+}) => {
   // --- STATE MANAGEMENT ---
   const [currentStep, setCurrentStep] = useState(1);
   const [isMobileView, setIsMobileView] = useState(false);
@@ -67,6 +77,19 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
 
   // Keep track of which referral is currently initialized in state to prevent overwriting user typing when background updates happen
   const hasInitializedIdRef = useRef<string | null>(null);
+
+  const matchingExternal = useMemo(() => {
+    if (!tcNo || tcNo.length !== 11) return null;
+    return existingReferrals.find(r => r.employee?.tcNo === tcNo && (r.isExternalRecord || Boolean(r.resultPdfPath)));
+  }, [tcNo, existingReferrals]);
+
+  useEffect(() => {
+    if (!initialData && tcNo.length === 11 && matchingExternal) {
+      if (!fullName.trim() && matchingExternal.employee?.fullName) {
+        setFullName(matchingExternal.employee.fullName);
+      }
+    }
+  }, [tcNo, matchingExternal, initialData, fullName]);
 
   // Edit Mode Initialization
   useEffect(() => {
@@ -282,8 +305,8 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
         company: selectedCompanyData ? selectedCompanyData.name : companySearchTerm, // Firma silinmişse text olarak al
       },
       exams: selectedExamIds,
-      status: initialData ? initialData.status : Status.PENDING, // Statüyü koru
-      referralDate: initialData ? initialData.referralDate : new Date().toISOString(), // Tarihi koru
+      status: initialData ? initialData.status : (matchingExternal?.resultPdfPath ? (matchingExternal.status || Status.COMPLETED) : Status.PENDING),
+      referralDate: initialData ? initialData.referralDate : new Date().toISOString(),
       notes,
       notesShow,
       doctorName: selectedCompanyData?.assignedDoctor || initialData?.doctorName,
@@ -291,8 +314,12 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
       totalPrice: estimatedPrice,
       totalCost: estimatedCost,
       paymentMethod: selectedMethod,
-      targetInstitutionId: selectedInstitutionId || undefined,
-      skipNotifications, isExternalRecord,
+      targetInstitutionId: selectedInstitutionId || matchingExternal?.targetInstitutionId || undefined,
+      resultPdfPath: matchingExternal?.resultPdfPath || initialData?.resultPdfPath || undefined,
+      completedExams: matchingExternal?.completedExams || initialData?.completedExams || undefined,
+      pendingExams: matchingExternal?.pendingExams || initialData?.pendingExams || undefined,
+      skipNotifications, 
+      isExternalRecord: false,
     };
     onSubmit(newReferral, shouldPrint);
     setShowPaymentReminder(false);
@@ -547,6 +574,13 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
                           </div>
                         </div>
                       </div>
+
+                      {matchingExternal?.resultPdfPath && (
+                        <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-xs text-emerald-400 flex items-center">
+                          <Check className="w-4 h-4 mr-2 shrink-0 text-emerald-400" />
+                          <span>Bu T.C. için kurumdan indirilmiş tetkik raporu mevcut. Sevk oluşturulduğunda rapor otomatik olarak bu sevke bağlanacaktır.</span>
+                        </div>
+                      )}
 
                       <div>
                         <label className="text-[10px] uppercase font-bold text-slate-500 mb-1 block ml-1">Telefon Numarası <span className="text-[9px] text-slate-400 font-normal">(WhatsApp İçin)</span></label>
@@ -933,6 +967,13 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({ onClose, onSub
                       </div>
                     </div>
                   </div>
+
+                  {matchingExternal?.resultPdfPath && (
+                    <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-xs text-emerald-400 flex items-center">
+                      <Check className="w-4 h-4 mr-2 shrink-0 text-emerald-400" />
+                      <span>Bu T.C. için kurumdan indirilmiş tetkik raporu mevcut. Sevk oluşturulduğunda rapor otomatik bağlanacaktır.</span>
+                    </div>
+                  )}
                   <div>
                     <label className="text-[10px] uppercase font-bold text-slate-500 mb-1 block ml-1">Telefon Numarası <span className="text-[9px] text-slate-400 font-normal">(WhatsApp İçin)</span></label>
                     <input type="text" value={phone} onChange={e => setPhone(e.target.value)} className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-sm focus:border-emerald-500 outline-none placeholder-slate-600" placeholder="05XX XXX XX XX" />
