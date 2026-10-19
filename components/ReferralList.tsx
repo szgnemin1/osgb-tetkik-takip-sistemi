@@ -18,6 +18,7 @@ import {
   Printer
 } from 'lucide-react';
 import { Referral, Status, MedicalInstitution } from '../types';
+import { getApiToken } from '../services/useServerData';
 
 interface ReferralListProps {
   referrals: Referral[];
@@ -208,7 +209,7 @@ export const ReferralList: React.FC<ReferralListProps> = ({
                    <div className="flex items-center justify-end space-x-1">
                       {referral.resultPdfPath && (
                          <a 
-                            href={referral.resultPdfPath}
+                            href={getApiToken() ? `${referral.resultPdfPath}?token=${encodeURIComponent(getApiToken() || '')}` : referral.resultPdfPath}
                             target="_blank" 
                             rel="noreferrer"
                             className="text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 p-1.5 rounded-lg transition-all"

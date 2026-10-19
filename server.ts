@@ -1628,9 +1628,145 @@ async function startServer() {
   });
 
   // --- PDF & SCRAPING APIS ---
+  // --- PROTECTED PDF ROUTE (Authentication & Privacy Required) ---
   const pdfDir = path.join(process.cwd(), 'uploads/pdfs');
   if (!fs.existsSync(pdfDir)) fs.mkdirSync(pdfDir, { recursive: true });
-  app.use('/uploads/pdfs', express.static(pdfDir, { index: false, dotfiles: 'deny' }));
+
+  app.get('/uploads/pdfs/:filename', (req, res) => {
+    const rawFilename = req.params.filename;
+    const cleanFilename = path.basename(rawFilename); // Prevent path traversal
+    const filePath = path.join(pdfDir, cleanFilename);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'PDF dosyası bulunamadı.' });
+    }
+
+    // Extract authentication token from Authorization header or URL query parameter
+    let token = '';
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    } else if (req.query.token && typeof req.query.token === 'string') {
+      token = req.query.token;
+    }
+
+    // Validate token
+    let decodedUser: any = null;
+    if (token) {
+      try {
+        decodedUser = jwt.verify(token, JWT_SECRET) as any;
+      } catch (err) {
+        decodedUser = null;
+      }
+    }
+
+    // If unauthenticated, BLOCK ACCESS!
+    if (!decodedUser) {
+      const acceptsHtml = req.headers.accept && req.headers.accept.includes('text/html');
+      if (acceptsHtml) {
+        return res.status(401).send(`
+          <!DOCTYPE html>
+          <html lang="tr">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Yetkisiz Erişim - OSGB Sonuç Portalı</title>
+            <style>
+              body {
+                background: #0f172a;
+                color: #f8fafc;
+                font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 100vh;
+                margin: 0;
+                padding: 1.25rem;
+              }
+              .card {
+                background: #1e293b;
+                border: 1px solid #334155;
+                padding: 2.5rem 2rem;
+                border-radius: 1.25rem;
+                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+                max-width: 480px;
+                text-align: center;
+              }
+              .icon {
+                font-size: 3.5rem;
+                margin-bottom: 1rem;
+              }
+              h1 {
+                font-size: 1.4rem;
+                font-weight: 700;
+                margin: 0 0 0.75rem 0;
+                color: #f1f5f9;
+              }
+              p {
+                font-size: 0.95rem;
+                line-height: 1.6;
+                color: #94a3b8;
+                margin: 0 0 1.75rem 0;
+              }
+              .btn {
+                display: inline-block;
+                background: #2563eb;
+                color: #ffffff;
+                text-decoration: none;
+                padding: 0.75rem 1.75rem;
+                border-radius: 0.75rem;
+                font-weight: 600;
+                font-size: 0.95rem;
+                transition: background 0.2s;
+              }
+              .btn:hover {
+                background: #1d4ed8;
+              }
+              .notice {
+                font-size: 0.75rem;
+                color: #64748b;
+                margin-top: 1.5rem;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <div class="icon">🔒</div>
+              <h1>Sağlık Raporu Koruma Altında</h1>
+              <p>KVKK ve hasta gizliliği gereğince bu tetkik raporuna doğrudan şifresiz erişilemez. Raporu görüntülemek veya indirmek için lütfen <b>OSGB Sonuç Portalı</b> üzerinden şifrenizle giriş yapınız.</p>
+              <a href="/sonuc" class="btn">Sonuç Portalına Giriş Yap</a>
+              <div class="notice">Çankaya OSGB Tetkik ve Sağlık Takip Sistemi</div>
+            </div>
+          </body>
+          </html>
+        `);
+      }
+      return res.status(401).json({ error: 'Yetkilendirme gereklidir. Lütfen sonuç portalına şifrenizle giriş yapınız.' });
+    }
+
+    // Role-based authorization:
+    // If company_viewer, verify that this PDF belongs to their company
+    if (decodedUser.role === 'company_viewer') {
+      const db = readData();
+      const userCompany = decodedUser.companyName || decodedUser.companyId;
+      const webPath = `/uploads/pdfs/${cleanFilename}`;
+      const hasAccess = (db.referrals || []).some((r: any) => {
+        const matchesFile = r.resultPdfPath === webPath || (r.resultPdfPath && path.basename(r.resultPdfPath) === cleanFilename);
+        const matchesCompany = r.employee?.company === userCompany || r.employee?.companyId === userCompany;
+        return matchesFile && matchesCompany;
+      });
+
+      if (!hasAccess) {
+        return res.status(403).json({ error: 'Bu tetkik sonucunu görüntüleme yetkiniz bulunmamaktadır.' });
+      }
+    }
+
+    // User is authorized (admin, sonuc_viewer, or matching company_viewer)
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${cleanFilename}"`);
+    res.setHeader('Cache-Control', 'private, no-cache, no-store, must-revalidate');
+    res.sendFile(filePath);
+  });
 
 const publicLoginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,

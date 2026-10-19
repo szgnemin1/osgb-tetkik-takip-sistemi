@@ -448,7 +448,7 @@ export const SonucApp: React.FC = () => {
                                             {hasPdf ? (
                                                 <>
                                                     <a
-                                                        href={r.pdfUrl}
+                                                        href={r.pdfUrl ? `${r.pdfUrl}?token=${encodeURIComponent(token)}` : '#'}
                                                         target="_blank"
                                                         rel="noreferrer"
                                                         className="inline-flex items-center px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 transition-colors shadow-sm gap-1.5"
@@ -669,7 +669,7 @@ export const SonucApp: React.FC = () => {
                                                 {hasPdf ? (
                                                     <div className="flex items-center space-x-2">
                                                         <a 
-                                                            href={r.pdfUrl} 
+                                                            href={r.pdfUrl ? `${r.pdfUrl}?token=${encodeURIComponent(token)}` : '#'} 
                                                             target="_blank" 
                                                             rel="noreferrer"
                                                             className="inline-flex items-center px-3.5 py-2 border border-slate-300 text-xs font-semibold rounded-xl text-slate-700 bg-white hover:bg-slate-50 transition-colors shadow-sm gap-1.5"
