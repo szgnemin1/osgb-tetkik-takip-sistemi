@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, FileText, Download, Eye, Building2, Lock, CheckCircle, Clock, AlertCircle, X, LogOut, ShieldCheck } from 'lucide-react';
+import { Search, FileText, Download, Eye, Building2, Lock, CheckCircle, Clock, AlertCircle, X, LogOut, ShieldCheck, RefreshCw } from 'lucide-react';
 
 interface CompanyInfo {
     id: string;
@@ -130,13 +130,68 @@ export const FirmaApp: React.FC = () => {
         setSearchLoading(false);
     };
 
+    // State for In-App PDF Preview Modal & Loading Indicators
+    const [previewPdf, setPreviewPdf] = useState<{ url: string; title: string; filename: string } | null>(null);
+    const [pdfActionLoading, setPdfActionLoading] = useState<string | null>(null);
+
+    // Secure PDF View Handler (Blob URL based, Zero tokens exposed in URL)
+    const handleViewPdf = async (pdfUrl: string, patientName?: string, tcNo?: string) => {
+        if (!pdfUrl) return;
+        const cleanUrl = pdfUrl.split('?')[0];
+        setPdfActionLoading(`view-${cleanUrl}`);
+        try {
+            const currentToken = token || sessionStorage.getItem('firma_portal_jwt') || '';
+            const res = await fetch(cleanUrl, {
+                headers: currentToken ? { 'Authorization': `Bearer ${currentToken}` } : {}
+            });
+            if (res.status === 401) {
+                handleLogout();
+                setSearchError('Oturum süreniz doldu, lütfen tekrar giriş yapın.');
+                return;
+            }
+            if (!res.ok) {
+                alert('Tetkik raporu yüklenemedi veya erişim yetkiniz bulunmuyor.');
+                return;
+            }
+            const blob = await res.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+            const safeName = (patientName || 'Tetkik_Raporu').replace(/[^a-zA-Z0-9çÇğĞıİöÖşŞüÜ_ -]/g, '_');
+            const filename = `${safeName}_${tcNo || ''}_Tetkik_Raporu.pdf`;
+            setPreviewPdf({
+                url: blobUrl,
+                title: `${patientName || 'Personel'} (${tcNo || ''})`,
+                filename
+            });
+        } catch (e) {
+            console.error('PDF görüntüleme hatası:', e);
+            alert('PDF raporu yüklenirken bir sorun oluştu.');
+        } finally {
+            setPdfActionLoading(null);
+        }
+    };
+
+    // Secure PDF Download Handler (Programmatic, never exposes URL query tokens)
     const handleDownload = async (pdfUrl: string, patientName?: string, tcNo?: string) => {
         if (!pdfUrl) return;
+        const cleanUrl = pdfUrl.split('?')[0];
+        setPdfActionLoading(`download-${cleanUrl}`);
         const safeName = (patientName || 'Tetkik_Raporu').replace(/[^a-zA-Z0-9çÇğĞıİöÖşŞüÜ_ -]/g, '_');
         const filename = `${safeName}_${tcNo || ''}_Tetkik_Raporu.pdf`;
 
         try {
-            const res = await fetch(pdfUrl);
+            const currentToken = token || sessionStorage.getItem('firma_portal_jwt') || '';
+            const res = await fetch(cleanUrl, {
+                headers: currentToken ? { 'Authorization': `Bearer ${currentToken}` } : {}
+            });
+            if (res.status === 401) {
+                handleLogout();
+                setSearchError('Oturum süreniz doldu, lütfen tekrar giriş yapın.');
+                return;
+            }
+            if (!res.ok) {
+                alert('Tetkik raporu indirilemedi veya erişim yetkiniz bulunmuyor.');
+                return;
+            }
             const blob = await res.blob();
             const blobUrl = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -145,11 +200,78 @@ export const FirmaApp: React.FC = () => {
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-            window.URL.revokeObjectURL(blobUrl);
+            setTimeout(() => window.URL.revokeObjectURL(blobUrl), 1000);
         } catch (e) {
-            // Fallback direct link
-            window.open(pdfUrl, '_blank');
+            console.error('PDF indirme hatası:', e);
+            alert('PDF raporu indirilirken bir sorun oluştu.');
+        } finally {
+            setPdfActionLoading(null);
         }
+    };
+
+    // Render In-App PDF Preview Modal
+    const renderPdfModal = () => {
+        if (!previewPdf) return null;
+        return (
+            <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-2 md:p-6 animate-in fade-in duration-150">
+                <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-5xl h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+                    {/* Modal Header */}
+                    <div className="bg-slate-800 border-b border-slate-700 px-4 md:px-6 py-3 flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 rounded-lg bg-blue-500/20 border border-blue-500/30 flex items-center justify-center">
+                                <FileText className="w-4 h-4 text-blue-400" />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-bold text-white leading-tight">
+                                    {previewPdf.title}
+                                </h3>
+                                <p className="text-[11px] text-slate-400">Resmi Tetkik Sonuç Raporu</p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center space-x-2">
+                            <button
+                                onClick={() => window.open(previewPdf.url, '_blank')}
+                                className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium text-slate-200 bg-slate-700 hover:bg-slate-600 border border-slate-600 transition-colors gap-1.5"
+                                title="Yeni Sekmede Aç"
+                            >
+                                <Eye className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline">Yeni Sekmede Aç</span>
+                            </button>
+
+                            <a
+                                href={previewPdf.url}
+                                download={previewPdf.filename}
+                                className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors gap-1.5"
+                            >
+                                <Download className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline">İndir</span>
+                            </a>
+
+                            <button
+                                onClick={() => {
+                                    window.URL.revokeObjectURL(previewPdf.url);
+                                    setPreviewPdf(null);
+                                }}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors ml-1"
+                                title="Kapat"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Modal PDF Body */}
+                    <div className="flex-1 bg-slate-950 w-full h-full relative">
+                        <iframe
+                            src={previewPdf.url}
+                            className="w-full h-full border-0"
+                            title={previewPdf.title}
+                        />
+                    </div>
+                </div>
+            </div>
+        );
     };
 
     // --- GİRİŞ YAPILMAMIŞ EKRAN ---
@@ -413,22 +535,32 @@ export const FirmaApp: React.FC = () => {
                                         {hasPdf ? (
                                             <>
                                                 {/* 1. GÖRÜNTÜLE BUTONU */}
-                                                <a
-                                                    href={r.pdfUrl ? `${r.pdfUrl}?token=${encodeURIComponent(token)}` : '#'}
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                    className="inline-flex items-center px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 transition-colors shadow-sm gap-1.5"
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleViewPdf(r.pdfUrl, r.name, r.tc)}
+                                                    disabled={pdfActionLoading === `view-${r.pdfUrl.split('?')[0]}`}
+                                                    className="inline-flex items-center px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 transition-colors shadow-sm gap-1.5 disabled:opacity-50"
                                                 >
-                                                    <Eye className="w-4 h-4 text-slate-600" />
+                                                    {pdfActionLoading === `view-${r.pdfUrl.split('?')[0]}` ? (
+                                                        <RefreshCw className="w-4 h-4 text-slate-600 animate-spin" />
+                                                    ) : (
+                                                        <Eye className="w-4 h-4 text-slate-600" />
+                                                    )}
                                                     <span>Görüntüle</span>
-                                                </a>
+                                                </button>
 
                                                 {/* 2. İNDİR BUTONU */}
                                                 <button
+                                                    type="button"
                                                     onClick={() => handleDownload(r.pdfUrl, r.name, r.tc)}
-                                                    className="inline-flex items-center px-4 py-2 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-sm gap-1.5"
+                                                    disabled={pdfActionLoading === `download-${r.pdfUrl.split('?')[0]}`}
+                                                    className="inline-flex items-center px-4 py-2 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-sm gap-1.5 disabled:opacity-50"
                                                 >
-                                                    <Download className="w-4 h-4" />
+                                                    {pdfActionLoading === `download-${r.pdfUrl.split('?')[0]}` ? (
+                                                        <RefreshCw className="w-4 h-4 text-white animate-spin" />
+                                                    ) : (
+                                                        <Download className="w-4 h-4" />
+                                                    )}
                                                     <span>İndir</span>
                                                 </button>
                                             </>
@@ -445,6 +577,7 @@ export const FirmaApp: React.FC = () => {
                     </div>
                 )}
             </main>
+            {renderPdfModal()}
         </div>
     );
 };

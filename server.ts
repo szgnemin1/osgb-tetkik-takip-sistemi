@@ -1641,13 +1641,12 @@ async function startServer() {
       return res.status(404).json({ error: 'PDF dosyası bulunamadı.' });
     }
 
-    // Extract authentication token from Authorization header or URL query parameter
+    // Extract authentication token ONLY from Authorization header
+    // Strictly forbid passing tokens via URL query string to prevent token leaks and unauthorized link sharing
     let token = '';
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
       token = authHeader.split(' ')[1];
-    } else if (req.query.token && typeof req.query.token === 'string') {
-      token = req.query.token;
     }
 
     // Validate token
@@ -1662,7 +1661,7 @@ async function startServer() {
 
     // If unauthenticated, BLOCK ACCESS!
     if (!decodedUser) {
-      const acceptsHtml = req.headers.accept && req.headers.accept.includes('text/html');
+      const acceptsHtml = req.headers.accept && (req.headers.accept.includes('text/html') || req.headers.accept.includes('*/*'));
       if (acceptsHtml) {
         return res.status(401).send(`
           <!DOCTYPE html>

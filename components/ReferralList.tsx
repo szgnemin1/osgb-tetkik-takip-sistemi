@@ -6,7 +6,7 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License.
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Trash2,
   MapPin,
@@ -15,7 +15,8 @@ import {
   CalendarDays,
   MessageSquare,
   Edit2,
-  Printer
+  Printer,
+  RefreshCw
 } from 'lucide-react';
 import { Referral, Status, MedicalInstitution } from '../types';
 import { getApiToken } from '../services/useServerData';
@@ -40,6 +41,31 @@ export const ReferralList: React.FC<ReferralListProps> = ({
   compact = false,
   isAdmin = false
 }) => {
+  const [loadingPdf, setLoadingPdf] = useState<string | null>(null);
+
+  const handleViewPdf = async (rawUrl: string, name?: string, tc?: string) => {
+    if (!rawUrl) return;
+    const cleanUrl = rawUrl.split('?')[0];
+    setLoadingPdf(rawUrl);
+    try {
+      const token = getApiToken();
+      const res = await fetch(cleanUrl, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
+      if (!res.ok) {
+        alert('PDF raporu yüklenemedi veya erişim yetkiniz bulunmuyor.');
+        return;
+      }
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      window.open(blobUrl, '_blank');
+    } catch (err) {
+      console.error('PDF açma hatası:', err);
+      alert('PDF raporu açılırken bir sorun oluştu.');
+    } finally {
+      setLoadingPdf(null);
+    }
+  };
 
   const getInstitutionName = (id?: string) => {
     if (!id) return null;
@@ -208,15 +234,19 @@ export const ReferralList: React.FC<ReferralListProps> = ({
                 <td className="px-4 py-2.5 text-right">
                    <div className="flex items-center justify-end space-x-1">
                       {referral.resultPdfPath && (
-                         <a 
-                            href={getApiToken() ? `${referral.resultPdfPath}?token=${encodeURIComponent(getApiToken() || '')}` : referral.resultPdfPath}
-                            target="_blank" 
-                            rel="noreferrer"
-                            className="text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 p-1.5 rounded-lg transition-all"
+                         <button 
+                            type="button"
+                            onClick={() => handleViewPdf(referral.resultPdfPath!, referral.employee?.fullName, referral.employee?.tcNo)}
+                            disabled={loadingPdf === referral.resultPdfPath}
+                            className="text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 p-1.5 rounded-lg transition-all disabled:opacity-50"
                             title={referral.status === 'PARTIAL' ? 'Kısmi PDF Raporunu Aç' : 'Tamamlanan PDF Raporunu Aç'}
                          >
-                            <FileText className="w-4 h-4 text-emerald-400" />
-                         </a>
+                            {loadingPdf === referral.resultPdfPath ? (
+                              <RefreshCw className="w-4 h-4 text-emerald-400 animate-spin" />
+                            ) : (
+                              <FileText className="w-4 h-4 text-emerald-400" />
+                            )}
+                         </button>
                       )}
                       {onPrint && (
                          <button 
