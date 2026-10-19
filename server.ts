@@ -260,24 +260,24 @@ function notifyTelegramReferral(item: any, db: any) {
 
   // Format payment method
   let paymentText = item.paymentMethod || "-";
-  if (paymentText === "CASH") paymentText = "💵 Nakit";
-  else if (paymentText === "POS") paymentText = "💳 POS";
-  else if (paymentText === "INVOICE") paymentText = "💼 Cari / Fatura";
+  if (paymentText === "CASH") paymentText = "\u{1F4B5} Nakit";
+  else if (paymentText === "POS") paymentText = "\u{1F4B3} POS";
+  else if (paymentText === "INVOICE") paymentText = "\u{1F4BC} Cari / Fatura";
 
   const date = item.referralDate ? new Date(item.referralDate).toLocaleDateString("tr-TR") : "-";
   const notes = escapeHtml(item.notes ? item.notes : "-");
   const price = item.totalPrice !== undefined ? `${item.totalPrice} TL` : "-";
   const cost = item.totalCost !== undefined ? `${item.totalCost} TL` : "-";
 
-  const message = `<b>🔔 YENİ SEVK KAYDI</b>\n\n` +
-    `<b>👤 Çalışan:</b> ${employeeName} (TC: ${tcNo})\n` +
-    `<b>🏢 Firma:</b> ${companyName}\n` +
-    `<b>🏥 Kurum:</b> ${instName}\n` +
-    `<b>📅 Tarih:</b> ${date}\n` +
-    `<b>💳 Ödeme Tipi:</b> ${paymentText}\n\n` +
-    `<b>🧪 Yapılan Tetkikler:</b>\n${examsList || 'Belirtilmemiş'}\n\n` +
-    `<b>💰 Ücret:</b> ${price} / <b>Maliyet:</b> ${cost}\n` +
-    `<b>📝 Notlar:</b> ${notes}`;
+  const message = `<b>\u{1F514} YEN\u0130 SEVK KAYDI</b>\n\n` +
+    `<b>\u{1F464} \u00C7al\u0131\u015fan:</b> ${employeeName} (TC: ${tcNo})\n` +
+    `<b>\u{1F3E2} Firma:</b> ${companyName}\n` +
+    `<b>\u{1F3E5} Kurum:</b> ${instName}\n` +
+    `<b>\u{1F4C5} Tarih:</b> ${date}\n` +
+    `<b>\u{1F4B3} \u00D6deme Tipi:</b> ${paymentText}\n\n` +
+    `<b>\u{1F9EA} Yap\u0131lan Tetkikler:</b>\n${examsList || 'Belirtilmemiş'}\n\n` +
+    `<b>\u{1F4B0} \u00Dccret:</b> ${price} / <b>Maliyet:</b> ${cost}\n` +
+    `<b>\u{1F4DD} Notlar:</b> ${notes}`;
 
   sendTelegramNotification(message, db.appSettings);
 }
@@ -728,8 +728,8 @@ function startTelegramScheduler() {
       // Check Period 1
       if (period !== 'none' && isTime1 && settings.telegramLastReportSent !== todayStr) {
         if (period === 'daily') {
-          const caption = `<b>📊 GÜNLÜK TETKİK &amp; KASA RAPORU (1. Periyot)</b>\n` +
-            `📅 Tarih: ${now.toLocaleDateString("tr-TR")}\n\n` +
+          const caption = `<b>\u{1F4CA} G\u00DCNL\u00DCK TETK\u0130K &amp; KASA RAPORU (1. Periyot)</b>\n` +
+            `\u{1F4C5} Tarih: ${now.toLocaleDateString("tr-TR")}\n\n` +
             `Sisteminiz tarafından otomatik olarak oluşturulan günlük detaylı Excel raporu ektedir.`;
 
           sendTelegramReport(db, 1, caption).then(success => {
@@ -743,8 +743,8 @@ function startTelegramScheduler() {
           // Only run on Sunday
           const dayOfWeek = now.getDay(); // 0 is Sunday
           if (dayOfWeek === 0) {
-            const caption = `<b>📊 HAFTALIK TETKİK &amp; KASA RAPORU (1. Periyot)</b>\n` +
-              `📅 Tarih: ${now.toLocaleDateString("tr-TR")}\n\n` +
+            const caption = `<b>\u{1F4CA} HAFTALIK TETK\u0130K &amp; KASA RAPORU (1. Periyot)</b>\n` +
+              `\u{1F4C5} Tarih: ${now.toLocaleDateString("tr-TR")}\n\n` +
               `Sisteminiz tarafından otomatik olarak oluşturulan haftalık detaylı Excel raporu ektedir.`;
 
             sendTelegramReport(db, 7, caption).then(success => {
@@ -768,8 +768,8 @@ function startTelegramScheduler() {
             }
             const endDate = new Date(now);
 
-            const caption = `<b>📊 AYLIK TETKİK &amp; KASA RAPORU (ÖZEL PERİYOT) (1. Periyot)</b>\n` +
-              `📅 Dönem: ${startDate.toLocaleDateString("tr-TR")} - ${endDate.toLocaleDateString("tr-TR")}\n\n` +
+            const caption = `<b>\u{1F4CA} AYLIK TETK\u0130K &amp; KASA RAPORU (ÖZEL PERİYOT) (1. Periyot)</b>\n` +
+              `\u{1F4C5} D\u00f6nem: ${startDate.toLocaleDateString("tr-TR")} - ${endDate.toLocaleDateString("tr-TR")}\n\n` +
               `Sisteminiz tarafından belirlenen özel periyot (${startDay} - ${endDay}) uyarınca otomatik oluşturulan aylık detaylı Excel raporu ektedir.`;
 
             sendTelegramReport(db, { startDate, endDate }, caption).then(success => {
@@ -786,8 +786,8 @@ function startTelegramScheduler() {
       // Check Period 2
       if (period2 !== 'none' && isTime2 && settings.telegramLastReportSent2 !== todayStr) {
         if (period2 === 'daily') {
-          const caption = `<b>📊 GÜNLÜK TETKİK &amp; KASA RAPORU (2. Periyot)</b>\n` +
-            `📅 Tarih: ${now.toLocaleDateString("tr-TR")}\n\n` +
+          const caption = `<b>\u{1F4CA} G\u00DCNL\u00DCK TETK\u0130K &amp; KASA RAPORU (2. Periyot)</b>\n` +
+            `\u{1F4C5} Tarih: ${now.toLocaleDateString("tr-TR")}\n\n` +
             `Sisteminiz tarafından otomatik olarak oluşturulan günlük detaylı Excel raporu ektedir.`;
 
           sendTelegramReport(db, 1, caption).then(success => {
@@ -801,8 +801,8 @@ function startTelegramScheduler() {
           // Only run on Sunday
           const dayOfWeek = now.getDay(); // 0 is Sunday
           if (dayOfWeek === 0) {
-            const caption = `<b>📊 HAFTALIK TETKİK &amp; KASA RAPORU (2. Periyot)</b>\n` +
-              `📅 Tarih: ${now.toLocaleDateString("tr-TR")}\n\n` +
+            const caption = `<b>\u{1F4CA} HAFTALIK TETK\u0130K &amp; KASA RAPORU (2. Periyot)</b>\n` +
+              `\u{1F4C5} Tarih: ${now.toLocaleDateString("tr-TR")}\n\n` +
               `Sisteminiz tarafından otomatik olarak oluşturulan haftalık detaylı Excel raporu ektedir.`;
 
             sendTelegramReport(db, 7, caption).then(success => {
@@ -826,8 +826,8 @@ function startTelegramScheduler() {
             }
             const endDate = new Date(now);
 
-            const caption = `<b>📊 AYLIK TETKİK &amp; KASA RAPORU (ÖZEL PERİYOT) (2. Periyot)</b>\n` +
-              `📅 Dönem: ${startDate.toLocaleDateString("tr-TR")} - ${endDate.toLocaleDateString("tr-TR")}\n\n` +
+            const caption = `<b>\u{1F4CA} AYLIK TETK\u0130K &amp; KASA RAPORU (ÖZEL PERİYOT) (2. Periyot)</b>\n` +
+              `\u{1F4C5} D\u00f6nem: ${startDate.toLocaleDateString("tr-TR")} - ${endDate.toLocaleDateString("tr-TR")}\n\n` +
               `Sisteminiz tarafından belirlenen özel periyot (${startDay2} - ${endDay2}) uyarınca otomatik oluşturulan aylık detaylı Excel raporu ektedir.`;
 
             sendTelegramReport(db, { startDate, endDate }, caption).then(success => {
@@ -999,7 +999,7 @@ async function startServer() {
     }
 
     const testMessage = `<b>🔔 OSGB Tetkik Takip Sistemi</b>\n\n` +
-      `Telegram bildirim entegrasyonu başarıyla test edildi! 🎉\n` +
+      `Telegram bildirim entegrasyonu ba\u015far\u0131yla test edildi! \u{1F389}\n` +
       `Sisteminiz artık tetkik (sevk) hareketlerini buraya raporlayacak.`;
 
     const url = `https://api.telegram.org/bot${String(token).trim()}/sendMessage`;
@@ -1065,7 +1065,7 @@ async function startServer() {
 
     let caption = customCaption;
     if (!caption) {
-      caption = `<b>📊 OSGB TETKİK &amp; KASA RAPORU (${escapeHtml(periodText)})</b>\n` +
+      caption = `<b>\u{1F4CA} OSGB TETK\u0130K &amp; KASA RAPORU (${escapeHtml(periodText)})</b>\n` +
         `📅 İstek Tarihi: ${new Date().toLocaleString("tr-TR")}\n\n` +
         `Seçtiğiniz periyoda ait anlık oluşturulan detaylı Excel raporu ektedir.`;
     }

@@ -164,13 +164,14 @@ export interface AppSettings {
 export const turkishToLowerCase = (str: string | null | undefined): string => {
   if (!str) return '';
   return str
-    .replace(/İ/g, 'i')
-    .replace(/I/g, 'ı')
-    .replace(/Ş/g, 'ş')
-    .replace(/Ä/g, 'ğ')
-    .replace(/Ü/g, 'ü')
-    .replace(/Ö/g, 'ö')
-    .replace(/Ç/g, 'ç')
+    // Standard Turkish uppercase to lowercase
+    .replace(/\u0130|Ä°/g, 'i')
+    .replace(/I|Ä±/g, '\u0131')
+    .replace(/\u015E|Åž|ÅŸ/g, '\u015F')
+    .replace(/\u011E|Äž|ÄŸ/g, '\u011F')
+    .replace(/\u00DC|Ãœ|Ã¼/g, '\u00FC')
+    .replace(/\u00D6|Ã–|Ã¶/g, '\u00F6')
+    .replace(/\u00C7|Ã‡|Ã§/g, '\u00E7')
     .toLowerCase();
 };
 
