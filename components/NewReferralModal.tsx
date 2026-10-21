@@ -100,32 +100,49 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({
         hasInitializedIdRef.current = initialData.id;
 
         // Personel Bilgileri
-        setFullName(initialData.employee.fullName);
-        setTcNo(initialData.employee.tcNo);
-        setBirthDate(initialData.employee.birthDate || '');
-        setPhone(initialData.employee.phone || '');
-        setCity(initialData.employee.city || 'Bursa');
-        setTown(initialData.employee.town || 'Mudanya');
-        setAddress(initialData.employee.address || 'Belirtilmedi');
+        setFullName(initialData.employee?.fullName || '');
+        setTcNo(initialData.employee?.tcNo || '');
+        setBirthDate(initialData.employee?.birthDate || '');
+        setPhone(initialData.employee?.phone || '');
+        setCity(initialData.employee?.city || 'Bursa');
+        setTown(initialData.employee?.town || 'Mudanya');
+        setAddress(initialData.employee?.address || 'Belirtilmedi');
         
+        // Dışarıdan Kayıt Flag
+        setIsExternalRecord(Boolean(initialData.isExternalRecord));
+
         // Firma Bilgileri (İsimden objeyi bul)
-        const foundCompany = companies.find(c => c.name === initialData.employee.company);
+        const companyName = initialData.employee?.company || '';
+        const foundCompany = companies.find(c => c.name === companyName);
         if (foundCompany) {
             setSelectedCompanyData(foundCompany);
             setCompanySearchTerm(foundCompany.name);
         } else {
-            // Firma silinmişse bile adını göster
-            setCompanySearchTerm(initialData.employee.company);
+            setSelectedCompanyData(null);
+            setCompanySearchTerm(companyName);
         }
 
         // Diğer Bilgiler
-        setSelectedExamIds(initialData.exams);
+        setSelectedExamIds(Array.isArray(initialData.exams) ? initialData.exams : []);
         setSelectedInstitutionId(initialData.targetInstitutionId || '');
         setNotes(initialData.notes || '');
         setNotesShow(initialData.notesShow !== false);
-        setPaymentMethod(initialData.paymentMethod);
+        setPaymentMethod(initialData.paymentMethod || 'INVOICE');
     } else {
-        hasInitializedIdRef.current = null;
+        if (hasInitializedIdRef.current !== null) {
+            hasInitializedIdRef.current = null;
+            setFullName('');
+            setTcNo('');
+            setBirthDate('');
+            setPhone('');
+            setCompanySearchTerm('');
+            setSelectedCompanyData(null);
+            setSelectedExamIds([]);
+            setSelectedInstitutionId('');
+            setNotes('');
+            setIsExternalRecord(false);
+            setPaymentMethod('INVOICE');
+        }
     }
   }, [initialData, companies]);
 
@@ -133,18 +150,30 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({
 
   // Validation
   const isStep1Valid = useMemo(() => {
-    return (
-      fullName.trim().length >= 3 &&
-      tcNo.trim().length === 11 &&
-      birthDate !== '' &&
-      phone.trim().length >= 10 &&
-      (selectedCompanyData !== null || (initialData !== null && initialData !== undefined && companySearchTerm.trim() !== ''))
-    );
-  }, [fullName, tcNo, birthDate, phone, selectedCompanyData, initialData, companySearchTerm]);
+    const hasName = fullName.trim().length >= 2;
+    const hasTc = tcNo.trim().length === 11;
+
+    // Dışarıdan gelen kayıtta sadece isim ve TC yeterlidir (ücret, sevk evrağı ve mesaj yok)
+    if (isExternalRecord) {
+      return hasName && hasTc;
+    }
+
+    // Normal sevk kaydı
+    const hasCompany = selectedCompanyData !== null || companySearchTerm.trim() !== '';
+    const hasBirthDate = birthDate !== '';
+    const hasPhone = phone.trim().length >= 10;
+
+    // Düzenleme modunda eski kayıtlarda doğum tarihi veya telefon boş olsa bile engelleme
+    if (initialData) {
+      return hasName && hasTc && hasCompany;
+    }
+
+    return hasName && hasTc && hasBirthDate && hasPhone && hasCompany;
+  }, [fullName, tcNo, birthDate, phone, selectedCompanyData, initialData, companySearchTerm, isExternalRecord]);
 
   const isStep2Valid = useMemo(() => {
     if (isExternalRecord) return true;
-    return selectedExamIds.length > 0;
+    return (selectedExamIds || []).length > 0;
   }, [selectedExamIds, isExternalRecord]);
 
   const isStep3Valid = useMemo(() => {
@@ -211,9 +240,14 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({
 
   // Price Calculation
   useEffect(() => {
+    if (isExternalRecord) {
+      setEstimatedPrice(0);
+      setEstimatedCost(0);
+      return;
+    }
     let totalPrice = 0;
     let totalCost = 0;
-    selectedExamIds.forEach(id => {
+    (selectedExamIds || []).forEach(id => {
       const exam = exams.find(e => e.name === id);
       if (exam) {
         totalPrice += exam.price;
@@ -222,18 +256,19 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({
     });
     setEstimatedPrice(totalPrice);
     setEstimatedCost(totalCost);
-  }, [selectedExamIds, exams]);
+  }, [selectedExamIds, exams, isExternalRecord]);
 
   // Sort Exams (Selected first, then Defaults, then Alphabetical)
   const sortedExams = useMemo(() => {
+      const currentSelected = selectedExamIds || [];
       return [...exams].sort((a, b) => {
-          const aIsSelected = selectedExamIds.includes(a.name);
-          const bIsSelected = selectedExamIds.includes(b.name);
+          const aIsSelected = currentSelected.includes(a.name);
+          const bIsSelected = currentSelected.includes(b.name);
           if (aIsSelected && !bIsSelected) return -1;
           if (!aIsSelected && bIsSelected) return 1;
 
-          const aIsDefault = selectedCompanyData?.defaultExams.includes(a.name) || false;
-          const bIsDefault = selectedCompanyData?.defaultExams.includes(b.name) || false;
+          const aIsDefault = selectedCompanyData?.defaultExams?.includes(a.name) || false;
+          const bIsDefault = selectedCompanyData?.defaultExams?.includes(b.name) || false;
           if (aIsDefault && !bIsDefault) return -1;
           if (!aIsDefault && bIsDefault) return 1;
           
@@ -288,40 +323,40 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({
 
   const executeSubmit = (selectedMethod: 'CASH' | 'POS' | 'INVOICE', shouldPrint: boolean, skipNotifications: boolean = false) => {
     // ID'yi koru (düzenleme) veya yeni oluştur
-    const referralId = initialData ? initialData.id : Math.random().toString(36).substr(2, 9);
-    const employeeId = initialData ? initialData.employee.id : Math.random().toString(36).substr(2, 9);
+    const referralId = initialData?.id || Math.random().toString(36).substr(2, 9);
+    const employeeId = initialData?.employee?.id || Math.random().toString(36).substr(2, 9);
 
     const newReferral: Referral = {
       id: referralId,
       employee: {
         id: employeeId,
-        fullName,
-        tcNo,
-        birthDate,
-        phone,
-        city,
-        town,
-        address,
-        company: selectedCompanyData ? selectedCompanyData.name : companySearchTerm, // Firma silinmişse text olarak al
+        fullName: fullName.trim(),
+        tcNo: tcNo.trim(),
+        birthDate: birthDate || undefined,
+        phone: phone.trim() || undefined,
+        city: city || 'Bursa',
+        town: town || 'Mudanya',
+        address: address || 'Belirtilmedi',
+        company: selectedCompanyData ? selectedCompanyData.name : (companySearchTerm.trim() || (isExternalRecord ? 'Dışarıdan Tetkik' : 'Belirtilmedi')),
       },
-      exams: selectedExamIds,
-      status: initialData ? initialData.status : (matchingExternal?.resultPdfPath ? (matchingExternal.status || Status.COMPLETED) : Status.PENDING),
-      referralDate: initialData ? initialData.referralDate : new Date().toISOString(),
-      notes,
+      exams: isExternalRecord ? ((selectedExamIds && selectedExamIds.length > 0) ? selectedExamIds : ['Sağlık Tetkikleri']) : (selectedExamIds || []),
+      status: initialData?.status ? initialData.status : (matchingExternal?.resultPdfPath ? (matchingExternal.status || Status.COMPLETED) : (isExternalRecord ? Status.AWAITING_RESULT : Status.PENDING)),
+      referralDate: initialData?.referralDate || new Date().toISOString(),
+      notes: notes || undefined,
       notesShow,
       doctorName: selectedCompanyData?.assignedDoctor || initialData?.doctorName,
       specialistName: selectedCompanyData?.assignedSpecialist || initialData?.specialistName,
-      totalPrice: estimatedPrice,
-      totalCost: estimatedCost,
-      paymentMethod: selectedMethod,
-      targetInstitutionId: selectedInstitutionId || matchingExternal?.targetInstitutionId || undefined,
+      totalPrice: isExternalRecord ? 0 : estimatedPrice,
+      totalCost: isExternalRecord ? 0 : estimatedCost,
+      paymentMethod: isExternalRecord ? 'INVOICE' : selectedMethod,
+      targetInstitutionId: selectedInstitutionId || matchingExternal?.targetInstitutionId || initialData?.targetInstitutionId || undefined,
       resultPdfPath: matchingExternal?.resultPdfPath || initialData?.resultPdfPath || undefined,
-      completedExams: matchingExternal?.completedExams || initialData?.completedExams || undefined,
+      completedExams: matchingExternal?.completedExams || initialData?.completedExams || (isExternalRecord ? ['Sağlık Tetkikleri'] : undefined),
       pendingExams: matchingExternal?.pendingExams || initialData?.pendingExams || undefined,
-      skipNotifications, 
-      isExternalRecord: false,
+      skipNotifications: isExternalRecord ? true : skipNotifications, 
+      isExternalRecord: Boolean(isExternalRecord),
     };
-    onSubmit(newReferral, shouldPrint);
+    onSubmit(newReferral, isExternalRecord ? false : shouldPrint);
     setShowPaymentReminder(false);
   };
 
@@ -520,25 +555,23 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({
                   </div>
 
                   {/* Dışarıdan Kayıt Checkbox */}
-                  {!initialData && (
-                    <label className="flex items-center space-x-3 p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl cursor-pointer hover:bg-indigo-500/20 transition-colors mb-4">
-                      <div className="relative flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={isExternalRecord}
-                          onChange={(e) => setIsExternalRecord(e.target.checked)}
-                          className="w-5 h-5 rounded border-slate-600 text-indigo-500 bg-slate-900 focus:ring-indigo-500 focus:ring-offset-slate-900"
-                        />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-sm font-bold text-indigo-300">Dışarıdan Gelen Tetkik (Sadece Kayıt)</span>
-                        <span className="text-[10px] text-slate-400">Tetkik sormaz, kuruma bildirim ve hastaya mesaj gitmez. Sadece gelir olarak kaydedilir.</span>
-                      </div>
-                    </label>
-                  )}
+                  <label className="flex items-center space-x-3 p-3 bg-indigo-500/10 border border-indigo-500/30 rounded-xl cursor-pointer hover:bg-indigo-500/20 transition-colors mb-4">
+                    <div className="relative flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={isExternalRecord}
+                        onChange={(e) => setIsExternalRecord(e.target.checked)}
+                        className="w-5 h-5 rounded border-slate-600 text-indigo-500 bg-slate-900 focus:ring-indigo-500 focus:ring-offset-slate-900 cursor-pointer"
+                      />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold text-indigo-300">Dışarıdan Gelen Tetkik (Sadece Kayıt)</span>
+                      <span className="text-[10px] text-slate-400">Ücret, sevk evrağı ve mesaj bildirimi olmaz. Kişi sadece sistemde kayıt altına alınır.</span>
+                    </div>
+                  </label>
 
                   {/* Personel Bilgisi Kartı */}
-                  <div className={`bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm transition-all duration-300 ${!selectedCompanyData && !initialData ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
+                  <div className={`bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm transition-all duration-300 ${!selectedCompanyData && !initialData && !isExternalRecord ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center">
                         <div className="p-1.5 bg-emerald-500/10 rounded-lg mr-2">
@@ -817,19 +850,21 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({
               ) : (
                 <button
                   type="button"
-                  onClick={(e) => handleSubmit(e, !initialData ? settings.autoPrintReferral : false)}
+                  onClick={(e) => handleSubmit(e, false)}
                   disabled={!isFormValid}
                   className={`flex-1 sm:flex-initial px-8 py-3 rounded-xl font-bold text-white shadow-lg flex items-center justify-center space-x-2 transition-all active:scale-95 ${
                     !isFormValid 
                       ? 'bg-slate-700 text-slate-500 cursor-not-allowed' 
-                      : paymentMethod === 'CASH' ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/30' : 
+                      : isExternalRecord
+                        ? 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-900/30'
+                        : paymentMethod === 'CASH' ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/30' : 
                         paymentMethod === 'POS' ? 'bg-purple-600 hover:bg-purple-500 shadow-purple-900/30' :
                         'bg-blue-600 hover:bg-blue-500 shadow-blue-900/30'
                   }`}
                 >
                   <Save className="w-4 h-4" />
                   <span>
-                    {initialData ? 'GÜNCELLE' : 'KAYDI OLUŞTUR'}
+                    {initialData ? 'GÜNCELLE' : (isExternalRecord ? 'SADECE KAYIT OLUŞTUR' : 'KAYDI OLUŞTUR')}
                   </span>
                 </button>
               )}
@@ -914,22 +949,20 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({
               </div>
 
               {/* Dışarıdan Kayıt Checkbox */}
-              {!initialData && (
-                <label className="flex items-center space-x-3 p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl cursor-pointer hover:bg-indigo-500/20 transition-colors mb-4">
-                  <div className="relative flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={isExternalRecord}
-                      onChange={(e) => setIsExternalRecord(e.target.checked)}
-                      className="w-5 h-5 rounded border-slate-600 text-indigo-500 bg-slate-900 focus:ring-indigo-500 focus:ring-offset-slate-900"
-                    />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-sm font-bold text-indigo-300">Dışarıdan Gelen Tetkik (Sadece Kayıt)</span>
-                    <span className="text-[10px] text-slate-400">Tetkik sormaz, kuruma bildirim ve hastaya mesaj gitmez. Sadece gelir olarak kaydedilir.</span>
-                  </div>
-                </label>
-              )}
+              <label className="flex items-center space-x-3 p-3 bg-indigo-500/10 border border-indigo-500/30 rounded-xl cursor-pointer hover:bg-indigo-500/20 transition-colors mb-4">
+                <div className="relative flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={isExternalRecord}
+                    onChange={(e) => setIsExternalRecord(e.target.checked)}
+                    className="w-5 h-5 rounded border-slate-600 text-indigo-500 bg-slate-900 focus:ring-indigo-500 focus:ring-offset-slate-900 cursor-pointer"
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-bold text-indigo-300">Dışarıdan Gelen Tetkik (Sadece Kayıt)</span>
+                  <span className="text-[10px] text-slate-400">Ücret, sevk evrağı ve mesaj bildirimi olmaz. Kişi sadece sistemde kayıt altına alınır.</span>
+                </div>
+              </label>
 
               {/* Personel Bilgisi Kartı */}
               <div className={`bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm transition-all duration-300 shrink-0 ${!selectedCompanyData && !initialData && !isExternalRecord ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
@@ -982,7 +1015,8 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({
                   {/* Sadece Kayıt Modu Butonu (Masaüstü) */}
                   {isExternalRecord && (
                     <button 
-                      onClick={(e) => handleSubmit(e, !initialData ? settings.autoPrintReferral : false)}
+                      type="button"
+                      onClick={(e) => handleSubmit(e, false)}
                       disabled={!isStep1Valid}
                       className={`w-full mt-4 py-3 rounded-lg font-bold text-white shadow-lg flex items-center justify-center space-x-2 transition-all active:scale-95 ${
                         !isStep1Valid ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-900/30'
@@ -990,7 +1024,7 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({
                     >
                       <Save className="w-4 h-4" />
                       <span className="text-sm">
-                        {initialData ? 'GÜNCELLE' : 'KAYDI OLUŞTUR'}
+                        {initialData ? 'GÜNCELLE' : 'SADECE KAYIT OLUŞTUR'}
                       </span>
                     </button>
                   )}
@@ -998,7 +1032,24 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({
               </div>
             </div>
 
-            {!isExternalRecord && (
+            {isExternalRecord ? (
+              <div className="col-span-12 lg:col-span-8 flex flex-col items-center justify-center p-8 bg-slate-900/40 border border-slate-800/80 rounded-2xl text-center">
+                <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-4">
+                  <User className="w-8 h-8 text-indigo-400" />
+                </div>
+                <h3 className="text-lg font-bold text-white mb-2">Dışarıdan Tetkik Modu (Sadece Kayıt)</h3>
+                <p className="text-sm text-slate-400 max-w-md mb-6 leading-relaxed">
+                  Bu modda tetkik seçimi ve kurum ataması gerekmez. Ücret tahsilatı (kasa) yapılmaz, sevk belgesi yazdırılmaz ve hastaya/kuruma mesaj gitmez. Sadece personelin kaydı sisteme işlenir.
+                </p>
+                <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 px-4 py-2.5 rounded-xl">
+                  <span>✓ 0 ₺ Ücret / Kasa Dışı</span>
+                  <span>•</span>
+                  <span>✓ Sevk Belgesi Yok</span>
+                  <span>•</span>
+                  <span>✓ Bildirim Mesajı Yok</span>
+                </div>
+              </div>
+            ) : (
               <>
                 {/* COLUMN 2: NE? (Tetkikler) - lg:col-span-5 */}
             <div className={`col-span-12 lg:col-span-5 flex flex-col transition-all duration-300 lg:min-h-0 min-h-fit ${!selectedCompanyData && !initialData ? 'opacity-40 pointer-events-none' : ''}`}>

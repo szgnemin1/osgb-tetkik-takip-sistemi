@@ -196,13 +196,13 @@ const App: React.FC = () => {
       
       let shouldSendWhatsapp = true;
       if (editingReferral) {
-         if (editingReferral.employee.phone === referral.employee.phone && 
+         if (editingReferral.employee?.phone === referral.employee?.phone && 
              editingReferral.targetInstitutionId === referral.targetInstitutionId) {
              shouldSendWhatsapp = false;
          }
       }
       
-      if (inst && inst.sendWhatsapp && referral.employee.phone && !referral.skipNotifications && shouldSendWhatsapp) {
+      if (!referral.isExternalRecord && inst && inst.sendWhatsapp && referral.employee?.phone && !referral.skipNotifications && shouldSendWhatsapp) {
          let msg = inst.whatsappTemplate || 'Sayın {hasta_adi}, {kurum_adi} kurumuna sevkiniz oluşturulmuştur. Konum: {konum_linki}';
          
          const birthDateStr = (referral.employee.birthDate || '').trim();
@@ -253,13 +253,13 @@ const App: React.FC = () => {
 
     if (editingReferral) {
         // Find existing transaction and update/replace it if payment is involved
-        const txToDelete = transactions.filter(t => t.referralId === referral.id);
+        const txToDelete = (transactions || []).filter(t => t.referralId === referral.id);
         for (const t of txToDelete) {
            await deleteTransactionFromDb(t.id);
         }
     } 
 
-    if ((referral.paymentMethod === 'CASH' || referral.paymentMethod === 'POS') && referral.totalPrice && referral.totalPrice > 0) {
+    if (!referral.isExternalRecord && (referral.paymentMethod === 'CASH' || referral.paymentMethod === 'POS') && referral.totalPrice && referral.totalPrice > 0) {
         const typeLabel = referral.paymentMethod === 'CASH' ? 'Nakit' : 'Pos';
         const newTransaction: SafeTransaction = {
             id: Math.random().toString(36).substr(2, 9),
@@ -317,7 +317,7 @@ const App: React.FC = () => {
     setEditingReferral(null);
     await reloadData();
     
-    if (shouldPrint) {
+    if (shouldPrint && !referral.isExternalRecord) {
       setPrintingReferral(referral);
     }
     setActiveTab('referrals');

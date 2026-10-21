@@ -137,13 +137,13 @@ export const ReferralList: React.FC<ReferralListProps> = ({
                 {/* Personel */}
                 <td className="px-4 py-2.5">
                   <div className="flex items-center space-x-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-lg ${getAvatarColor(referral.employee.fullName)}`}>
-                        {getInitials(referral.employee.fullName)}
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-lg ${getAvatarColor(referral.employee?.fullName || '')}`}>
+                        {getInitials(referral.employee?.fullName || '')}
                     </div>
                     <div className="flex flex-col">
-                      <span className="font-bold text-slate-200 text-sm">{referral.employee.fullName}</span>
+                      <span className="font-bold text-slate-200 text-sm">{referral.employee?.fullName || 'İsimsiz'}</span>
                       <div className="flex items-center space-x-1.5 mt-0.5">
-                        <span className="text-[11px] text-slate-500 font-mono tracking-wide">{referral.employee.tcNo}</span>
+                        <span className="text-[11px] text-slate-500 font-mono tracking-wide">{referral.employee?.tcNo || '-'}</span>
                         {referral.isExternalRecord && (
                           <span 
                             className="text-[9px] px-1.5 py-0.2 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40"
@@ -162,7 +162,7 @@ export const ReferralList: React.FC<ReferralListProps> = ({
                   <div className="flex flex-col space-y-1">
                       <div className="flex items-center space-x-1.5">
                          <Building2 className="w-3.5 h-3.5 text-slate-500" />
-                         <span className="text-sm text-slate-300 font-medium truncate max-w-[150px]" title={referral.employee.company}>{referral.employee.company}</span>
+                         <span className="text-sm text-slate-300 font-medium truncate max-w-[150px]" title={referral.employee?.company}>{referral.employee?.company || '-'}</span>
                       </div>
                       {!compact && (
                         <div className="flex items-center space-x-1.5">
@@ -187,7 +187,7 @@ export const ReferralList: React.FC<ReferralListProps> = ({
                 {!compact && (
                     <td className="px-4 py-2.5">
                         <div className="flex flex-wrap gap-1 max-w-[240px]">
-                            {referral.exams.map((exam, i) => (
+                            {(referral.exams || []).map((exam, i) => (
                                 <span 
                                     key={i} 
                                     className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-slate-700/60 text-slate-300 border border-slate-600/50"
@@ -248,7 +248,7 @@ export const ReferralList: React.FC<ReferralListProps> = ({
                             )}
                          </button>
                       )}
-                      {onPrint && (
+                      {onPrint && !referral.isExternalRecord && (
                          <button 
                             onClick={() => onPrint(referral)}
                             className="text-slate-600 hover:text-emerald-400 hover:bg-emerald-500/10 p-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100"

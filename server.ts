@@ -237,6 +237,7 @@ function sendTelegramNotification(message: string, settings: any) {
 }
 
 function notifyTelegramReferral(item: any, db: any) {
+  if (item?.isExternalRecord) return;
   if (!db.appSettings?.isTelegramEnabled || !db.appSettings?.telegramBotToken || !db.appSettings?.telegramChatId) {
     return;
   }
@@ -1377,21 +1378,27 @@ async function startServer() {
     }
 
     if (action === 'save') {
-      if (collection === 'referrals' && item.employee?.tcNo) {
-        const extIdx = db.referrals.findIndex((x: any) => 
-          x.isExternalRecord && 
-          x.employee?.tcNo === item.employee.tcNo &&
-          x.id !== item.id
-        );
-        if (extIdx >= 0) {
-          const extRecord = db.referrals[extIdx];
-          item.resultPdfPath = item.resultPdfPath || extRecord.resultPdfPath;
-          item.completedExams = item.completedExams || extRecord.completedExams;
-          item.status = (item.status && item.status !== 'PENDING') ? item.status : extRecord.status;
-          item.targetInstitutionId = item.targetInstitutionId || extRecord.targetInstitutionId;
-          db.referrals.splice(extIdx, 1);
+      if (collection === 'referrals') {
+        if (!item.isExternalRecord && item.employee?.tcNo) {
+          const extIdx = db.referrals.findIndex((x: any) => 
+            x.isExternalRecord && 
+            x.employee?.tcNo === item.employee.tcNo &&
+            x.id !== item.id
+          );
+          if (extIdx >= 0) {
+            const extRecord = db.referrals[extIdx];
+            item.resultPdfPath = item.resultPdfPath || extRecord.resultPdfPath;
+            item.completedExams = item.completedExams || extRecord.completedExams;
+            item.status = (item.status && item.status !== 'PENDING') ? item.status : extRecord.status;
+            item.targetInstitutionId = item.targetInstitutionId || extRecord.targetInstitutionId;
+            db.referrals.splice(extIdx, 1);
+          }
+          item.isExternalRecord = false;
+        } else if (item.isExternalRecord) {
+          item.isExternalRecord = true;
+          item.totalPrice = 0;
+          item.totalCost = 0;
         }
-        item.isExternalRecord = false;
       }
       const idx = db[collection].findIndex((x: any) => x.id === item.id);
       const isNew = idx < 0;
@@ -1426,7 +1433,7 @@ async function startServer() {
         }
       }
       // If collection is referrals, trigger telegram notification only for newly created items
-      if (collection === 'referrals' && isNew && !item.skipNotifications) {
+      if (collection === 'referrals' && isNew && !item.skipNotifications && !item.isExternalRecord) {
         try {
           notifyTelegramReferral(item, db);
         } catch (tgErr) {
