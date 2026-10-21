@@ -136,13 +136,13 @@ const App: React.FC = () => {
 
   const filteredReferrals = useMemo(() => {
     return referrals
-      .filter(r => !r.isExternalRecord)
       .filter(r => 
         turkishIncludes(r?.employee?.fullName, searchTerm) ||
         turkishIncludes(r?.employee?.company, searchTerm) ||
-        turkishIncludes(r?.employee?.tcNo, searchTerm)
+        turkishIncludes(r?.employee?.tcNo, searchTerm) ||
+        (r?.isExternalRecord && turkishIncludes('Dışarıdan Tetkik', searchTerm))
       )
-      .sort((a, b) => new Date(b.referralDate).getTime() - new Date(a.referralDate).getTime());
+      .sort((a, b) => new Date(b?.referralDate || 0).getTime() - new Date(a?.referralDate || 0).getTime());
   }, [referrals, searchTerm]);
 
   const stats = useMemo(() => {
