@@ -136,6 +136,7 @@ const App: React.FC = () => {
 
   const filteredReferrals = useMemo(() => {
     return referrals
+      .filter(r => !r.isExternalRecord)
       .filter(r => 
         turkishIncludes(r?.employee?.fullName, searchTerm) ||
         turkishIncludes(r?.employee?.company, searchTerm) ||

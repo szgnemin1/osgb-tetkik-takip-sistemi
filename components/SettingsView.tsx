@@ -9,7 +9,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Company, ExamDefinition, HazardClass, MedicalInstitution, AppSettings, turkishIncludes } from '../types';
-import { Trash2, Plus, Building2, Save, Check, Receipt, Upload, FileDown, MapPin, Sliders, CheckSquare, Square, Image as ImageIcon, Edit2, XCircle, Database, Download, RefreshCw, AlertTriangle, CreditCard, Banknote, Search, Cloud, Globe, Lock, ShieldCheck, Activity, Link, Eye, Copy, Send, Bell, FileSpreadsheet, Clock, MessageSquare, Smartphone, Key, ExternalLink } from 'lucide-react';
+import { Trash2, Plus, Building2, Save, Check, Receipt, Upload, FileDown, MapPin, Sliders, CheckSquare, Square, Image as ImageIcon, Edit2, XCircle, Database, Download, RefreshCw, AlertTriangle, CreditCard, Banknote, Search, Cloud, Globe, Lock, ShieldCheck, Activity, Link, Eye, Copy, Send, Bell, FileSpreadsheet, Clock, MessageSquare, Smartphone, Key, ExternalLink, Stethoscope } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 interface SettingsViewProps {
@@ -588,41 +588,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const handleCompanySubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!cName) return;
+    if (!cName || !editingCompanyId) return;
 
-    if (editingCompanyId) {
-      // UPDATE Existing
-      const updatedCompany: Company = {
-        id: editingCompanyId,
-        name: cName,
-        hazardClass: cHazard,
-        assignedDoctor: cDoctor || 'Belirlenmedi',
-        assignedSpecialist: cSpecialist || 'Belirlenmedi',
-        defaultExams: cSelectedExams,
-        defaultPaymentMethod: cPaymentMethod,
-        forcedInstitutionId: cPreferredInst || undefined,
-        portalPassword: cPortalPassword.trim() || undefined
-      };
-      onUpdateCompany(updatedCompany);
-      handleCancelEdit(); // Reset form
-    } else {
-      // ADD New
-      const newCompany: Company = {
-        id: Math.random().toString(36).substr(2, 9),
-        sendWhatsapp: iSendWhatsapp,
-        whatsappTemplate: iWhatsappTemplate,
-        name: cName,
-        hazardClass: cHazard,
-        assignedDoctor: cDoctor || 'Belirlenmedi',
-        assignedSpecialist: cSpecialist || 'Belirlenmedi',
-        defaultExams: cSelectedExams,
-        defaultPaymentMethod: cPaymentMethod,
-        forcedInstitutionId: cPreferredInst || undefined,
-        portalPassword: cPortalPassword.trim() || undefined
-      };
-      onAddCompany(newCompany);
-      handleCancelEdit(); // Reset form using same helper
-    }
+    // Sadece Fatura Takip'te açılmış firmanın Tetkik detaylarını güncelle
+    const updatedCompany: Company = {
+      id: editingCompanyId,
+      name: cName,
+      hazardClass: cHazard,
+      assignedDoctor: cDoctor || 'Belirlenmedi',
+      assignedSpecialist: cSpecialist || 'Belirlenmedi',
+      defaultExams: cSelectedExams,
+      defaultPaymentMethod: cPaymentMethod,
+      forcedInstitutionId: cPreferredInst || undefined,
+      portalPassword: cPortalPassword.trim() || undefined
+    };
+    onUpdateCompany(updatedCompany);
+    handleCancelEdit(); // Reset form
   };
 
   const handleCancelInstitutionEdit = () => {
@@ -1291,170 +1272,213 @@ const handleInstitutionSubmit = (e: React.FormEvent) => {
               </div>
             </div>
             
-            {/* Bulk Import Section */}
+            {/* Bilgilendirme Bannerı (Firma Açma Sadece Fatura Takip'te) */}
             {!editingCompanyId && (
-                <div className="bg-slate-900/50 p-4 rounded-lg border border-dashed border-slate-600 flex flex-col md:flex-row items-center justify-between gap-4">
-                <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-emerald-500/10 rounded">
-                    <Upload className="w-6 h-6 text-emerald-500" />
-                    </div>
-                    <div>
-                        <h5 className="text-sm font-bold text-white">Toplu Firma Yükleme (Excel)</h5>
-                        <p className="text-xs text-slate-400">Şablonu indirin, <strong>2. Sayfadaki tetkik kodlarına bakarak</strong> doldurun ve yükleyin.</p>
-                    </div>
-                </div>
-                <div className="flex flex-col sm:flex-row gap-3">
-                    <button 
-                      onClick={downloadTemplate}
-                      type="button"
-                      className="flex items-center justify-center space-x-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded text-xs text-slate-300 transition-colors"
-                    >
-                        <FileDown className="w-4 h-4" />
-                        <span>Boş Şablon İndir</span>
-                    </button>
-                    <button 
-                      onClick={downloadCurrentCompaniesExcel}
-                      type="button"
-                      className="flex items-center justify-center space-x-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded text-xs text-blue-300 transition-colors"
-                    >
-                        <Download className="w-4 h-4" />
-                        <span>Mevcut Listeyi İndir (Düzenlemek için)</span>
-                    </button>
-                    <label className="flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs font-medium cursor-pointer transition-colors shadow-lg shadow-blue-900/20">
-                        <Upload className="w-4 h-4" />
-                        <span>Verileri Yükle / Güncelle</span>
-                        <input 
-                        type="file" 
-                        accept=".xlsx, .xls" 
-                        className="hidden" 
-                        ref={fileInputRef}
-                        onChange={handleFileUpload}
-                        />
-                    </label>
-                </div>
-                </div>
-            )}
-
-            {/* Add/Edit Company Form */}
-            <form onSubmit={handleCompanySubmit} className={`bg-slate-900/30 p-4 rounded-lg border ${editingCompanyId ? 'border-orange-500/50 shadow-lg shadow-orange-900/20' : 'border-slate-700'} space-y-4 transition-all duration-300`}>
-              <h4 className={`text-sm font-bold flex items-center ${editingCompanyId ? 'text-orange-400' : 'text-white'}`}>
-                {editingCompanyId ? <Edit2 className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />} 
-                {editingCompanyId ? 'Firma Bilgilerini Düzenle' : 'Tek Firma Ekle'}
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input required placeholder="Firma Adı" value={cName} onChange={e => setCName(e.target.value)} className="bg-slate-800 border-slate-600 rounded px-3 py-2 text-white text-sm focus:ring-blue-500 outline-none" />
-                <select value={cHazard} onChange={e => setCHazard(e.target.value as HazardClass)} className="bg-slate-800 border-slate-600 rounded px-3 py-2 text-white text-sm outline-none">
-                  {Object.values(HazardClass).map(h => <option key={h} value={h}>{h}</option>)}
-                </select>
-                <input placeholder="İşyeri Hekimi" value={cDoctor} onChange={e => setCDoctor(e.target.value)} className="bg-slate-800 border-slate-600 rounded px-3 py-2 text-white text-sm focus:ring-blue-500 outline-none" />
-                <input placeholder="İSG Uzmanı" value={cSpecialist} onChange={e => setCSpecialist(e.target.value)} className="bg-slate-800 border-slate-600 rounded px-3 py-2 text-white text-sm focus:ring-blue-500 outline-none" />
-                
-                {/* Forced Institution Dropdown */}
-                <select 
-                  value={cPreferredInst} 
-                  onChange={e => setCPreferredInst(e.target.value)} 
-                  className="bg-slate-800 border-slate-600 rounded px-3 py-2 text-white text-sm outline-none"
-                >
-                    <option value="">Anlaşmalı Kurum (Seçiniz)</option>
-                    <option value="">Serbest (İstenilen yere gidebilir)</option>
-                    {institutions.map(inst => (
-                      <option key={inst.id} value={inst.id}>{inst.name}</option>
-                    ))}
-                </select>
-
-                {/* Payment Method Selector */}
-                <div className="flex space-x-2">
-                   <button 
-                    type="button"
-                    onClick={() => setCPaymentMethod('INVOICE')}
-                    className={`flex-1 py-2 rounded text-sm font-medium border flex items-center justify-center space-x-2 transition-all ${cPaymentMethod === 'INVOICE' ? 'bg-blue-600/20 border-blue-500 text-blue-200' : 'bg-slate-800 border-slate-600 text-slate-400'}`}
-                   >
-                     <Receipt className="w-4 h-4" />
-                     <span>Fatura</span>
-                   </button>
-                   <button 
-                    type="button"
-                    onClick={() => setCPaymentMethod('CASH')}
-                    className={`flex-1 py-2 rounded text-sm font-medium border flex items-center justify-center space-x-2 transition-all ${cPaymentMethod === 'CASH' ? 'bg-emerald-600/20 border-emerald-500 text-emerald-200' : 'bg-slate-800 border-slate-600 text-slate-400'}`}
-                   >
-                     <Banknote className="w-4 h-4" />
-                     <span>Nakit</span>
-                   </button>
-                   <button 
-                    type="button"
-                    onClick={() => setCPaymentMethod('POS')}
-                    className={`flex-1 py-2 rounded text-sm font-medium border flex items-center justify-center space-x-2 transition-all ${cPaymentMethod === 'POS' ? 'bg-purple-600/20 border-purple-500 text-purple-200' : 'bg-slate-800 border-slate-600 text-slate-400'}`}
-                   >
-                     <CreditCard className="w-4 h-4" />
-                     <span>Pos</span>
-                   </button>
-                </div>
-
-                {/* Firma Portalı Şifresi */}
-                <div className="relative md:col-span-2">
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Firma Portalı Giriş Şifresi (Firma yetkilisinin /sonuc adresinden TC ile sonuç sorgulaması için)
-                  </label>
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <input 
-                        type="text"
-                        placeholder="Portal Giriş Şifresi Belirleyin (Örn: CAN4821)" 
-                        value={cPortalPassword} 
-                        onChange={e => setCPortalPassword(e.target.value)} 
-                        className="bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white text-sm focus:ring-blue-500 outline-none w-full pr-10 font-mono" 
-                      />
-                      <Key className="w-4 h-4 text-amber-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setCPortalPassword(generateSmartPassword(cName))}
-                      className="px-3 py-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 rounded text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition-colors"
-                    >
-                      <RefreshCw className="w-3.5 h-3.5" />
-                      <span>Otomatik Şifre Üret</span>
-                    </button>
+              <div className="bg-gradient-to-r from-blue-950/40 via-slate-900 to-slate-950 p-4 rounded-xl border border-blue-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-blue-500/20 text-blue-400 rounded-lg shrink-0">
+                    <Building2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h5 className="text-sm font-bold text-white flex items-center gap-2">
+                      <span>Firma Yönetimi & Tetkik Yapılandırması</span>
+                      <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded font-mono font-bold">
+                        Tek Kaynak: Fatura Takip
+                      </span>
+                    </h5>
+                    <p className="text-xs text-slate-300 mt-0.5">
+                      Yeni firmalar yalnızca <strong>Fatura Takip</strong> sisteminde açılmaktadır. Aşağıdaki listeden istediğiniz firmanın <strong>"Tetkik Detaylarını Düzenle"</strong> butonuna tıklayarak ödeme türünü (Fatura / Nakit) ve standart tetkiklerini belirleyebilirsiniz.
+                    </p>
                   </div>
                 </div>
-              </div>
-
-              {/* Exam Selection for Company */}
-              <div>
-                <label className="block text-sm font-medium text-slate-400 mb-2">Firma Standart Tetkikleri</label>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                   {exams.map(exam => (
-                     <div 
-                      key={exam.id}
-                      onClick={() => toggleCompanyExam(exam.name)}
-                      className={`cursor-pointer px-3 py-2 rounded border flex items-center justify-between transition-all ${cSelectedExams.includes(exam.name) ? 'bg-blue-600/20 border-blue-500 text-blue-200' : 'bg-slate-800 border-slate-600 text-slate-400 hover:bg-slate-700'}`}
-                     >
-                       <span className="text-xs truncate mr-2">{exam.name}</span>
-                       {cSelectedExams.includes(exam.name) && <Check className="w-3 h-3 text-blue-400" />}
-                     </div>
-                   ))}
-                </div>
-              </div>
-
-              {/* Save / Cancel Buttons */}
-              <div className="flex justify-end space-x-3">
-                {editingCompanyId && (
-                    <button 
-                        type="button" 
-                        onClick={handleCancelEdit}
-                        className="bg-slate-700 hover:bg-slate-600 text-slate-300 px-4 py-2 rounded text-sm flex items-center"
-                    >
-                        <XCircle className="w-4 h-4 mr-1" /> Vazgeç
-                    </button>
-                )}
-                <button 
-                    type="submit" 
-                    className={`${editingCompanyId ? 'bg-orange-600 hover:bg-orange-500' : 'bg-blue-600 hover:bg-blue-500'} text-white px-6 py-2 rounded text-sm font-bold shadow-lg transition-colors flex items-center`}
+                <a 
+                  href="http://localhost:5000/#/firms" 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition-all shadow-md shadow-blue-600/30 whitespace-nowrap flex items-center gap-1.5 shrink-0"
                 >
-                    {editingCompanyId ? <Save className="w-4 h-4 mr-1" /> : <Plus className="w-4 h-4 mr-1" />}
-                    {editingCompanyId ? 'Güncelle' : 'Ekle'}
-                </button>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Fatura Takip'te Yeni Cari Aç</span>
+                </a>
               </div>
-            </form>
+            )}
+
+            {/* Firma Tetkik Detayları Düzenleme Formu (Yalnızca bir firma seçildiğinde açılır) */}
+            {editingCompanyId && (
+              <form onSubmit={handleCompanySubmit} className="bg-slate-900/90 p-5 rounded-xl border border-orange-500/50 shadow-xl shadow-orange-900/20 space-y-4 animate-in fade-in transition-all duration-300">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <h4 className="text-sm font-bold flex items-center text-orange-400 gap-2">
+                    <Edit2 className="w-4 h-4" /> 
+                    <span>Firma Tetkik Detaylarını Yapılandır: <strong className="text-white">{cName}</strong></span>
+                  </h4>
+                  <button 
+                    type="button" 
+                    onClick={handleCancelEdit}
+                    className="text-slate-400 hover:text-white text-xs flex items-center gap-1 px-2 py-1 rounded bg-slate-800 hover:bg-slate-700"
+                  >
+                    <XCircle className="w-3.5 h-3.5" />
+                    <span>Kapat</span>
+                  </button>
+                </div>
+
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Firma Adı (Kilitli) */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">
+                      Firma Ünvanı (Fatura Takip Carisi)
+                    </label>
+                    <input 
+                      readOnly 
+                      value={cName} 
+                      className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-slate-300 text-sm font-semibold cursor-not-allowed outline-none select-text" 
+                      title="Firma adı Fatura Takip sistemi üzerinden yönetilmektedir."
+                    />
+                  </div>
+
+                  {/* Ödeme Yöntemi: Fatura mı Nakit mi POS mu? */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-200 mb-1 flex items-center gap-1.5">
+                      <Receipt className="w-3.5 h-3.5 text-blue-400" />
+                      <span>Varsayılan Ödeme Yöntemi (Fatura / Nakit / POS)</span>
+                      <span className="text-red-500">*</span>
+                    </label>
+                    <div className="flex space-x-2">
+                      <button 
+                        type="button"
+                        onClick={() => setCPaymentMethod('INVOICE')}
+                        className={`flex-1 py-2 rounded text-xs font-bold border flex items-center justify-center space-x-1.5 transition-all ${cPaymentMethod === 'INVOICE' ? 'bg-blue-600 border-blue-500 text-white shadow-md shadow-blue-900/40' : 'bg-slate-950 border-slate-700 text-slate-400 hover:text-white'}`}
+                      >
+                        <Receipt className="w-3.5 h-3.5" />
+                        <span>Fatura (Cari)</span>
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => setCPaymentMethod('CASH')}
+                        className={`flex-1 py-2 rounded text-xs font-bold border flex items-center justify-center space-x-1.5 transition-all ${cPaymentMethod === 'CASH' ? 'bg-emerald-600 border-emerald-500 text-white shadow-md shadow-emerald-900/40' : 'bg-slate-950 border-slate-700 text-slate-400 hover:text-white'}`}
+                      >
+                        <Banknote className="w-3.5 h-3.5" />
+                        <span>Nakit</span>
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => setCPaymentMethod('POS')}
+                        className={`flex-1 py-2 rounded text-xs font-bold border flex items-center justify-center space-x-1.5 transition-all ${cPaymentMethod === 'POS' ? 'bg-purple-600 border-purple-500 text-white shadow-md shadow-purple-900/40' : 'bg-slate-950 border-slate-700 text-slate-400 hover:text-white'}`}
+                      >
+                        <CreditCard className="w-3.5 h-3.5" />
+                        <span>POS</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Tehlike Sınıfı */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Tehlike Sınıfı</label>
+                    <select value={cHazard} onChange={e => setCHazard(e.target.value as HazardClass)} className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white text-sm outline-none">
+                      {Object.values(HazardClass).map(h => <option key={h} value={h}>{h}</option>)}
+                    </select>
+                  </div>
+
+                  {/* Anlaşmalı Kurum */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Anlaşmalı Kurum (Zorunlu / Serbest)</label>
+                    <select 
+                      value={cPreferredInst} 
+                      onChange={e => setCPreferredInst(e.target.value)} 
+                      className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white text-sm outline-none"
+                    >
+                      <option value="">Serbest (İstenilen kuruma sevk edilebilir)</option>
+                      {institutions.map(inst => (
+                        <option key={inst.id} value={inst.id}>{inst.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Hekim & Uzman */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">İşyeri Hekimi</label>
+                    <input placeholder="Hekim Adı Soyadı" value={cDoctor} onChange={e => setCDoctor(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white text-sm focus:ring-blue-500 outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">İSG Uzmanı</label>
+                    <input placeholder="Uzman Adı Soyadı" value={cSpecialist} onChange={e => setCSpecialist(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white text-sm focus:ring-blue-500 outline-none" />
+                  </div>
+
+                  {/* Firma Portalı Şifresi */}
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Firma Portalı Giriş Şifresi (/sonuc adresinden TC ile sonuç sorgulamak için)
+                    </label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <input 
+                          type="text"
+                          placeholder="Portal Giriş Şifresi (Örn: FIRMA4821)" 
+                          value={cPortalPassword} 
+                          onChange={e => setCPortalPassword(e.target.value)} 
+                          className="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white text-sm focus:ring-blue-500 outline-none w-full pr-10 font-mono" 
+                        />
+                        <Key className="w-4 h-4 text-amber-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setCPortalPassword(generateSmartPassword(cName))}
+                        className="px-3 py-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 rounded text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition-colors"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        <span>Otomatik Şifre Üret</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Standart Tetkikler: Hangi tetkikler yapılacak? */}
+                <div className="pt-2 border-t border-slate-800">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                      <Stethoscope className="w-3.5 h-3.5 text-blue-400" />
+                      <span>Firma Standart Tetkik Paketi (Sevk Açıldığında Otomatik Gelecek Tetkikler)</span>
+                    </label>
+                    <span className="text-[11px] text-slate-400 font-mono">
+                      Seçili: {cSelectedExams.length} tetkik
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-56 overflow-y-auto custom-scrollbar p-1">
+                     {exams.map(exam => {
+                       const isChecked = cSelectedExams.includes(exam.name);
+                       return (
+                         <div 
+                           key={exam.id}
+                           onClick={() => toggleCompanyExam(exam.name)}
+                           className={`cursor-pointer px-3 py-2 rounded-lg border flex items-center justify-between transition-all text-xs ${isChecked ? 'bg-blue-600/20 border-blue-500 text-blue-100 font-semibold' : 'bg-slate-950 border-slate-800 text-slate-400 hover:bg-slate-800'}`}
+                         >
+                           <span className="truncate mr-1.5">{exam.name}</span>
+                           {isChecked && <Check className="w-3.5 h-3.5 text-blue-400 shrink-0" />}
+                         </div>
+                       );
+                     })}
+                  </div>
+                </div>
+
+                {/* Butonlar */}
+                <div className="flex justify-end space-x-3 pt-2 border-t border-slate-800">
+                  <button 
+                    type="button" 
+                    onClick={handleCancelEdit}
+                    className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-lg text-xs font-semibold flex items-center border border-slate-700 transition-colors"
+                  >
+                    <XCircle className="w-3.5 h-3.5 mr-1" /> Vazgeç
+                  </button>
+                  <button 
+                    type="submit" 
+                    className="bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white px-6 py-2 rounded-lg text-xs font-bold shadow-lg shadow-orange-900/30 transition-all flex items-center gap-1.5"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>Tetkik Detaylarını Kaydet</span>
+                  </button>
+                </div>
+              </form>
+            )}
 
             <div className="pt-4 border-t border-slate-700">
                <div className="relative">
@@ -1597,16 +1621,23 @@ const handleInstitutionSubmit = (e: React.FormEvent) => {
 
                     <span className="text-xs bg-slate-800 px-2 py-1 rounded border border-slate-600 text-slate-300">{company.hazardClass}</span>
                     <button 
+                        type="button"
                         onClick={() => handleEditCompany(company)} 
-                        className="text-slate-500 hover:text-blue-400 p-1.5 hover:bg-blue-500/10 rounded transition-colors"
-                        title="Düzenle"
+                        className="px-3 py-1.5 bg-orange-500/10 hover:bg-orange-500/20 text-orange-300 border border-orange-500/30 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5"
+                        title="Fatura/Nakit ve Standart Tetkikleri Düzenle"
                     >
-                      <Edit2 className="w-4 h-4" />
+                      <Edit2 className="w-3.5 h-3.5" />
+                      <span>Tetkik Detaylarını Düzenle</span>
                     </button>
                     <button 
-                        onClick={() => onDeleteCompany(company.id)} 
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm(`${company.name} firmasının tetkik ayarlarını sıfırlamak istediğinize emin misiniz? (Firmayı tamamen silmek için Fatura Takip > Firma Kayıt ekranını kullanınız.)`)) {
+                            onDeleteCompany(company.id);
+                          }
+                        }} 
                         className="text-slate-500 hover:text-red-400 p-1.5 hover:bg-red-500/10 rounded transition-colors"
-                        title="Sil"
+                        title="Tetkik Ayarlarını Sıfırla"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>

@@ -158,8 +158,8 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({
       return hasName && hasTc;
     }
 
-    // Normal sevk kaydı
-    const hasCompany = selectedCompanyData !== null || companySearchTerm.trim() !== '';
+    // Normal sevk kaydı: Firma Fatura Takip sisteminde kayıtlı olmalıdır
+    const hasCompany = selectedCompanyData !== null || Boolean(initialData && companySearchTerm.trim());
     const hasBirthDate = birthDate !== '';
     const hasPhone = phone.trim().length >= 10;
 
@@ -328,6 +328,7 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({
 
     const newReferral: Referral = {
       id: referralId,
+      companyId: selectedCompanyData ? selectedCompanyData.id : (initialData?.companyId || undefined),
       employee: {
         id: employeeId,
         fullName: fullName.trim(),
@@ -338,6 +339,7 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({
         town: town || 'Mudanya',
         address: address || 'Belirtilmedi',
         company: selectedCompanyData ? selectedCompanyData.name : (companySearchTerm.trim() || (isExternalRecord ? 'Dışarıdan Tetkik' : 'Belirtilmedi')),
+        companyId: selectedCompanyData ? selectedCompanyData.id : (initialData?.companyId || initialData?.employee?.companyId || undefined),
       },
       exams: isExternalRecord ? ((selectedExamIds && selectedExamIds.length > 0) ? selectedExamIds : ['Sağlık Tetkikleri']) : (selectedExamIds || []),
       status: initialData?.status ? initialData.status : (matchingExternal?.resultPdfPath ? (matchingExternal.status || Status.COMPLETED) : (isExternalRecord ? Status.AWAITING_RESULT : Status.PENDING)),
@@ -528,7 +530,12 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({
                                 </div>
                               </div>
                             ))
-                          ) : <div className="p-3 text-xs text-slate-500 text-center">Sonuç bulunamadı.</div>}
+                          ) : (
+                        <div className="p-3 text-xs text-slate-400 text-center space-y-1">
+                          <div>Firma bulunamadı.</div>
+                          <div className="text-[11px] text-blue-400">Yeni firmalar sadece Fatura Takip sistemi üzerinden açılmaktadır.</div>
+                        </div>
+                      )}
                         </div>
                       )}
                     </div>
@@ -922,7 +929,12 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({
                             </div>
                           </div>
                         ))
-                      ) : <div className="p-3 text-xs text-slate-500 text-center">Sonuç bulunamadı.</div>}
+                      ) : (
+                        <div className="p-3 text-xs text-slate-400 text-center space-y-1">
+                          <div>Firma bulunamadı.</div>
+                          <div className="text-[11px] text-blue-400">Yeni firmalar sadece Fatura Takip sistemi üzerinden açılmaktadır.</div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

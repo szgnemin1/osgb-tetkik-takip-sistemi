@@ -310,11 +310,13 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
 
         const newReferral: Referral = {
           id: referralId,
+          companyId: company ? company.id : undefined,
           employee: {
             id: employeeId,
             fullName: row.name,
             tcNo: row.tcNo,
-            company: company ? company.name : 'Bireysel / Belirtilmemiş'
+            company: company ? company.name : 'Bireysel / Belirtilmemiş',
+            companyId: company ? company.id : undefined
           },
           exams: finalExams,
           status: defaultStatus,

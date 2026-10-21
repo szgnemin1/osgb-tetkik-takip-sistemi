@@ -78,11 +78,13 @@ export interface Employee {
   birthDate?: string; // New field added
   phone?: string; // Added for WhatsApp integration
   company: string;
+  companyId?: string;
   department?: string;
 }
 
 export interface Referral {
   id: string;
+  companyId?: string;
   employee: Employee;
   exams: string[]; // Changed to string[]
   status: Status;

@@ -5,6 +5,7 @@ global_data.json
 data.json
 .env
 auth_info_baileys/
+baileys_auth_info/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -61,3 +62,6 @@ test_html.js
 test_login.js
 test_scrape.js
 test_ui.js
+global_data*.backup*
+patch_webhook.py
+tetkik-log.txt

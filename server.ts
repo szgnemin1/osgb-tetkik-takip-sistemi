@@ -866,7 +866,7 @@ function getAppPasswordHash() {
 async function startServer() {
   const app = express();
   app.set('trust proxy', 1);
-  const PORT = 3000;
+  const PORT = process.env.PORT ? parseInt(process.env.PORT) : 4000;
 
   // Rewrite for subpath deployments (e.g. YunoHost)
   // This allows the app to respond correctly whether Nginx strips the path or not.
@@ -1342,8 +1342,71 @@ async function startServer() {
   // --- DATA ENDPOINTS ---
   const ALLOWED_COLLECTIONS = new Set(['referrals', 'companies', 'exams', 'institutions', 'transactions', 'appSettings']);
 
-  app.get("/api/data", authMiddleware, (req, res) => {
+  app.get("/api/data", authMiddleware, async (req, res) => {
     const db = readData();
+
+    // Fatura Takip SQLite / JSON Firma Senkronizasyonu
+    try {
+      const path = require('path');
+      const fs = require('fs');
+      const sqlitePath = path.join(__dirname, '..', '..', 'db', 'database.sqlite');
+      const jsonPath = path.join(__dirname, '..', '..', 'db', 'database.json');
+      
+      let faturaFirms: any[] = [];
+      
+      if (fs.existsSync(sqlitePath)) {
+        try {
+          const sqlite3 = require('sqlite3');
+          const sdb = new sqlite3.Database(sqlitePath);
+          const rows: any[] = await new Promise((resolve, reject) => {
+            sdb.all("SELECT data FROM firms", (err: any, r: any[]) => {
+              sdb.close();
+              if (err) reject(err);
+              else resolve(r || []);
+            });
+          });
+          faturaFirms = (rows || []).map((r: any) => JSON.parse(r.data));
+        } catch (sqErr) {
+          console.error("SQLite okuma hatasi:", sqErr);
+        }
+      }
+      
+      if (faturaFirms.length === 0 && fs.existsSync(jsonPath)) {
+        const raw = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+        if (raw.osgb_firms) {
+          faturaFirms = JSON.parse(raw.osgb_firms);
+        }
+      }
+      
+      if (faturaFirms.length > 0) {
+        // Mevcut şirketlerin tetkik detaylarını (defaultPaymentMethod, defaultExams, doktor vb.) koruyarak Fatura Takip ile birleştir
+        const existingMap = new Map();
+        (db.companies || []).forEach((c: any) => {
+          if (c.id) existingMap.set(c.id, c);
+          if (c.name) existingMap.set(c.name.toLowerCase().trim(), c);
+        });
+        
+        db.companies = faturaFirms.map((f: any) => {
+          const key = f.name?.toLowerCase().trim();
+          const existing: any = existingMap.get(f.id) || existingMap.get(key) || {};
+          return {
+            id: f.id,
+            name: f.name,
+            hazardClass: existing.hazardClass || f.dangerClass || f.hazardClass || 'Tehlikeli',
+            assignedDoctor: existing.assignedDoctor || f.assignedDoctor || '',
+            assignedSpecialist: existing.assignedSpecialist || f.assignedSpecialist || '',
+            defaultExams: (Array.isArray(existing.defaultExams) && existing.defaultExams.length > 0)
+              ? existing.defaultExams
+              : (Array.isArray(f.defaultExams) ? f.defaultExams : []),
+            defaultPaymentMethod: existing.defaultPaymentMethod || f.defaultPaymentMethod || 'CASH',
+            forcedInstitutionId: existing.forcedInstitutionId,
+            portalPassword: existing.portalPassword || f.portalPassword
+          };
+        });
+      }
+    } catch (e) {
+      console.error('Fatura Takip firma senkronizasyon hatasi:', e);
+    }
     const safeDb = {
       ...db,
       appSettings: db.appSettings ? { ...db.appSettings, passwordHash: undefined } : {}
@@ -1409,16 +1472,18 @@ async function startServer() {
       }
 
       // Fatura Takip Webhook Integration
-      if (collection === 'referrals' && item.paymentMethod === 'INVOICE' && !item.isExternalRecord) {
+      if (collection === 'referrals' && !item.isExternalRecord) {
         try {
           const payload = [{
             id: item.id,
             paymentMethod: item.paymentMethod,
-            totalPrice: item.totalPrice || 0,
+            totalPrice: Number(item.totalPrice) || 0,
             referralDate: item.referralDate,
+            companyId: item.companyId || (item.employee && item.employee.companyId),
             employee: {
                 fullName: item.employee?.fullName || "",
-                company: item.employee?.company || ""
+                company: item.employee?.company || "",
+                companyId: item.companyId || (item.employee && item.employee.companyId)
             },
             exams: item.exams || []
           }];
@@ -1442,6 +1507,15 @@ async function startServer() {
       }
     } else if (action === 'delete') {
       db[collection] = db[collection].filter((x: any) => x.id !== item.id);
+      if (collection === 'referrals') {
+        try {
+          fetch('http://localhost:5000/api/webhook/health-services', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify([{ id: item.id, action: 'delete' }])
+          }).catch(() => {});
+        } catch (e) {}
+      }
     }
     
     writeData(db);
