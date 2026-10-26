@@ -186,16 +186,20 @@ export const ReferralList: React.FC<ReferralListProps> = ({
                 {/* Tetkikler (Full View Only) */}
                 {!compact && (
                     <td className="px-4 py-2.5">
-                        <div className="flex flex-wrap gap-1 max-w-[240px]">
-                            {(referral.exams || []).map((exam, i) => (
-                                <span 
-                                    key={i} 
-                                    className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-slate-700/60 text-slate-300 border border-slate-600/50"
-                                >
-                                    {exam}
-                                </span>
-                            ))}
-                        </div>
+                        {referral.isExternalRecord ? (
+                            <span className="text-slate-600 text-xs italic">-</span>
+                        ) : (
+                            <div className="flex flex-wrap gap-1 max-w-[240px]">
+                                {(referral.exams || []).map((exam, i) => (
+                                    <span 
+                                        key={i} 
+                                        className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-slate-700/60 text-slate-300 border border-slate-600/50"
+                                    >
+                                        {exam}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
                     </td>
                 )}
 

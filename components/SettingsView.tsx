@@ -13,6 +13,7 @@ import { Trash2, Plus, Building2, Save, Check, Receipt, Upload, FileDown, MapPin
 import * as XLSX from 'xlsx';
 
 interface SettingsViewProps {
+  companies: Company[];
   onAddCompany: (c: Company) => void;
   onUpdateCompany: (c: Company) => void;
   onDeleteCompany: (id: string) => void;

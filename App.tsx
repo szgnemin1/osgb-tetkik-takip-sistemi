@@ -293,12 +293,7 @@ const App: React.FC = () => {
                     body: JSON.stringify({
                         amount: referral.totalPrice,
                         referralId: referral.id,
-                        deviceKey: appSettings.odealDeviceKey || 'POS-01',
-                        employeeName: referral.employee.fullName,
-                        employeeTc: referral.employee.tcNo,
-                        city: referral.employee.city || 'Bursa',
-                        town: referral.employee.town || 'Mudanya',
-                        address: referral.employee.address || 'Belirtilmedi'
+                        deviceKey: appSettings.odealDeviceKey || 'POS-01'
                     })
                 });
                 const data = await res.json();

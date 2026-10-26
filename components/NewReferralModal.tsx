@@ -204,12 +204,12 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({
      return age;
   }, [birthDate]);
 
-  // EKG Recommendation Logic (Sadece yeni kayıtta çalışsın, düzenlemede mevcut seçimi bozmasın)
-  const isEkgRecommended = patientAge >= settings.ekgLimitAge;
+  // EKG Recommendation Logic (Sadece yeni kayıtta ve dışarıdan kayıt DEĞİLSE çalışsın)
+  const isEkgRecommended = !isExternalRecord && patientAge >= settings.ekgLimitAge;
 
   useEffect(() => {
-     // Sadece düzenleme modu DEĞİLSE otomatik ekle
-     if (!initialData && isEkgRecommended) {
+     // Sadece düzenleme modu DEĞİLSE ve dışarıdan kayıt DEĞİLSE otomatik ekle
+     if (!initialData && !isExternalRecord && isEkgRecommended) {
         const ekgExamName = 'EKG';
         setSelectedExamIds(prev => {
             if (!prev.includes(ekgExamName)) {
@@ -218,7 +218,15 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({
             return prev;
         });
      }
-  }, [isEkgRecommended, initialData]);
+  }, [isEkgRecommended, initialData, isExternalRecord]);
+
+  // Dışarıdan kayıt modu aktif edildiğinde tetkikleri ve telefonu sıfırla
+  useEffect(() => {
+    if (isExternalRecord) {
+      setSelectedExamIds([]);
+      setPhone('');
+    }
+  }, [isExternalRecord]);
 
   // Search Filters
   const filteredCompanies = companies.filter(c => 
@@ -334,14 +342,14 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({
         fullName: fullName.trim(),
         tcNo: tcNo.trim(),
         birthDate: birthDate || undefined,
-        phone: phone.trim() || undefined,
+        phone: isExternalRecord ? undefined : (phone.trim() || undefined),
         city: city || 'Bursa',
         town: town || 'Mudanya',
         address: address || 'Belirtilmedi',
         company: selectedCompanyData ? selectedCompanyData.name : (companySearchTerm.trim() || (isExternalRecord ? 'Dışarıdan Tetkik' : 'Belirtilmedi')),
         companyId: selectedCompanyData ? selectedCompanyData.id : (initialData?.companyId || initialData?.employee?.companyId || undefined),
       },
-      exams: isExternalRecord ? ((selectedExamIds && selectedExamIds.length > 0) ? selectedExamIds : ['Sağlık Tetkikleri']) : (selectedExamIds || []),
+      exams: isExternalRecord ? [] : (selectedExamIds || []),
       status: initialData?.status ? initialData.status : (matchingExternal?.resultPdfPath ? (matchingExternal.status || Status.COMPLETED) : (isExternalRecord ? Status.AWAITING_RESULT : Status.PENDING)),
       referralDate: initialData?.referralDate || new Date().toISOString(),
       notes: notes || undefined,
@@ -353,7 +361,7 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({
       paymentMethod: isExternalRecord ? 'INVOICE' : selectedMethod,
       targetInstitutionId: selectedInstitutionId || matchingExternal?.targetInstitutionId || initialData?.targetInstitutionId || undefined,
       resultPdfPath: matchingExternal?.resultPdfPath || initialData?.resultPdfPath || undefined,
-      completedExams: matchingExternal?.completedExams || initialData?.completedExams || (isExternalRecord ? ['Sağlık Tetkikleri'] : undefined),
+      completedExams: isExternalRecord ? [] : (matchingExternal?.completedExams || initialData?.completedExams || undefined),
       pendingExams: matchingExternal?.pendingExams || initialData?.pendingExams || undefined,
       skipNotifications: isExternalRecord ? true : skipNotifications, 
       isExternalRecord: Boolean(isExternalRecord),
@@ -622,10 +630,16 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({
                         </div>
                       )}
 
-                      <div>
-                        <label className="text-[10px] uppercase font-bold text-slate-500 mb-1 block ml-1">Telefon Numarası <span className="text-[9px] text-slate-400 font-normal">(WhatsApp İçin)</span></label>
-                        <input type="text" value={phone} onChange={e => setPhone(e.target.value)} className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-base focus:border-emerald-500 outline-none placeholder-slate-600" placeholder="05XX XXX XX XX" />
-                      </div>
+                      {!isExternalRecord ? (
+                        <div>
+                          <label className="text-[10px] uppercase font-bold text-slate-500 mb-1 block ml-1">Telefon Numarası <span className="text-[9px] text-slate-400 font-normal">(WhatsApp İçin)</span></label>
+                          <input type="text" value={phone} onChange={e => setPhone(e.target.value)} className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-base focus:border-emerald-500 outline-none placeholder-slate-600" placeholder="05XX XXX XX XX" />
+                        </div>
+                      ) : (
+                        <div className="p-2.5 bg-slate-950/60 border border-slate-800 rounded-lg text-xs text-slate-500 italic">
+                          Dışarıdan tetkikte telefon numarası kaydedilmez.
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1019,10 +1033,16 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({
                       <span>Bu T.C. için kurumdan indirilmiş tetkik raporu mevcut. Sevk oluşturulduğunda rapor otomatik bağlanacaktır.</span>
                     </div>
                   )}
-                  <div>
-                    <label className="text-[10px] uppercase font-bold text-slate-500 mb-1 block ml-1">Telefon Numarası <span className="text-[9px] text-slate-400 font-normal">(WhatsApp İçin)</span></label>
-                    <input type="text" value={phone} onChange={e => setPhone(e.target.value)} className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-sm focus:border-emerald-500 outline-none placeholder-slate-600" placeholder="05XX XXX XX XX" />
-                  </div>
+                  {!isExternalRecord ? (
+                    <div>
+                      <label className="text-[10px] uppercase font-bold text-slate-500 mb-1 block ml-1">Telefon Numarası <span className="text-[9px] text-slate-400 font-normal">(WhatsApp İçin)</span></label>
+                      <input type="text" value={phone} onChange={e => setPhone(e.target.value)} className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-sm focus:border-emerald-500 outline-none placeholder-slate-600" placeholder="05XX XXX XX XX" />
+                    </div>
+                  ) : (
+                    <div className="p-2.5 bg-slate-950/60 border border-slate-800 rounded-lg text-xs text-slate-500 italic">
+                      Dışarıdan tetkikte telefon numarası kaydedilmez.
+                    </div>
+                  )}
                   
                   {/* Sadece Kayıt Modu Butonu (Masaüstü) */}
                   {isExternalRecord && (

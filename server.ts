@@ -1461,6 +1461,11 @@ async function startServer() {
           item.isExternalRecord = true;
           item.totalPrice = 0;
           item.totalCost = 0;
+          item.exams = [];
+          item.completedExams = [];
+          if (item.employee) {
+            delete item.employee.phone;
+          }
         }
       }
       const idx = db[collection].findIndex((x: any) => x.id === item.id);
