@@ -80,17 +80,6 @@ export const Auth: React.FC<AuthProps> = ({ onAuthenticated }) => {
             {loading ? 'İşleniyor...' : 'Giriş Yap'}
           </button>
         </form>
-
-        {/* Fatura & Cari Sistemine Dönüş Linki */}
-        <div className="mt-6 pt-4 border-t border-slate-800">
-          <button
-            type="button"
-            onClick={() => window.location.href = window.location.protocol + '//' + window.location.hostname + ':5000'}
-            className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 p-3 rounded font-medium transition-colors flex items-center justify-center gap-2"
-          >
-            💼 Fatura & Cari Sisteme Git
-          </button>
-        </div>
       </div>
     </div>
   );
