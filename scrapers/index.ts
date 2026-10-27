@@ -33,6 +33,53 @@ function sanitizeFilenamePart(str: string): string {
   return String(str || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 50);
 }
 
+export async function launchChromiumBrowser() {
+  // 1. Standart Playwright başlatmayı dene
+  try {
+    return await chromium.launch({ headless: true });
+  } catch (e1: any) {
+    console.warn('[Playwright] Standart chromium başlatma başarısız:', e1.message);
+  }
+
+  // 2. Windows servisleri için: C:\Users\<kullanıcı>\AppData\Local\ms-playwright klasörünü otomatik tara
+  if (process.platform === 'win32') {
+    try {
+      const usersDir = 'C:\\Users';
+      if (fs.existsSync(usersDir)) {
+        const users = fs.readdirSync(usersDir);
+        for (const u of users) {
+          const candidate = path.join(usersDir, u, 'AppData', 'Local', 'ms-playwright');
+          if (fs.existsSync(candidate)) {
+            console.log(`[Playwright] Kullanıcı dizininde tarayıcı bulundu: ${candidate}`);
+            process.env.PLAYWRIGHT_BROWSERS_PATH = candidate;
+            return await chromium.launch({ headless: true });
+          }
+        }
+      }
+    } catch (e2: any) {
+      console.warn('[Playwright] Users klasörü taraması başarısız:', e2.message);
+    }
+  }
+
+  // 3. Sistemde kurulu Microsoft Edge ('msedge') ile başlat (Windows / Windows Server'da varsayılan)
+  try {
+    console.log('[Playwright] Sistemde kurulu Microsoft Edge deneniyor...');
+    return await chromium.launch({ headless: true, channel: 'msedge' });
+  } catch (e3: any) {
+    console.warn('[Playwright] Microsoft Edge başlatılamadı:', e3.message);
+  }
+
+  // 4. Sistemde kurulu Google Chrome ('chrome') ile başlat
+  try {
+    console.log('[Playwright] Sistemde kurulu Google Chrome deneniyor...');
+    return await chromium.launch({ headless: true, channel: 'chrome' });
+  } catch (e4: any) {
+    console.warn('[Playwright] Google Chrome başlatılamadı:', e4.message);
+  }
+
+  throw new Error('Tarayıcı başlatılamadı. Lütfen sunucuda "npx playwright install chromium" komutunu çalıştırın veya Google Chrome / Microsoft Edge kurulu olduğundan emin olun.');
+}
+
 export const runVetaScraper = async (
   portalUrl: string,
   username: string,
@@ -45,7 +92,7 @@ export const runVetaScraper = async (
   const pdfDir = ensurePdfDir();
   const results: ScrapedRecord[] = [];
 
-  const browser = await chromium.launch({ headless: true });
+  const browser = await launchChromiumBrowser();
   const context = await browser.newContext({ acceptDownloads: true });
   const page = await context.newPage();
 
@@ -161,7 +208,7 @@ export const runInfomedScraper = async (
   const pdfDir = ensurePdfDir();
   const results: ScrapedRecord[] = [];
 
-  const browser = await chromium.launch({ headless: true });
+  const browser = await launchChromiumBrowser();
   const context = await browser.newContext({ acceptDownloads: true });
   const page = await context.newPage();
 
