@@ -157,7 +157,7 @@ export const runInfomedScraper = async (
   limit: number = 50
 ): Promise<ScrapedRecord[]> => {
   const targetUrl = portalUrl || 'https://burverta.infomed.com.tr/';
-  console.log(`[Scraper:INFOMED] Starting scraper for: ${targetUrl}`);
+  console.log(`[Scraper:INFOMED] Starting updated scraper for: ${targetUrl}`);
   const pdfDir = ensurePdfDir();
   const results: ScrapedRecord[] = [];
 
@@ -166,18 +166,25 @@ export const runInfomedScraper = async (
   const page = await context.newPage();
 
   try {
-    await page.goto(targetUrl, { timeout: 60000 });
-    await page.fill("input[name*='User' i], input[id*='User' i], input[type='text']", username);
-    await page.fill("input[type='password']", password);
-    await page.click("button[type='submit'], input[type='submit'], button:has-text('Giriş')");
-    await page.waitForLoadState('networkidle', { timeout: 60000 });
+    // 1. Giriş Sayfasına Git
+    const loginUrl = targetUrl.includes('/Account/Login') 
+      ? targetUrl 
+      : 'https://burverta.infomed.com.tr/Account/Login?returnUrl=%2FWebSonuc';
+    
+    await page.goto(loginUrl, { timeout: 60000 });
+    await page.fill('#username, input[name*="User" i], input[type="text"]', username);
+    await page.fill('#userpassword, input[type="password"]', password);
+    
+    await Promise.all([
+      page.waitForNavigation({ timeout: 45000 }).catch(() => {}),
+      page.click('button:has-text("Giriş"), button[type="submit"]')
+    ]);
     console.log('[Scraper:INFOMED] Login successful.');
 
-    // Direct navigation to patient list
-    await page.goto('https://burverta.infomed.com.tr/WebSonuc/Sorgu', { timeout: 60000 });
-    await page.waitForLoadState('networkidle', { timeout: 60000 });
+    // 2. Doğrudan Sorgu Sayfasına Git
+    await page.goto('https://burverta.infomed.com.tr/WebSonuc/Sorgu', { timeout: 60000, waitUntil: 'networkidle' });
 
-    // Set date range (last 45 days to today)
+    // 3. Tarih Aralığı Belirle (Son 45 gün)
     const today = new Date();
     const pastDate = new Date();
     pastDate.setDate(today.getDate() - 45);
@@ -185,154 +192,127 @@ export const runInfomedScraper = async (
     const startDateStr = formatDate(pastDate);
     const endDateStr = formatDate(today);
 
-    // Always query empty TC first to fetch all recent patients who went, plus any target TCs
-    const tcsToProcess = [''];
-    if (targetTcs && targetTcs.length > 0) {
-      for (const t of targetTcs) {
-        if (t && !tcsToProcess.includes(t)) tcsToProcess.push(t);
+    console.log(`[Scraper:INFOMED] Querying date range: ${startDateStr} - ${endDateStr}`);
+
+    // Formu doldur ve act.formPost ile gönder
+    await page.evaluate(({ start, end }) => {
+      const d1 = document.getElementById('tarih1') as HTMLInputElement | null;
+      const d2 = document.getElementById('tarih2') as HTMLInputElement | null;
+      if (d1) d1.value = start;
+      if (d2) d2.value = end;
+      
+      const tcInput = document.getElementById('TcKimlikNo') as HTMLInputElement | null;
+      if (tcInput) tcInput.value = '';
+
+      const form = document.querySelector('form.ws-filter') as HTMLFormElement | null;
+      if (form && (window as any).act && (window as any).act.formPost) {
+        (window as any).act.formPost(form, (window as any).renderTable);
       }
+    }, { start: startDateStr, end: endDateStr });
+
+    // Kendo Grid'in yüklenmesini bekle
+    await page.waitForTimeout(4000);
+
+    // Kendo Grid DataSource'undan kayıtları oku
+    const rawRecords = await page.evaluate(() => {
+      const $ = (window as any).$;
+      if (!$ || $('.k-grid').length === 0) return [];
+      const grid = $('.k-grid').data('kendoGrid');
+      if (!grid || !grid.dataSource) return [];
+
+      grid.dataSource.pageSize(500);
+      const data = grid.dataSource.data() || [];
+      return data.map((item: any) => ({
+        protocolId: String(item.ProtokolId || ''),
+        kimlikId: String(item.KimlikId || ''),
+        date: item.ProtokolTarihi ? new Date(item.ProtokolTarihi).toLocaleDateString('tr-TR') : '',
+        fullName: String(item.Hasta || '').trim(),
+        company: String(item.CalistigiBirim || item.Firma || '').trim(),
+        accountCode: String(item.Firma || '').trim(),
+        tcNo: String(item.TcNo || '').trim(),
+        examType: String(item.MuayeneTuru || '').trim(),
+        protocolNo: String(item.ProtokolNo || '').trim()
+      }));
+    });
+
+    console.log(`[Scraper:INFOMED] Found ${rawRecords.length} records from Kendo Grid.`);
+
+    // Eğer targetTcs verilmişse filtrele
+    let targetList = rawRecords;
+    if (targetTcs && targetTcs.length > 0) {
+      targetList = rawRecords.filter((r: any) => targetTcs.includes(r.tcNo));
     }
+
+    const cookies = await context.cookies();
+    const cookieHeader = cookies.map(c => `${c.name}=${c.value}`).join('; ');
+    const fetch = require('node-fetch');
+    const AdmZip = require('adm-zip');
+
     let processed = 0;
-
-    for (const currentTc of tcsToProcess) {
+    for (const rec of targetList) {
       if (processed >= limit) break;
+      if (!rec.tcNo || rec.tcNo.length < 10 || !rec.protocolId) continue;
 
-      // Set values safely via evaluate so bootstrap datepicker popups do not intercept clicks
-      await page.evaluate(({ start, end, tcVal }) => {
-        const d1 = document.getElementById('tarih1') as HTMLInputElement | null;
-        const d2 = document.getElementById('tarih2') as HTMLInputElement | null;
-        if (d1) d1.value = start;
-        if (d2) d2.value = end;
-        const tcInput = document.getElementById('TcKimlikNo') as HTMLInputElement | null;
-        if (tcInput) tcInput.value = tcVal || '';
-        document.querySelectorAll('.datepicker').forEach(el => el.remove());
-      }, { 
-        start: startDateStr, 
-        end: endDateStr, 
-        tcVal: currentTc 
-      });
+      // Zaten eklendiyse atla
+      if (results.some(r => r.tcNo === rec.tcNo && r.protocolId === rec.protocolId)) {
+        continue;
+      }
 
-      // Click search button
-      await page.evaluate(() => {
-        const btn = Array.from(document.querySelectorAll('button, input[type="submit"]'))
-          .find(b => b.innerText?.includes('Sorgula') || (b as HTMLInputElement).value?.includes('Sorgula'));
-        if (btn) (btn as HTMLElement).click();
-      });
+      const cleanTc = sanitizeFilenamePart(rec.tcNo);
+      const cleanProtocolId = sanitizeFilenamePart(rec.protocolId);
+      const pdfFileName = `${cleanTc}_${cleanProtocolId}.pdf`;
+      const filePath = path.join(pdfDir, pdfFileName);
+      const webPdfPath = `/uploads/pdfs/${pdfFileName}`;
 
-      await page.waitForTimeout(2500);
+      try {
+        // 1. Onay durumunu kontrol et
+        const checkUrl = `https://burverta.infomed.com.tr/Lab/ProtokolOnaysizHizmetVarMi?protokol=${rec.protocolId}`;
+        let isCompleted = false;
+        try {
+          const checkRes = await fetch(checkUrl, { headers: { Cookie: cookieHeader } });
+          const checkText = (await checkRes.text()).trim();
+          isCompleted = checkText === 'false';
+        } catch (_) {}
 
-      // Sort Kendo Grid by ProtokolId DESCENDING (Newest records / today's patients first!) and set pageSize to 200
-      await page.evaluate(() => {
-        // @ts-ignore
-        const $ = (window as any).$;
-        if ($) {
-          const grid = $('.k-grid').data('kendoGrid');
-          if (grid && grid.dataSource) {
-            grid.dataSource.pageSize(200);
-            grid.dataSource.sort({ field: 'ProtokolId', dir: 'desc' });
+        // 2. Rapor ZIP/PDF indir
+        const downloadUrl = `https://burverta.infomed.com.tr/Lab/ProtokolTumDosyalariIndir3?protokol=${rec.protocolId}`;
+        const res = await fetch(downloadUrl, { headers: { Cookie: cookieHeader } });
+        const buf = await res.buffer();
+
+        if (buf.length > 100) {
+          const isZip = buf.slice(0, 2).toString('utf-8') === 'PK';
+          const isPdf = buf.slice(0, 5).toString('utf-8').startsWith('%PDF');
+
+          if (isZip) {
+            const zip = new AdmZip(buf);
+            const zipEntries = zip.getEntries();
+            const pdfEntry = zipEntries.find((entry: any) => entry.entryName.toLowerCase().endsWith('.pdf'));
+            if (pdfEntry) {
+              fs.writeFileSync(filePath, pdfEntry.getData());
+              console.log(`[Scraper:INFOMED] Saved extracted PDF for ${rec.fullName} (${rec.tcNo}): ${filePath}`);
+            }
+          } else if (isPdf) {
+            fs.writeFileSync(filePath, buf);
+            console.log(`[Scraper:INFOMED] Saved direct PDF for ${rec.fullName} (${rec.tcNo}): ${filePath}`);
           }
         }
-      });
 
-      await page.waitForTimeout(2500);
+        const hasPdf = fs.existsSync(filePath) && fs.statSync(filePath).size > 1000;
 
-      const rows = await page.locator('.k-grid-table tbody tr, table tbody tr').all();
-      console.log(`[Scraper:INFOMED] Search for '${currentTc || 'ALL'}': Total rows found: ${rows.length}`);
+        results.push({
+          tcNo: rec.tcNo,
+          fullName: rec.fullName,
+          protocolId: rec.protocolId,
+          date: rec.date,
+          company: rec.company,
+          status: hasPdf ? (isCompleted ? 'COMPLETED' : 'PARTIAL') : 'AWAITING_RESULT',
+          pdfPath: hasPdf ? webPdfPath : undefined,
+          institutionType: 'INFOMED'
+        });
 
-      for (let i = 0; i < rows.length; i++) {
-        if (processed >= limit) break;
-        const row = rows[i];
-        const cells = await row.locator('td').all();
-        if (cells.length < 8) continue;
-
-        // Extract protocol ID from checkbox or second cell
-        const checkbox = row.locator("input[type='checkbox'].websonucCheckbox").first();
-        let protocolId = '';
-        if ((await checkbox.count()) > 0) {
-          protocolId = (await checkbox.getAttribute('value')) || '';
-        }
-        if (!protocolId && cells.length > 1) {
-          protocolId = (await cells[1].innerText()).trim();
-        }
-
-        const dateStr = cells.length > 3 ? (await cells[3].innerText()).trim() : '';
-        const name = cells.length > 4 ? (await cells[4].innerText()).trim() : '';
-        const company = cells.length > 5 ? (await cells[5].innerText()).trim() : '';
-        const tc = cells.length > 7 ? (await cells[7].innerText()).trim() : '';
-
-        if (!tc || tc.length < 10) continue;
-
-        // Skip if already in results
-        if (results.some(r => r.tcNo === tc && r.protocolId === protocolId)) {
-          continue;
-        }
-
-        if (protocolId) {
-          const downloadUrl = `https://burverta.infomed.com.tr/Lab/ProtokolTumDosyalariIndir3?protokol=${protocolId}`;
-          const cleanTc = sanitizeFilenamePart(tc);
-          const cleanProtocolId = sanitizeFilenamePart(protocolId);
-          const pdfFileName = `${cleanTc}_${cleanProtocolId}.pdf`;
-          const filePath = path.join(pdfDir, pdfFileName);
-          const webPdfPath = `/uploads/pdfs/${pdfFileName}`;
-
-          console.log(`[Scraper:INFOMED] Downloading report for ${name} (${tc}) - Protocol ${protocolId}...`);
-          try {
-            const cookies = await context.cookies();
-            const cookieHeader = cookies.map(c => `${c.name}=${c.value}`).join('; ');
-            const fetch = require('node-fetch');
-            const res = await fetch(downloadUrl, { headers: { Cookie: cookieHeader } });
-            const buf = await res.buffer();
-
-            if (buf.length > 100) {
-              const isZip = buf.slice(0, 2).toString('utf-8') === 'PK';
-              const isPdf = buf.slice(0, 5).toString('utf-8').startsWith('%PDF');
-
-              if (isZip) {
-                const AdmZip = require('adm-zip');
-                const zip = new AdmZip(buf);
-                const zipEntries = zip.getEntries();
-                const pdfEntry = zipEntries.find((entry: any) => entry.entryName.toLowerCase().endsWith('.pdf'));
-                if (pdfEntry) {
-                  fs.writeFileSync(filePath, pdfEntry.getData());
-                  console.log(`[Scraper:INFOMED] Successfully extracted PDF for ${name} (${tc}): ${filePath} (${pdfEntry.getData().length} bytes)`);
-                } else {
-                  console.warn(`[Scraper:INFOMED] No PDF found inside ZIP for ${name} (${tc})`);
-                }
-              } else if (isPdf) {
-                fs.writeFileSync(filePath, buf);
-                console.log(`[Scraper:INFOMED] Successfully saved direct PDF for ${name} (${tc}): ${filePath} (${buf.length} bytes)`);
-              } else {
-                console.warn(`[Scraper:INFOMED] File is neither ZIP nor PDF (Size: ${buf.length})`);
-              }
-            }
-
-            if (fs.existsSync(filePath) && fs.statSync(filePath).size > 1000) {
-              results.push({
-                tcNo: tc,
-                fullName: name,
-                protocolId: protocolId,
-                date: dateStr,
-                company: company,
-                status: 'PARTIAL',
-                pdfPath: webPdfPath,
-                institutionType: 'INFOMED'
-              });
-              processed++;
-            } else {
-              results.push({
-                tcNo: tc,
-                fullName: name,
-                protocolId: protocolId,
-                date: dateStr,
-                company: company,
-                status: 'AWAITING_RESULT',
-                institutionType: 'INFOMED'
-              });
-            }
-          } catch (downloadErr) {
-            console.error(`[Scraper:INFOMED] Download error for ${tc}:`, downloadErr);
-          }
-        }
+        processed++;
+      } catch (err) {
+        console.error(`[Scraper:INFOMED] Error processing protocol ${rec.protocolId}:`, err);
       }
     }
   } catch (err) {
