@@ -85,9 +85,21 @@ import bcrypt from "bcryptjs";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import * as XLSX from "xlsx";
+import crypto from "crypto";
 
+try { require('dotenv').config(); } catch (_) {}
 
-const JWT_SECRET = process.env.JWT_SECRET || "osgb-secure-super-secret-key!2024";
+let JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET || JWT_SECRET === "osgb-secure-super-secret-key!2024") {
+  JWT_SECRET = crypto.randomBytes(48).toString("hex");
+  process.env.JWT_SECRET = JWT_SECRET;
+  try {
+    const envFile = path.join(process.cwd(), ".env");
+    const content = `# OSGB Tetkik Takip Guvenlik Yapilandirmasi\nPORT=4000\nJWT_SECRET=${JWT_SECRET}\nAPP_PASSWORD=123456\nNODE_ENV=production\n`;
+    fs.writeFileSync(envFile, content, "utf-8");
+    console.log("[Güvenlik] Tetkik sunucusu için dinamik güçlü JWT_SECRET oluşturuldu.");
+  } catch (_) {}
+}
 const DATA_FILE = path.join(process.cwd(), "global_data.json");
 
 // Default password from environment or fallback
