@@ -1507,7 +1507,10 @@ async function startServer() {
           
           fetch('http://localhost:5000/api/webhook/health-services', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+              'Content-Type': 'application/json',
+              'x-webhook-secret': process.env.WEBHOOK_SECRET || ''
+            },
             body: JSON.stringify(payload)
           }).catch(err => console.error("Webhook (Fatura Takip) gonderilemedi:", err.message));
         } catch (e) {
@@ -1528,7 +1531,10 @@ async function startServer() {
         try {
           fetch('http://localhost:5000/api/webhook/health-services', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+              'Content-Type': 'application/json',
+              'x-webhook-secret': process.env.WEBHOOK_SECRET || ''
+            },
             body: JSON.stringify([{ id: item.id, action: 'delete' }])
           }).catch(() => {});
         } catch (e) {}
@@ -1901,7 +1907,15 @@ app.post('/api/public/login', publicLoginLimiter, (req, res) => {
     const db = readData();
 
     // 1. Ana OSGB Sonuç Portalı Şifresi Kontrolü (Admin / Tüm Sonuçlar)
-    const portalPassword = String(db.appSettings?.sonucPortalPassword || '196304').trim();
+    let portalPassword = String(db.appSettings?.sonucPortalPassword || '').trim();
+    if (!portalPassword || portalPassword === '196304') {
+        portalPassword = crypto.randomBytes(4).toString('hex').toUpperCase();
+        if (!db.appSettings) db.appSettings = {};
+        db.appSettings.sonucPortalPassword = portalPassword;
+        writeData(db);
+        console.log(`[Güvenlik] Zayıf 196304 varsayılan portal şifresi kaldırıldı. Yeni Güvenli Portal Şifreniz: ${portalPassword}`);
+    }
+
     if (portalPassword === cleanPass) {
         const token = jwt.sign({ role: 'sonuc_viewer' }, JWT_SECRET, { expiresIn: '12h' });
         return res.json({ 
