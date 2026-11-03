@@ -134,6 +134,22 @@ export const runVetaScraper = async (
         const filePath = path.join(pdfDir, pdfFileName);
         const webPdfPath = `/uploads/pdfs/${pdfFileName}`;
 
+        if (fs.existsSync(filePath) && fs.statSync(filePath).size > 1000) {
+          const isCompleted = statusText.includes('bitmi');
+          results.push({
+            tcNo: tc,
+            fullName: name,
+            protocolId: recordId,
+            date: dateStr,
+            company: company,
+            status: isCompleted ? 'COMPLETED' : 'PARTIAL',
+            pdfPath: webPdfPath,
+            institutionType: 'VETA'
+          });
+          processed++;
+          continue;
+        }
+
         console.log(`[Scraper:VETA] Downloading PDF for ${name} (${tc}) - Durum: ${statusText}...`);
         try {
           const downloadPromise = page.waitForEvent('download', { timeout: 30000 }).catch(() => null);
@@ -201,7 +217,7 @@ export const runInfomedScraper = async (
   username: string,
   password: string,
   targetTcs?: string[],
-  limit: number = 50
+  limit: number = 500
 ): Promise<ScrapedRecord[]> => {
   const targetUrl = portalUrl || 'https://burverta.infomed.com.tr/';
   console.log(`[Scraper:INFOMED] Starting updated scraper for: ${targetUrl}`);
@@ -231,12 +247,9 @@ export const runInfomedScraper = async (
     // 2. Doğrudan Sorgu Sayfasına Git
     await page.goto('https://burverta.infomed.com.tr/WebSonuc/Sorgu', { timeout: 60000, waitUntil: 'networkidle' });
 
-    // 3. Tarih Aralığı Belirle (Son 45 gün)
+    // 3. Tarih Aralığı Belirle (Tüm güncel yılı tara: 01.01.{year} - bugün)
     const today = new Date();
-    const pastDate = new Date();
-    pastDate.setDate(today.getDate() - 45);
-
-    const startDateStr = formatDate(pastDate);
+    const startDateStr = `01.01.${today.getFullYear()}`;
     const endDateStr = formatDate(today);
 
     console.log(`[Scraper:INFOMED] Querying date range: ${startDateStr} - ${endDateStr}`);
@@ -258,7 +271,7 @@ export const runInfomedScraper = async (
     }, { start: startDateStr, end: endDateStr });
 
     // Kendo Grid'in yüklenmesini bekle
-    await page.waitForTimeout(4000);
+    await page.waitForTimeout(5000);
 
     // Kendo Grid DataSource'undan kayıtları oku
     const rawRecords = await page.evaluate(() => {
@@ -267,7 +280,7 @@ export const runInfomedScraper = async (
       const grid = $('.k-grid').data('kendoGrid');
       if (!grid || !grid.dataSource) return [];
 
-      grid.dataSource.pageSize(500);
+      grid.dataSource.pageSize(1000);
       const data = grid.dataSource.data() || [];
       return data.map((item: any) => ({
         protocolId: String(item.ProtokolId || ''),
@@ -284,10 +297,13 @@ export const runInfomedScraper = async (
 
     console.log(`[Scraper:INFOMED] Found ${rawRecords.length} records from Kendo Grid.`);
 
-    // Eğer targetTcs verilmişse filtrele
+    // Önceliklendirme: targetTcs verilmişse bekleyenleri en öne al, ardından tüm yeni/dış kayıtları tara
     let targetList = rawRecords;
     if (targetTcs && targetTcs.length > 0) {
-      targetList = rawRecords.filter((r: any) => targetTcs.includes(r.tcNo));
+      const targetSet = new Set(targetTcs);
+      const prioritized = rawRecords.filter((r: any) => targetSet.has(r.tcNo));
+      const others = rawRecords.filter((r: any) => !targetSet.has(r.tcNo));
+      targetList = [...prioritized, ...others];
     }
 
     const cookies = await context.cookies();
@@ -311,19 +327,36 @@ export const runInfomedScraper = async (
       const filePath = path.join(pdfDir, pdfFileName);
       const webPdfPath = `/uploads/pdfs/${pdfFileName}`;
 
+      // Eğer PDF dosyası zaten diskte mevcutsa ve geçerliyse, tekrar indirme yapmadan direkt ekle
+      const hasExistingPdf = fs.existsSync(filePath) && fs.statSync(filePath).size > 1000;
+      if (hasExistingPdf) {
+        results.push({
+          tcNo: rec.tcNo,
+          fullName: rec.fullName,
+          protocolId: rec.protocolId,
+          date: rec.date,
+          company: rec.company,
+          status: 'COMPLETED',
+          pdfPath: webPdfPath,
+          institutionType: 'INFOMED'
+        });
+        processed++;
+        continue;
+      }
+
       try {
         // 1. Onay durumunu kontrol et
         const checkUrl = `https://burverta.infomed.com.tr/Lab/ProtokolOnaysizHizmetVarMi?protokol=${rec.protocolId}`;
         let isCompleted = false;
         try {
-          const checkRes = await fetch(checkUrl, { headers: { Cookie: cookieHeader } });
+          const checkRes = await fetch(checkUrl, { headers: { Cookie: cookieHeader }, timeout: 15000 });
           const checkText = (await checkRes.text()).trim();
           isCompleted = checkText === 'false';
         } catch (_) {}
 
         // 2. Rapor ZIP/PDF indir
         const downloadUrl = `https://burverta.infomed.com.tr/Lab/ProtokolTumDosyalariIndir3?protokol=${rec.protocolId}`;
-        const res = await fetch(downloadUrl, { headers: { Cookie: cookieHeader } });
+        const res = await fetch(downloadUrl, { headers: { Cookie: cookieHeader }, timeout: 20000 });
         const buf = await res.buffer();
 
         if (buf.length > 100) {
