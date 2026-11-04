@@ -1,4 +1,5 @@
 @echo off
+set NODE_SKIP_PLATFORM_CHECK=1
 echo OSGB Tetkik Takip Sunucusu Baslatiliyor...
 echo.
 echo Lutfen bu siyah pencereyi kapatmayin! Kapatirsaniz sistem durur.
