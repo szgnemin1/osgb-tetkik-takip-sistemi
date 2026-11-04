@@ -1357,67 +1357,9 @@ async function startServer() {
   app.get("/api/data", authMiddleware, async (req, res) => {
     const db = readData();
 
-    // Fatura Takip SQLite / JSON Firma Senkronizasyonu
-    try {
-      const path = require('path');
-      const fs = require('fs');
-      const sqlitePath = path.join(__dirname, '..', '..', 'db', 'database.sqlite');
-      const jsonPath = path.join(__dirname, '..', '..', 'db', 'database.json');
-      
-      let faturaFirms: any[] = [];
-      
-      if (fs.existsSync(sqlitePath)) {
-        try {
-          const sqlite3 = require('sqlite3');
-          const sdb = new sqlite3.Database(sqlitePath);
-          const rows: any[] = await new Promise((resolve, reject) => {
-            sdb.all("SELECT data FROM firms", (err: any, r: any[]) => {
-              sdb.close();
-              if (err) reject(err);
-              else resolve(r || []);
-            });
-          });
-          faturaFirms = (rows || []).map((r: any) => JSON.parse(r.data));
-        } catch (sqErr) {
-          console.error("SQLite okuma hatasi:", sqErr);
-        }
-      }
-      
-      if (faturaFirms.length === 0 && fs.existsSync(jsonPath)) {
-        const raw = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
-        if (raw.osgb_firms) {
-          faturaFirms = JSON.parse(raw.osgb_firms);
-        }
-      }
-      
-      if (faturaFirms.length > 0) {
-        // Mevcut şirketlerin tetkik detaylarını (defaultPaymentMethod, defaultExams, doktor vb.) koruyarak Fatura Takip ile birleştir
-        const existingMap = new Map();
-        (db.companies || []).forEach((c: any) => {
-          if (c.id) existingMap.set(c.id, c);
-          if (c.name) existingMap.set(c.name.toLowerCase().trim(), c);
-        });
-        
-        db.companies = faturaFirms.map((f: any) => {
-          const key = f.name?.toLowerCase().trim();
-          const existing: any = existingMap.get(f.id) || existingMap.get(key) || {};
-          return {
-            id: f.id,
-            name: f.name,
-            hazardClass: existing.hazardClass || f.dangerClass || f.hazardClass || 'Tehlikeli',
-            assignedDoctor: existing.assignedDoctor || f.assignedDoctor || '',
-            assignedSpecialist: existing.assignedSpecialist || f.assignedSpecialist || '',
-            defaultExams: (Array.isArray(existing.defaultExams) && existing.defaultExams.length > 0)
-              ? existing.defaultExams
-              : (Array.isArray(f.defaultExams) ? f.defaultExams : []),
-            defaultPaymentMethod: existing.defaultPaymentMethod || f.defaultPaymentMethod || 'CASH',
-            forcedInstitutionId: existing.forcedInstitutionId,
-            portalPassword: existing.portalPassword || f.portalPassword
-          };
-        });
-      }
-    } catch (e) {
-      console.error('Fatura Takip firma senkronizasyon hatasi:', e);
+    // Sevk firmaları tamamen bağımsız olarak yönetilir (Fatura Takip ile üzerine yazma işlemi kaldırılmıştır).
+    if (!Array.isArray(db.companies)) {
+      db.companies = [];
     }
     const safeDb = {
       ...db,
@@ -1505,7 +1447,8 @@ async function startServer() {
             exams: item.exams || []
           }];
           
-          fetch('http://localhost:5000/api/webhook/health-services', {
+          const faturaApiUrl = process.env.FATURA_API_URL || 'http://127.0.0.1:5000';
+          fetch(`${faturaApiUrl}/api/webhook/health-services`, {
             method: 'POST',
             headers: { 
               'Content-Type': 'application/json',
@@ -1529,7 +1472,8 @@ async function startServer() {
       db[collection] = db[collection].filter((x: any) => x.id !== item.id);
       if (collection === 'referrals') {
         try {
-          fetch('http://localhost:5000/api/webhook/health-services', {
+          const faturaApiUrl = process.env.FATURA_API_URL || 'http://127.0.0.1:5000';
+          fetch(`${faturaApiUrl}/api/webhook/health-services`, {
             method: 'POST',
             headers: { 
               'Content-Type': 'application/json',

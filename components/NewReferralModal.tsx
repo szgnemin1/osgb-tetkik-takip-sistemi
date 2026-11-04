@@ -19,6 +19,7 @@ interface NewReferralViewProps {
   settings: AppSettings;
   initialData?: Referral | null; // Düzenleme için eklendi
   existingReferrals?: Referral[];
+  onAddCompany?: (c: Company) => Promise<void> | void;
 }
 
 export const NewReferralView: React.FC<NewReferralViewProps> = ({ 
@@ -29,7 +30,8 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({
   institutions, 
   settings, 
   initialData,
-  existingReferrals = []
+  existingReferrals = [],
+  onAddCompany
 }) => {
   // --- STATE MANAGEMENT ---
   const [currentStep, setCurrentStep] = useState(1);
@@ -539,9 +541,18 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({
                               </div>
                             ))
                           ) : (
-                        <div className="p-3 text-xs text-slate-400 text-center space-y-1">
-                          <div>Firma bulunamadı.</div>
-                          <div className="text-[11px] text-blue-400">Yeni firmalar sadece Fatura Takip sistemi üzerinden açılmaktadır.</div>
+                        <div className="p-3 text-xs text-slate-400 space-y-2">
+                          <div className="text-center">"{companySearchTerm}" adına kayıtlı firma bulunamadı.</div>
+                          {companySearchTerm.trim() && (
+                            <button
+                              type="button"
+                              onClick={() => handleCreateQuickCompany(companySearchTerm.trim())}
+                              className="w-full py-2 px-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-xs transition-colors flex items-center justify-center gap-1.5 shadow-md"
+                            >
+                              <Building2 className="w-3.5 h-3.5" />
+                              <span>+ Bu İsimle Yeni Sevk Firması Aç</span>
+                            </button>
+                          )}
                         </div>
                       )}
                         </div>
@@ -944,9 +955,18 @@ export const NewReferralView: React.FC<NewReferralViewProps> = ({
                           </div>
                         ))
                       ) : (
-                        <div className="p-3 text-xs text-slate-400 text-center space-y-1">
-                          <div>Firma bulunamadı.</div>
-                          <div className="text-[11px] text-blue-400">Yeni firmalar sadece Fatura Takip sistemi üzerinden açılmaktadır.</div>
+                        <div className="p-3 text-xs text-slate-400 space-y-2">
+                          <div className="text-center">"{companySearchTerm}" adına kayıtlı firma bulunamadı.</div>
+                          {companySearchTerm.trim() && (
+                            <button
+                              type="button"
+                              onClick={() => handleCreateQuickCompany(companySearchTerm.trim())}
+                              className="w-full py-2 px-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-xs transition-colors flex items-center justify-center gap-1.5 shadow-md"
+                            >
+                              <Building2 className="w-3.5 h-3.5" />
+                              <span>+ Bu İsimle Yeni Sevk Firması Aç</span>
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>

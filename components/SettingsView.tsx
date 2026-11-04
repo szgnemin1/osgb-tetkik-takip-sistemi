@@ -135,6 +135,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   // Company Form State
   const [editingCompanyId, setEditingCompanyId] = useState<string | null>(null);
+  const [isAddingCompany, setIsAddingCompany] = useState(false);
   const [cName, setCName] = useState('');
   const [companySearchQuery, setCompanySearchQuery] = useState('');
   const [cHazard, setCHazard] = useState<HazardClass>(HazardClass.LESS);
@@ -578,6 +579,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const handleCancelEdit = () => {
     setEditingCompanyId(null);
+    setIsAddingCompany(false);
     setCName('');
     setCDoctor('');
     setCSpecialist('');
@@ -587,23 +589,50 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setCPortalPassword('');
   };
 
+  const handleStartAddCompany = () => {
+    setEditingCompanyId(null);
+    setIsAddingCompany(true);
+    setCName('');
+    setCHazard(HazardClass.DANGEROUS);
+    setCDoctor('');
+    setCSpecialist('');
+    setCPaymentMethod('CASH');
+    setCSelectedExams([]);
+    setCPreferredInst('');
+    setCPortalPassword('');
+  };
+
   const handleCompanySubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!cName || !editingCompanyId) return;
+    if (!cName.trim()) return;
 
-    // Sadece Fatura Takip'te açılmış firmanın Tetkik detaylarını güncelle
-    const updatedCompany: Company = {
-      id: editingCompanyId,
-      name: cName,
-      hazardClass: cHazard,
-      assignedDoctor: cDoctor || 'Belirlenmedi',
-      assignedSpecialist: cSpecialist || 'Belirlenmedi',
-      defaultExams: cSelectedExams,
-      defaultPaymentMethod: cPaymentMethod,
-      forcedInstitutionId: cPreferredInst || undefined,
-      portalPassword: cPortalPassword.trim() || undefined
-    };
-    onUpdateCompany(updatedCompany);
+    if (editingCompanyId) {
+      const updatedCompany: Company = {
+        id: editingCompanyId,
+        name: cName.trim(),
+        hazardClass: cHazard,
+        assignedDoctor: cDoctor || 'Belirlenmedi',
+        assignedSpecialist: cSpecialist || 'Belirlenmedi',
+        defaultExams: cSelectedExams,
+        defaultPaymentMethod: cPaymentMethod,
+        forcedInstitutionId: cPreferredInst || undefined,
+        portalPassword: cPortalPassword.trim() || undefined
+      };
+      onUpdateCompany(updatedCompany);
+    } else {
+      const newCompany: Company = {
+        id: 'comp_' + Date.now() + Math.random().toString(36).substr(2, 4),
+        name: cName.trim(),
+        hazardClass: cHazard,
+        assignedDoctor: cDoctor || 'Belirlenmedi',
+        assignedSpecialist: cSpecialist || 'Belirlenmedi',
+        defaultExams: cSelectedExams,
+        defaultPaymentMethod: cPaymentMethod,
+        forcedInstitutionId: cPreferredInst || undefined,
+        portalPassword: cPortalPassword.trim() || undefined
+      };
+      onAddCompany(newCompany);
+    }
     handleCancelEdit(); // Reset form
   };
 
@@ -1273,44 +1302,43 @@ const handleInstitutionSubmit = (e: React.FormEvent) => {
               </div>
             </div>
             
-            {/* Bilgilendirme Bannerı (Firma Açma Sadece Fatura Takip'te) */}
-            {!editingCompanyId && (
-              <div className="bg-gradient-to-r from-blue-950/40 via-slate-900 to-slate-950 p-4 rounded-xl border border-blue-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg">
+            {/* Firma Ekle Butonu ve Üst Başlık */}
+            {!editingCompanyId && !isAddingCompany && (
+              <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg">
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 bg-blue-500/20 text-blue-400 rounded-lg shrink-0">
                     <Building2 className="w-5 h-5" />
                   </div>
                   <div>
                     <h5 className="text-sm font-bold text-white flex items-center gap-2">
-                      <span>Firma Yönetimi & Tetkik Yapılandırması</span>
-                      <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded font-mono font-bold">
-                        Tek Kaynak: Fatura Takip
+                      <span>Sevk Firmaları Yönetimi</span>
+                      <span className="text-[10px] bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded font-mono font-bold">
+                        {companies.length} Kayıtlı Firma
                       </span>
                     </h5>
-                    <p className="text-xs text-slate-300 mt-0.5">
-                      Yeni firmalar yalnızca <strong>Fatura Takip</strong> sisteminde açılmaktadır. Aşağıdaki listeden istediğiniz firmanın <strong>"Tetkik Detaylarını Düzenle"</strong> butonuna tıklayarak ödeme türünü (Fatura / Nakit) ve standart tetkiklerini belirleyebilirsiniz.
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Tetkik ve sevk sistemine ait firmalarınızı buradan bağımsız olarak açabilir, düzenleyebilir ve varsayılan tetkiklerini belirleyebilirsiniz.
                     </p>
                   </div>
                 </div>
-                <a 
-                  href="http://localhost:5000/#/firms" 
-                  target="_blank" 
-                  rel="noreferrer"
-                  className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition-all shadow-md shadow-blue-600/30 whitespace-nowrap flex items-center gap-1.5 shrink-0"
+                <button 
+                  type="button"
+                  onClick={handleStartAddCompany}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all shadow-md shadow-emerald-950 whitespace-nowrap flex items-center gap-1.5 shrink-0"
                 >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  <span>Fatura Takip'te Yeni Cari Aç</span>
-                </a>
+                  <Plus className="w-4 h-4" />
+                  <span>Yeni Sevk Firması Ekle</span>
+                </button>
               </div>
             )}
 
-            {/* Firma Tetkik Detayları Düzenleme Formu (Yalnızca bir firma seçildiğinde açılır) */}
-            {editingCompanyId && (
-              <form onSubmit={handleCompanySubmit} className="bg-slate-900/90 p-5 rounded-xl border border-orange-500/50 shadow-xl shadow-orange-900/20 space-y-4 animate-in fade-in transition-all duration-300">
+            {/* Firma Tetkik Detayları Formu (Yeni Ekleme veya Düzenleme) */}
+            {(editingCompanyId || isAddingCompany) && (
+              <form onSubmit={handleCompanySubmit} className="bg-slate-900/90 p-5 rounded-xl border border-blue-500/50 shadow-xl shadow-blue-900/20 space-y-4 animate-in fade-in transition-all duration-300">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                  <h4 className="text-sm font-bold flex items-center text-orange-400 gap-2">
+                  <h4 className="text-sm font-bold flex items-center text-blue-400 gap-2">
                     <Edit2 className="w-4 h-4" /> 
-                    <span>Firma Tetkik Detaylarını Yapılandır: <strong className="text-white">{cName}</strong></span>
+                    <span>{editingCompanyId ? `Firmayı Düzenle: ${cName}` : 'Yeni Sevk Firması Aç'}</span>
                   </h4>
                   <button 
                     type="button" 
@@ -1324,16 +1352,18 @@ const handleInstitutionSubmit = (e: React.FormEvent) => {
 
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Firma Adı (Kilitli) */}
+                  {/* Firma Adı (Düzenlenebilir) */}
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">
-                      Firma Ünvanı (Fatura Takip Carisi)
+                    <label className="block text-xs font-semibold text-slate-200 mb-1">
+                      Firma Ünvanı <span className="text-red-400">*</span>
                     </label>
                     <input 
-                      readOnly 
+                      type="text"
+                      required
                       value={cName} 
-                      className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-slate-300 text-sm font-semibold cursor-not-allowed outline-none select-text" 
-                      title="Firma adı Fatura Takip sistemi üzerinden yönetilmektedir."
+                      onChange={(e) => setCName(e.target.value)}
+                      placeholder="Örn: ABC İnşaat San. ve Tic. Ltd. Şti."
+                      className="w-full bg-slate-950 border border-slate-700 focus:border-blue-500 rounded px-3 py-2 text-white text-sm font-semibold outline-none" 
                     />
                   </div>
 
@@ -1475,7 +1505,7 @@ const handleInstitutionSubmit = (e: React.FormEvent) => {
                     className="bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white px-6 py-2 rounded-lg text-xs font-bold shadow-lg shadow-orange-900/30 transition-all flex items-center gap-1.5"
                   >
                     <Save className="w-3.5 h-3.5" />
-                    <span>Tetkik Detaylarını Kaydet</span>
+                    <span>{editingCompanyId ? 'Değişiklikleri Kaydet' : 'Firmayı Kaydet'}</span>
                   </button>
                 </div>
               </form>
@@ -1633,7 +1663,7 @@ const handleInstitutionSubmit = (e: React.FormEvent) => {
                     <button 
                         type="button"
                         onClick={() => {
-                          if (window.confirm(`${company.name} firmasının tetkik ayarlarını sıfırlamak istediğinize emin misiniz? (Firmayı tamamen silmek için Fatura Takip > Firma Kayıt ekranını kullanınız.)`)) {
+                          if (window.confirm(`"${company.name}" firmasını sevk sisteminden silmek istediğinize emin misiniz?`)) {
                             onDeleteCompany(company.id);
                           }
                         }} 

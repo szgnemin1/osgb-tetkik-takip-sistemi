@@ -658,6 +658,7 @@ const App: React.FC = () => {
                 settings={appSettings}
                 initialData={editingReferral}
                 existingReferrals={referrals}
+                onAddCompany={handleAddCompany}
               />
             )}
 
